@@ -6,6 +6,7 @@
  * modules under web/js so upstream-derived interaction code stays auditable.
  */
 import { app } from "../../scripts/app.js";
+import "./js/studio_extension.js";
 
 const NODE_CLASS = "H3StudioDirector";
 const LOADER_CLASS = "H3StudioLoader";
@@ -399,10 +400,7 @@ function getMediaType(sourceType, sourceNode = null) {
 }
 
 function mediaLimits(node) {
-    if (!isReferenceMode(node)) {
-        return { image: 2, video: 0, audio: 0, total: 2 };
-    }
-    return { image: 9, video: 3, audio: 3, total: MAX_MEDIA };
+    return { image: MAX_MEDIA, video: 0, audio: 0, total: MAX_MEDIA };
 }
 
 function canAccept(node, mediaType) {
@@ -1335,6 +1333,7 @@ function patchGraphToPrompt() {
             for (let index = 1; index <= MAX_MEDIA; index += 1) {
                 delete promptNode.inputs[`media_${index}`];
                 delete promptNode.inputs[`media_type_${index}`];
+                delete promptNode.inputs[`media_filename_${index}`];
             }
             if (node.__h3sEditor) syncPromptFromEditor(node, false);
             const runtimeLinks = normalizeLinks(node).filter((link) => Boolean(output[String(link.source_id)]));
@@ -1343,6 +1342,10 @@ function patchGraphToPrompt() {
                 const slot = Number(link.source_slot) || 0;
                 promptNode.inputs[`media_${index + 1}`] = [String(link.source_id), slot];
                 promptNode.inputs[`media_type_${index + 1}`] = String(link.media_type || "image");
+                promptNode.inputs[`media_filename_${index + 1}`] = sourceFilename(
+                    app.graph?.getNodeById?.(Number(link.source_id)),
+                    "image",
+                );
             });
             promptNode.inputs.prompt = buildRuntimePrompt(node, runtimeLinks);
             promptNode.inputs.mode = canonicalOption("mode", getWidgetValue(node, "mode", MODE_IMAGE));

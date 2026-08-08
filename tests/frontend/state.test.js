@@ -1,0 +1,86 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import {
+  MAX_REFERENCES,
+  defaultState,
+  normalizeState,
+  parseState,
+  planResolution,
+  rewriteMentions,
+  serializeState,
+} from "../../web/js/core/state.js";
+
+test("default state is an immediately usable text-to-image request", () => {
+  const state = defaultState();
+  assert.equal(state.schema_version, 2);
+  assert.equal(state.generation.mode, "auto");
+  assert.deepEqual(state.references, []);
+});
+
+test("state round-trips without losing reference metadata", () => {
+  const state = defaultState();
+  state.prompt = "Keep @Image 1's face";
+  state.references = [{
+    filename: "face.png",
+    role: "identity",
+    retention: "fully_preserved",
+    description: "The exact person",
+    source_node_id: "42",
+    source_slot: 0,
+  }];
+  const restored = parseState(serializeState(state));
+  assert.equal(restored.prompt, state.prompt);
+  assert.equal(restored.references[0].filename, "face.png");
+  assert.equal(restored.references[0].role, "identity");
+  assert.equal(restored.references[0].retention, "fully_preserved");
+});
+
+test("schema one settings migrate into their typed sections", () => {
+  const state = normalizeState({
+    schema_version: 1,
+    settings: { mode: "reference_edit", megapixels: 1.4, enhance_mode: "vlm", adherence: 0.7 },
+  });
+  assert.equal(state.schema_version, 2);
+  assert.equal(state.generation.mode, "reference_edit");
+  assert.equal(state.generation.megapixels, 1.4);
+  assert.equal(state.prompt_options.enhance_mode, "vlm");
+  assert.equal(state.prompt_options.adherence, 0.7);
+  assert.equal("settings" in state, false);
+});
+
+test("normalization clamps fields and limits references", () => {
+  const state = normalizeState({
+    generation: { megapixels: 99, seed: -5 },
+    prompt_options: { adherence: -2 },
+    references: Array.from({ length: 20 }, (_, index) => ({ filename: `${index}.png` })),
+  });
+  assert.equal(state.generation.megapixels, 2);
+  assert.equal(state.generation.seed, 0);
+  assert.equal(state.prompt_options.adherence, 0);
+  assert.equal(state.references.length, MAX_REFERENCES);
+});
+
+test("mention rewriting changes only actual friendly image references", () => {
+  const source = "Use @Image 1, @image2, email x@Image3.test, and @@Image 4";
+  const result = rewriteMentions(source, { 1: 3, 2: 1, 4: 2 });
+  assert.equal(result, "Use @Image 3, @Image 1, email x@Image3.test, and @@Image 4");
+});
+
+test("resolution planner aligns dimensions and respects the native cap", () => {
+  for (const ratio of ["1:1", "4:5", "9:16", "16:9", "21:9"]) {
+    const plan = planResolution(ratio, 2);
+    assert.equal(plan.width % 32, 0);
+    assert.equal(plan.height % 32, 0);
+    assert.ok(plan.width * plan.height <= 768 * 1344);
+    assert.equal(plan.capped, true);
+  }
+});
+
+test("custom dimensions determine custom aspect while area follows megapixels", () => {
+  const plan = planResolution("custom", 0.5, 1600, 900, false);
+  assert.equal(plan.width % 32, 0);
+  assert.equal(plan.height % 32, 0);
+  assert.ok(Math.abs(plan.width / plan.height - 16 / 9) < 0.08);
+  assert.ok(Math.abs(plan.actualMegapixels - 0.5) < 0.06);
+});
