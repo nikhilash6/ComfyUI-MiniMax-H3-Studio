@@ -1,0 +1,2103 @@
+{
+  "id": "51ffc0bb-1b7a-4a1c-a183-1ce99edb4e5e",
+  "revision": 0,
+  "last_node_id": 26,
+  "last_link_id": 10,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "LoadImage",
+      "pos": [
+        -1580,
+        220
+      ],
+      "size": [
+        300,
+        300
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "image"
+          }
+        },
+        {
+          "name": "upload",
+          "type": "IMAGEUPLOAD",
+          "link": null,
+          "widget": {
+            "name": "upload"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": null
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "title": "@Image 1 · replace me",
+      "properties": {
+        "Node name for S&R": "LoadImage",
+        "h3studio_reference_ordinal": 1
+      },
+      "widgets_values": [
+        "image_1.png",
+        "image"
+      ],
+      "color": "#2b3735",
+      "bgcolor": "#1b2221"
+    },
+    {
+      "id": 2,
+      "type": "LoadImage",
+      "pos": [
+        -1580,
+        550
+      ],
+      "size": [
+        300,
+        300
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "image"
+          }
+        },
+        {
+          "name": "upload",
+          "type": "IMAGEUPLOAD",
+          "link": null,
+          "widget": {
+            "name": "upload"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": null
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "title": "@Image 2 · replace me",
+      "properties": {
+        "Node name for S&R": "LoadImage",
+        "h3studio_reference_ordinal": 2
+      },
+      "widgets_values": [
+        "image_2.png",
+        "image"
+      ],
+      "color": "#2b3735",
+      "bgcolor": "#1b2221"
+    },
+    {
+      "id": 3,
+      "type": "LoadImage",
+      "pos": [
+        -1580,
+        880
+      ],
+      "size": [
+        300,
+        300
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "image"
+          }
+        },
+        {
+          "name": "upload",
+          "type": "IMAGEUPLOAD",
+          "link": null,
+          "widget": {
+            "name": "upload"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": null
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "title": "@Image 3 · replace me",
+      "properties": {
+        "Node name for S&R": "LoadImage",
+        "h3studio_reference_ordinal": 3
+      },
+      "widgets_values": [
+        "image_3.png",
+        "image"
+      ],
+      "color": "#2b3735",
+      "bgcolor": "#1b2221"
+    },
+    {
+      "id": 10,
+      "type": "H3StudioDirector",
+      "pos": [
+        -1090,
+        210
+      ],
+      "size": [
+        760,
+        920
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "mode",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "mode"
+          }
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "prompt"
+          }
+        },
+        {
+          "name": "resolution",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "resolution"
+          }
+        },
+        {
+          "name": "aspect_ratio",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "aspect_ratio"
+          }
+        },
+        {
+          "name": "width",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "width"
+          }
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "height"
+          }
+        },
+        {
+          "name": "seconds",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "seconds"
+          }
+        },
+        {
+          "name": "advanced",
+          "type": "BOOLEAN",
+          "link": null,
+          "widget": {
+            "name": "advanced"
+          }
+        },
+        {
+          "name": "fps",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "fps"
+          }
+        },
+        {
+          "name": "keyframe_role",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "keyframe_role"
+          }
+        },
+        {
+          "name": "ref_image_size",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "ref_image_size"
+          }
+        },
+        {
+          "name": "reference_mention_mode",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "reference_mention_mode"
+          }
+        },
+        {
+          "name": "megapixels",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "megapixels"
+          }
+        },
+        {
+          "name": "seed",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "seed"
+          }
+        },
+        {
+          "name": "enhance_mode",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "enhance_mode"
+          }
+        },
+        {
+          "name": "adherence",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "adherence"
+          }
+        },
+        {
+          "name": "route",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "route"
+          }
+        },
+        {
+          "name": "sampling_profile",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "sampling_profile"
+          }
+        },
+        {
+          "name": "frame_profile",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "frame_profile"
+          }
+        },
+        {
+          "name": "analyzer_model",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "analyzer_model"
+          }
+        },
+        {
+          "name": "studio_state",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "studio_state"
+          }
+        },
+        {
+          "name": "media",
+          "type": "*",
+          "link": null,
+          "shape": 7
+        }
+      ],
+      "outputs": [
+        {
+          "name": "studio_context",
+          "type": "H3_STUDIO_CONTEXT",
+          "links": [
+            1,
+            10
+          ]
+        },
+        {
+          "name": "compiled_prompt",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "state_json",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "width",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "name": "seed",
+          "type": "INT",
+          "links": [
+            7
+          ]
+        },
+        {
+          "name": "diagnostics",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "MiniMax H3 Studio · Image Director",
+      "properties": {
+        "Node name for S&R": "H3StudioDirector",
+        "h3studio_virtual_media_links": [
+          {
+            "source_id": 1,
+            "source_slot": 0,
+            "media_type": "image",
+            "order": 1
+          },
+          {
+            "source_id": 2,
+            "source_slot": 0,
+            "media_type": "image",
+            "order": 2
+          },
+          {
+            "source_id": 3,
+            "source_slot": 0,
+            "media_type": "image",
+            "order": 3
+          }
+        ],
+        "h3studio_prompt_reference_doc": {
+          "version": 1,
+          "parts": [
+            {
+              "kind": "text",
+              "text": "Create a polished still image. Use @Image 1 for identity, @Image 2 for style, and @Image 3 for composition."
+            }
+          ]
+        }
+      },
+      "widgets_values": [
+        "reference",
+        "Create the image as a precise production brief. Use @Image 1 for identity, @Image 2 for visual style, and @Image 3 for composition when those references are connected.",
+        "Custom",
+        "1:1",
+        1024,
+        1024,
+        5.0,
+        false,
+        24.0,
+        "first",
+        "2k",
+        "index",
+        1.0,
+        42,
+        "compile_only",
+        0.85,
+        "auto",
+        "base_quality_20",
+        "recommended_5",
+        "",
+        "{\"schema_version\":2,\"prompt\":\"Create a polished still image. Use @Image 1 for identity, @Image 2 for style, and @Image 3 for composition.\",\"references\":[{\"id\":\"ref_1\",\"filename\":\"image_1.png\",\"ordinal\":1,\"role\":\"identity\",\"retention\":\"fully_preserved\",\"description\":\"Defines the exact subject identity.\",\"enabled\":true,\"source_node_id\":\"1\",\"source_slot\":0},{\"id\":\"ref_2\",\"filename\":\"image_2.png\",\"ordinal\":2,\"role\":\"style\",\"retention\":\"attribute_transfer\",\"description\":\"Defines rendering style and color treatment.\",\"enabled\":true,\"source_node_id\":\"2\",\"source_slot\":0},{\"id\":\"ref_3\",\"filename\":\"image_3.png\",\"ordinal\":3,\"role\":\"composition\",\"retention\":\"attribute_transfer\",\"description\":\"Defines framing and layout.\",\"enabled\":true,\"source_node_id\":\"3\",\"source_slot\":0}],\"prompt_options\":{\"enhance_mode\":\"compile_only\",\"adherence\":0.85,\"detail_level\":\"detailed\",\"preserve_user_text\":true,\"infer_roles\":true,\"system_instruction\":\"\",\"analyzer_model\":\"\",\"analyzer_device\":\"auto\",\"analyzer_quantization\":\"auto\",\"analyzer_max_tokens\":1800,\"analyzer_keep_loaded\":false},\"generation\":{\"mode\":\"auto\",\"route\":\"auto\",\"seed\":42,\"aspect_ratio\":\"1:1\",\"megapixels\":1.0,\"custom_width\":1024,\"custom_height\":1024,\"cap_native_resolution\":true,\"sampling_profile\":\"base_quality_20\",\"frame_profile\":\"recommended_5\",\"frame_selection\":\"decode_recommended\",\"reference_short_edge\":2048,\"source_image_ordinal\":1},\"ui\":{\"advanced_open\":false,\"reference_details\":{}}}",
+        "",
+        "image",
+        "image_1.png",
+        "auto",
+        "attribute_transfer",
+        "",
+        "image",
+        "image_2.png",
+        "auto",
+        "attribute_transfer",
+        "",
+        "image",
+        "image_3.png",
+        "auto",
+        "attribute_transfer",
+        "",
+        "image",
+        "",
+        "auto",
+        "attribute_transfer",
+        "",
+        "image",
+        "",
+        "auto",
+        "attribute_transfer",
+        "",
+        "image",
+        "",
+        "auto",
+        "attribute_transfer",
+        "",
+        "image",
+        "",
+        "auto",
+        "attribute_transfer",
+        "",
+        "image",
+        "",
+        "auto",
+        "attribute_transfer",
+        "",
+        "image",
+        "",
+        "auto",
+        "attribute_transfer",
+        ""
+      ],
+      "color": "#255049",
+      "bgcolor": "#172d29"
+    },
+    {
+      "id": 11,
+      "type": "H3StudioLoader",
+      "pos": [
+        -1090,
+        1210
+      ],
+      "size": [
+        760,
+        170
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "fl2va_model",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "fl2va_model"
+          }
+        },
+        {
+          "name": "ref2va_model",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "ref2va_model"
+          }
+        },
+        {
+          "name": "text_encoder",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "text_encoder"
+          }
+        },
+        {
+          "name": "video_vae",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "video_vae"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "h3_bundle",
+          "type": "H3_STUDIO_BUNDLE",
+          "links": [
+            2
+          ]
+        },
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "links": null
+        },
+        {
+          "name": "video_vae",
+          "type": "VAE",
+          "links": null
+        },
+        {
+          "name": "model_info",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "H3 models · lazy route loader",
+      "properties": {
+        "Node name for S&R": "H3StudioLoader"
+      },
+      "widgets_values": [
+        "minimax_h3_fl2va_pruned_w4a8_mixed.safetensors",
+        "minimax_h3_ref2va_pruned_w4a8_mixed.safetensors",
+        "qwen3vl_32b_minimax_h3_int8_convrot.safetensors",
+        "minimax_h3_video_vae_int8_convrot.safetensors"
+      ],
+      "color": "#31475c",
+      "bgcolor": "#202e3c"
+    },
+    {
+      "id": 12,
+      "type": "H3StudioCondition",
+      "pos": [
+        -40,
+        420
+      ],
+      "size": [
+        430,
+        130
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "h3_bundle",
+          "type": "H3_STUDIO_BUNDLE",
+          "link": 2
+        },
+        {
+          "name": "studio_context",
+          "type": "H3_STUDIO_CONTEXT",
+          "link": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "links": [
+            3
+          ]
+        },
+        {
+          "name": "generation",
+          "type": "H3_STUDIO_GENERATION",
+          "links": null
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "links": [
+            4
+          ]
+        },
+        {
+          "name": "h3_latent",
+          "type": "LATENT",
+          "links": [
+            5
+          ]
+        },
+        {
+          "name": "video_vae",
+          "type": "VAE",
+          "links": [
+            6
+          ]
+        },
+        {
+          "name": "requested_frames",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "name": "run_info",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "Compile, condition, and route once",
+      "properties": {
+        "Node name for S&R": "H3StudioCondition"
+      },
+      "widgets_values": [],
+      "color": "#53482c",
+      "bgcolor": "#352e1d"
+    },
+    {
+      "id": 13,
+      "type": "5930b00d-9f8e-4b87-9cb5-ff5f7cf3b30a",
+      "pos": [
+        500,
+        340
+      ],
+      "size": [
+        620,
+        420
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 3
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 4
+        },
+        {
+          "name": "h3_latent",
+          "type": "LATENT",
+          "link": 5
+        },
+        {
+          "name": "video_vae",
+          "type": "VAE",
+          "link": 6
+        },
+        {
+          "name": "seed",
+          "type": "INT",
+          "link": 7
+        }
+      ],
+      "outputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "links": [
+            8,
+            9
+          ]
+        },
+        {
+          "name": "decode_info",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "selection_report",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "H3 Studio · Sampling + exact still",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.30.0",
+        "previewExposures": []
+      },
+      "widgets_values": [],
+      "color": "#3c514c",
+      "bgcolor": "#24312f"
+    },
+    {
+      "id": 14,
+      "type": "PreviewImage",
+      "pos": [
+        1250,
+        260
+      ],
+      "size": [
+        440,
+        420
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 8
+        }
+      ],
+      "outputs": [],
+      "title": "Final still · preview",
+      "properties": {
+        "Node name for S&R": "PreviewImage"
+      },
+      "widgets_values": [],
+      "color": "#3c514c",
+      "bgcolor": "#24312f"
+    },
+    {
+      "id": 15,
+      "type": "SaveImage",
+      "pos": [
+        1250,
+        730
+      ],
+      "size": [
+        440,
+        190
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 9
+        },
+        {
+          "name": "filename_prefix",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "filename_prefix"
+          }
+        }
+      ],
+      "outputs": [],
+      "title": "Final still · save",
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "H3Studio/%date:yyyy-MM-dd%/H3_%seed%"
+      ],
+      "color": "#3c514c",
+      "bgcolor": "#24312f"
+    },
+    {
+      "id": 16,
+      "type": "H3StudioContextInspector",
+      "pos": [
+        -20,
+        930
+      ],
+      "size": [
+        430,
+        160
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "studio_context",
+          "type": "H3_STUDIO_CONTEXT",
+          "link": 10
+        }
+      ],
+      "outputs": [
+        {
+          "name": "compiled_prompt",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "context_info",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "width",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "name": "seed",
+          "type": "INT",
+          "links": null
+        }
+      ],
+      "title": "Compiled brief and route inspector",
+      "properties": {
+        "Node name for S&R": "H3StudioContextInspector"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 20,
+      "type": "H3StudioWorkflowNote",
+      "pos": [
+        -1580,
+        -160
+      ],
+      "size": [
+        500,
+        320
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "section",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "section"
+          }
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "text"
+          }
+        }
+      ],
+      "outputs": [],
+      "title": "START HERE · three-minute setup",
+      "properties": {
+        "Node name for S&R": "H3StudioWorkflowNote",
+        "purpose": "Documentation only; never enters the generation graph."
+      },
+      "widgets_values": [
+        "quick start",
+        "1. Replace any connected placeholder Load Image nodes.\n2. Write naturally in the Director and type @ to insert exact image references.\n3. Set each image's role and retention policy in its card.\n4. Choose aspect ratio, megapixels, and seed.\n5. Queue. Auto uses FL2VA for pure text and REF2VA for multi-reference work.\n\nThe three sample image nodes are optional. Disconnect or remove all of them for clean text-to-image."
+      ],
+      "color": "#22322f",
+      "bgcolor": "#17211f"
+    },
+    {
+      "id": 21,
+      "type": "H3StudioWorkflowNote",
+      "pos": [
+        -1030,
+        -160
+      ],
+      "size": [
+        520,
+        320
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "section",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "section"
+          }
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "text"
+          }
+        }
+      ],
+      "outputs": [],
+      "title": "Prompt enhancement · what actually happens",
+      "properties": {
+        "Node name for S&R": "H3StudioWorkflowNote",
+        "purpose": "Documentation only; never enters the generation graph."
+      },
+      "widgets_values": [
+        "settings",
+        "Production brief compiles deterministic sections: subject_definitions, summary, retention_analysis, and detailed_description. VLM analysis is optional and requires an explicitly selected local instruction-capable vision-language model. The Qwen3-VL ConvRot encoder loaded for H3 conditioning is not silently repurposed as a text generator. No model is downloaded automatically."
+      ],
+      "color": "#22322f",
+      "bgcolor": "#17211f"
+    },
+    {
+      "id": 22,
+      "type": "H3StudioWorkflowNote",
+      "pos": [
+        -470,
+        -160
+      ],
+      "size": [
+        520,
+        320
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "section",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "section"
+          }
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "text"
+          }
+        }
+      ],
+      "outputs": [],
+      "title": "Routing · deliberate defaults",
+      "properties": {
+        "Node name for S&R": "H3StudioWorkflowNote",
+        "purpose": "Documentation only; never enters the generation graph."
+      },
+      "widgets_values": [
+        "settings",
+        "Auto route keeps both proven paths available. Zero references selects FL2VA text-to-image. One reference may use FL2VA as an image anchor depending on requested mode. Multi-reference work selects REF2VA. Forced routes are advanced controls and diagnostics state when images are ignored or a route is experimental. REF2VA-only text-to-image remains unproven and is not the default."
+      ],
+      "color": "#22322f",
+      "bgcolor": "#17211f"
+    },
+    {
+      "id": 23,
+      "type": "H3StudioWorkflowNote",
+      "pos": [
+        90,
+        -160
+      ],
+      "size": [
+        520,
+        320
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "section",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "section"
+          }
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "text"
+          }
+        }
+      ],
+      "outputs": [],
+      "title": "Lightning.ai validation boundary",
+      "properties": {
+        "Node name for S&R": "H3StudioWorkflowNote",
+        "purpose": "Documentation only; never enters the generation graph."
+      },
+      "widgets_values": [
+        "troubleshooting",
+        "This repository is checked locally for Python/JavaScript syntax, state migration, prompt compilation, resolution math, route decisions, node registration, and workflow graph integrity. Actual CUDA generation, model filenames, VRAM behavior, visual quality, and your installed ComfyUI frontend build must be smoke-tested in the Lightning workspace. Follow docs/LIGHTNING_TEST_PLAN.md before calling a GPU path verified."
+      ],
+      "color": "#22322f",
+      "bgcolor": "#17211f"
+    },
+    {
+      "id": 24,
+      "type": "H3StudioWorkflowNote",
+      "pos": [
+        650,
+        -160
+      ],
+      "size": [
+        520,
+        320
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "section",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "section"
+          }
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "text"
+          }
+        }
+      ],
+      "outputs": [],
+      "title": "Why the Director is not hidden in the subgraph",
+      "properties": {
+        "Node name for S&R": "H3StudioWorkflowNote",
+        "purpose": "Documentation only; never enters the generation graph."
+      },
+      "widgets_values": [
+        "optional / experimental",
+        "ComfyUI can promote native scalar widgets through subgraphs, but custom DOM controls and mention editors are not reliably promoted. The visible Director is therefore the stable product UI. Sampling and exact-frame decode live in the reusable subgraph because those are ordinary typed sockets. This preserves the polished @ tagging interface without repeating the old invisible-widget failure."
+      ],
+      "color": "#22322f",
+      "bgcolor": "#17211f"
+    },
+    {
+      "id": 25,
+      "type": "H3StudioWorkflowNote",
+      "pos": [
+        1730,
+        260
+      ],
+      "size": [
+        430,
+        390
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "section",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "section"
+          }
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "text"
+          }
+        }
+      ],
+      "outputs": [],
+      "title": "Image reference semantics",
+      "properties": {
+        "Node name for S&R": "H3StudioWorkflowNote",
+        "purpose": "Documentation only; never enters the generation graph."
+      },
+      "widgets_values": [
+        "settings",
+        "identity or character + fully_preserved: keep the exact person or design.\nstyle + attribute_transfer: borrow rendering language without copying content.\ncomposition or layout + attribute_transfer: borrow placement and hierarchy.\noutfit, pose, typography, lighting, texture, object, and environment provide narrower controls.\n\nThe compiler can infer roles from nearby prompt text, but explicit card metadata wins."
+      ],
+      "color": "#22322f",
+      "bgcolor": "#17211f"
+    },
+    {
+      "id": 26,
+      "type": "H3StudioWorkflowNote",
+      "pos": [
+        1730,
+        700
+      ],
+      "size": [
+        430,
+        310
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "section",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "section"
+          }
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "text"
+          }
+        }
+      ],
+      "outputs": [],
+      "title": "Sampling and frame extraction",
+      "properties": {
+        "Node name for S&R": "H3StudioWorkflowNote",
+        "purpose": "Documentation only; never enters the generation graph."
+      },
+      "widgets_values": [
+        "models",
+        "H3 emits a short temporal latent even when the desired output is one image. The bundled subgraph samples that packet, decodes the exact requested profile, and selects the decoder-recommended stable frame. Base Quality uses the conservative RES Multistep profile. Turbo profiles are labeled experimental and expect their matching upstream acceleration assets."
+      ],
+      "color": "#22322f",
+      "bgcolor": "#17211f"
+    }
+  ],
+  "links": [
+    [
+      1,
+      10,
+      0,
+      12,
+      1,
+      "H3_STUDIO_CONTEXT"
+    ],
+    [
+      2,
+      11,
+      0,
+      12,
+      0,
+      "H3_STUDIO_BUNDLE"
+    ],
+    [
+      3,
+      12,
+      0,
+      13,
+      0,
+      "MODEL"
+    ],
+    [
+      4,
+      12,
+      2,
+      13,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      5,
+      12,
+      3,
+      13,
+      2,
+      "LATENT"
+    ],
+    [
+      6,
+      12,
+      4,
+      13,
+      3,
+      "VAE"
+    ],
+    [
+      7,
+      10,
+      5,
+      13,
+      4,
+      "INT"
+    ],
+    [
+      8,
+      13,
+      0,
+      14,
+      0,
+      "IMAGE"
+    ],
+    [
+      9,
+      13,
+      0,
+      15,
+      0,
+      "IMAGE"
+    ],
+    [
+      10,
+      10,
+      0,
+      16,
+      0,
+      "H3_STUDIO_CONTEXT"
+    ]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "01 · OPTIONAL REFERENCE IMAGES",
+      "bounding": [
+        -1630,
+        170,
+        380,
+        1050
+      ],
+      "color": "#355b54",
+      "font_size": 26,
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "02 · DIRECT THE IMAGE",
+      "bounding": [
+        -1140,
+        170,
+        860,
+        1250
+      ],
+      "color": "#2f665b",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "03 · CONDITION ONCE",
+      "bounding": [
+        -90,
+        350,
+        540,
+        790
+      ],
+      "color": "#6b5937",
+      "font_size": 26,
+      "flags": {}
+    },
+    {
+      "id": 4,
+      "title": "04 · SAMPLE AND EXTRACT STILL",
+      "bounding": [
+        450,
+        260,
+        720,
+        550
+      ],
+      "color": "#456059",
+      "font_size": 26,
+      "flags": {}
+    },
+    {
+      "id": 5,
+      "title": "05 · OUTPUT",
+      "bounding": [
+        1200,
+        190,
+        540,
+        780
+      ],
+      "color": "#496073",
+      "font_size": 26,
+      "flags": {}
+    },
+    {
+      "id": 6,
+      "title": "REFERENCE GUIDE",
+      "bounding": [
+        1680,
+        190,
+        530,
+        880
+      ],
+      "color": "#5c5243",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 7,
+      "title": "READ BEFORE FIRST RUN",
+      "bounding": [
+        -1630,
+        -220,
+        2830,
+        400
+      ],
+      "color": "#324e49",
+      "font_size": 30,
+      "flags": {}
+    }
+  ],
+  "definitions": {
+    "subgraphs": [
+      {
+        "id": "5930b00d-9f8e-4b87-9cb5-ff5f7cf3b30a",
+        "version": 1,
+        "state": {
+          "lastGroupid": 0,
+          "lastNodeId": 106,
+          "lastLinkId": 16,
+          "lastRerouteId": 0
+        },
+        "revision": 0,
+        "config": {},
+        "name": "H3 Studio · Sampling and Exact Still Decode",
+        "inputNode": {
+          "id": -10,
+          "bounding": [
+            -190,
+            40,
+            120,
+            360
+          ]
+        },
+        "outputNode": {
+          "id": -20,
+          "bounding": [
+            2130,
+            120,
+            140,
+            240
+          ]
+        },
+        "inputs": [
+          {
+            "id": "352b5c74-4db0-568b-9cb7-525414c5c991",
+            "name": "model",
+            "type": "MODEL",
+            "linkIds": [
+              1
+            ],
+            "pos": [
+              -160,
+              132
+            ]
+          },
+          {
+            "id": "337c26a9-6c85-5f64-9703-96e57ac16b8b",
+            "name": "positive",
+            "type": "CONDITIONING",
+            "linkIds": [
+              2
+            ],
+            "pos": [
+              -160,
+              184
+            ]
+          },
+          {
+            "id": "bcdb6c4e-a2cf-5492-89e0-5c021e653eb2",
+            "name": "h3_latent",
+            "type": "LATENT",
+            "linkIds": [
+              3
+            ],
+            "pos": [
+              -160,
+              236
+            ]
+          },
+          {
+            "id": "2ae2561c-b17e-5e42-810f-e4200b23d0aa",
+            "name": "video_vae",
+            "type": "VAE",
+            "linkIds": [
+              4
+            ],
+            "pos": [
+              -160,
+              288
+            ]
+          },
+          {
+            "id": "47028fc0-cd59-5d9f-bbdf-0284843c0dd8",
+            "name": "seed",
+            "type": "INT",
+            "linkIds": [
+              5
+            ],
+            "pos": [
+              -160,
+              340
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "fdf09fcf-6bbb-500e-ba22-ba94ef0f2587",
+            "name": "image",
+            "type": "IMAGE",
+            "linkIds": [
+              14
+            ],
+            "pos": [
+              2160,
+              180
+            ]
+          },
+          {
+            "id": "ff20728a-2f06-5d32-9b35-2a1a2934c2c3",
+            "name": "decode_info",
+            "type": "STRING",
+            "linkIds": [
+              15
+            ],
+            "pos": [
+              2160,
+              232
+            ]
+          },
+          {
+            "id": "6ad2c196-e415-5a30-9f8a-d8d29884da0a",
+            "name": "selection_report",
+            "type": "STRING",
+            "linkIds": [
+              16
+            ],
+            "pos": [
+              2160,
+              284
+            ]
+          }
+        ],
+        "widgets": [],
+        "nodes": [
+          {
+            "id": 101,
+            "type": "H3StudioSamplingPreset",
+            "pos": [
+              40,
+              40
+            ],
+            "size": [
+              340,
+              100
+            ],
+            "flags": {},
+            "order": 0,
+            "mode": 0,
+            "inputs": [
+              {
+                "name": "model",
+                "type": "MODEL",
+                "link": 1
+              },
+              {
+                "name": "sampling_profile",
+                "type": "COMBO",
+                "link": null,
+                "widget": {
+                  "name": "sampling_profile"
+                }
+              }
+            ],
+            "outputs": [
+              {
+                "name": "model",
+                "type": "MODEL",
+                "links": [
+                  6
+                ]
+              },
+              {
+                "name": "sampler",
+                "type": "SAMPLER",
+                "links": [
+                  7
+                ]
+              },
+              {
+                "name": "sigmas",
+                "type": "SIGMAS",
+                "links": [
+                  8
+                ]
+              },
+              {
+                "name": "sampling_info",
+                "type": "STRING",
+                "links": null
+              }
+            ],
+            "title": "H3 image sampling profile",
+            "properties": {
+              "Node name for S&R": "H3StudioSamplingPreset"
+            },
+            "widgets_values": [
+              "base quality | RES 20 steps"
+            ]
+          },
+          {
+            "id": 102,
+            "type": "BasicGuider",
+            "pos": [
+              450,
+              60
+            ],
+            "size": [
+              270,
+              72
+            ],
+            "flags": {},
+            "order": 1,
+            "mode": 0,
+            "inputs": [
+              {
+                "name": "model",
+                "type": "MODEL",
+                "link": 6
+              },
+              {
+                "name": "conditioning",
+                "type": "CONDITIONING",
+                "link": 2
+              }
+            ],
+            "outputs": [
+              {
+                "name": "GUIDER",
+                "type": "GUIDER",
+                "links": [
+                  9
+                ]
+              }
+            ],
+            "title": "Positive guider",
+            "properties": {
+              "Node name for S&R": "BasicGuider"
+            },
+            "widgets_values": []
+          },
+          {
+            "id": 103,
+            "type": "RandomNoise",
+            "pos": [
+              50,
+              220
+            ],
+            "size": [
+              280,
+              82
+            ],
+            "flags": {},
+            "order": 2,
+            "mode": 0,
+            "inputs": [
+              {
+                "name": "noise_seed",
+                "type": "INT",
+                "link": 5,
+                "widget": {
+                  "name": "noise_seed"
+                }
+              }
+            ],
+            "outputs": [
+              {
+                "name": "NOISE",
+                "type": "NOISE",
+                "links": [
+                  10
+                ]
+              }
+            ],
+            "title": "Studio seed",
+            "properties": {
+              "Node name for S&R": "RandomNoise"
+            },
+            "widgets_values": [
+              42,
+              "fixed"
+            ]
+          },
+          {
+            "id": 104,
+            "type": "SamplerCustomAdvanced",
+            "pos": [
+              790,
+              150
+            ],
+            "size": [
+              330,
+              150
+            ],
+            "flags": {},
+            "order": 3,
+            "mode": 0,
+            "inputs": [
+              {
+                "name": "noise",
+                "type": "NOISE",
+                "link": 10
+              },
+              {
+                "name": "guider",
+                "type": "GUIDER",
+                "link": 9
+              },
+              {
+                "name": "sampler",
+                "type": "SAMPLER",
+                "link": 7
+              },
+              {
+                "name": "sigmas",
+                "type": "SIGMAS",
+                "link": 8
+              },
+              {
+                "name": "latent_image",
+                "type": "LATENT",
+                "link": 3
+              }
+            ],
+            "outputs": [
+              {
+                "name": "output",
+                "type": "LATENT",
+                "links": [
+                  11
+                ]
+              },
+              {
+                "name": "denoised_output",
+                "type": "LATENT",
+                "links": null
+              }
+            ],
+            "title": "Sample H3 still packet",
+            "properties": {
+              "Node name for S&R": "SamplerCustomAdvanced"
+            },
+            "widgets_values": []
+          },
+          {
+            "id": 105,
+            "type": "H3StudioDecode",
+            "pos": [
+              1190,
+              150
+            ],
+            "size": [
+              310,
+              104
+            ],
+            "flags": {},
+            "order": 4,
+            "mode": 0,
+            "inputs": [
+              {
+                "name": "samples",
+                "type": "LATENT",
+                "link": 11
+              },
+              {
+                "name": "vae",
+                "type": "VAE",
+                "link": 4
+              }
+            ],
+            "outputs": [
+              {
+                "name": "frames",
+                "type": "IMAGE",
+                "links": [
+                  12
+                ]
+              },
+              {
+                "name": "decoded_frames",
+                "type": "INT",
+                "links": null
+              },
+              {
+                "name": "decode_info",
+                "type": "STRING",
+                "links": [
+                  15
+                ]
+              },
+              {
+                "name": "recommended_index",
+                "type": "INT",
+                "links": [
+                  13
+                ]
+              }
+            ],
+            "title": "Exact frame decode",
+            "properties": {
+              "Node name for S&R": "H3StudioDecode"
+            },
+            "widgets_values": []
+          },
+          {
+            "id": 106,
+            "type": "H3StudioFrameSelector",
+            "pos": [
+              1570,
+              100
+            ],
+            "size": [
+              430,
+              360
+            ],
+            "flags": {},
+            "order": 5,
+            "mode": 0,
+            "inputs": [
+              {
+                "name": "frames",
+                "type": "IMAGE",
+                "link": 12
+              },
+              {
+                "name": "strategy",
+                "type": "COMBO",
+                "link": null,
+                "widget": {
+                  "name": "strategy"
+                }
+              },
+              {
+                "name": "manual_index",
+                "type": "INT",
+                "link": null,
+                "widget": {
+                  "name": "manual_index"
+                }
+              },
+              {
+                "name": "skip_first_frames",
+                "type": "INT",
+                "link": null,
+                "widget": {
+                  "name": "skip_first_frames"
+                }
+              },
+              {
+                "name": "candidate_start",
+                "type": "FLOAT",
+                "link": null,
+                "widget": {
+                  "name": "candidate_start"
+                }
+              },
+              {
+                "name": "candidate_end",
+                "type": "FLOAT",
+                "link": null,
+                "widget": {
+                  "name": "candidate_end"
+                }
+              },
+              {
+                "name": "similarity_weight",
+                "type": "FLOAT",
+                "link": null,
+                "widget": {
+                  "name": "similarity_weight"
+                }
+              },
+              {
+                "name": "top_k",
+                "type": "INT",
+                "link": null,
+                "widget": {
+                  "name": "top_k"
+                }
+              },
+              {
+                "name": "source_image",
+                "type": "IMAGE",
+                "link": null
+              },
+              {
+                "name": "emit_candidate_batch",
+                "type": "BOOLEAN",
+                "link": null,
+                "widget": {
+                  "name": "emit_candidate_batch"
+                }
+              },
+              {
+                "name": "recommended_index",
+                "type": "INT",
+                "link": 13
+              }
+            ],
+            "outputs": [
+              {
+                "name": "selected_image",
+                "type": "IMAGE",
+                "links": [
+                  14
+                ]
+              },
+              {
+                "name": "candidate_batch_debug",
+                "type": "IMAGE",
+                "links": null
+              },
+              {
+                "name": "selected_index",
+                "type": "INT",
+                "links": null
+              },
+              {
+                "name": "selected_score",
+                "type": "FLOAT",
+                "links": null
+              },
+              {
+                "name": "selection_report",
+                "type": "STRING",
+                "links": [
+                  16
+                ]
+              }
+            ],
+            "title": "Select final still",
+            "properties": {
+              "Node name for S&R": "H3StudioFrameSelector"
+            },
+            "widgets_values": [
+              "decode_recommended",
+              0,
+              0,
+              0.0,
+              1.0,
+              0.6,
+              4,
+              false
+            ]
+          }
+        ],
+        "groups": [
+          {
+            "id": 1,
+            "title": "01 · H3 sampling",
+            "bounding": [
+              10,
+              0,
+              740,
+              350
+            ],
+            "color": "#355b54",
+            "font_size": 22,
+            "flags": {}
+          },
+          {
+            "id": 2,
+            "title": "02 · Decode the temporal packet",
+            "bounding": [
+              760,
+              20,
+              760,
+              330
+            ],
+            "color": "#3f536b",
+            "font_size": 22,
+            "flags": {}
+          },
+          {
+            "id": 3,
+            "title": "03 · Choose one still",
+            "bounding": [
+              1530,
+              20,
+              520,
+              490
+            ],
+            "color": "#66553d",
+            "font_size": 22,
+            "flags": {}
+          }
+        ],
+        "links": [
+          {
+            "id": 1,
+            "origin_id": -10,
+            "origin_slot": 0,
+            "target_id": 101,
+            "target_slot": 0,
+            "type": "MODEL"
+          },
+          {
+            "id": 2,
+            "origin_id": -10,
+            "origin_slot": 1,
+            "target_id": 102,
+            "target_slot": 1,
+            "type": "CONDITIONING"
+          },
+          {
+            "id": 3,
+            "origin_id": -10,
+            "origin_slot": 2,
+            "target_id": 104,
+            "target_slot": 4,
+            "type": "LATENT"
+          },
+          {
+            "id": 4,
+            "origin_id": -10,
+            "origin_slot": 3,
+            "target_id": 105,
+            "target_slot": 1,
+            "type": "VAE"
+          },
+          {
+            "id": 5,
+            "origin_id": -10,
+            "origin_slot": 4,
+            "target_id": 103,
+            "target_slot": 0,
+            "type": "INT"
+          },
+          {
+            "id": 6,
+            "origin_id": 101,
+            "origin_slot": 0,
+            "target_id": 102,
+            "target_slot": 0,
+            "type": "MODEL"
+          },
+          {
+            "id": 7,
+            "origin_id": 101,
+            "origin_slot": 1,
+            "target_id": 104,
+            "target_slot": 2,
+            "type": "SAMPLER"
+          },
+          {
+            "id": 8,
+            "origin_id": 101,
+            "origin_slot": 2,
+            "target_id": 104,
+            "target_slot": 3,
+            "type": "SIGMAS"
+          },
+          {
+            "id": 9,
+            "origin_id": 102,
+            "origin_slot": 0,
+            "target_id": 104,
+            "target_slot": 1,
+            "type": "GUIDER"
+          },
+          {
+            "id": 10,
+            "origin_id": 103,
+            "origin_slot": 0,
+            "target_id": 104,
+            "target_slot": 0,
+            "type": "NOISE"
+          },
+          {
+            "id": 11,
+            "origin_id": 104,
+            "origin_slot": 0,
+            "target_id": 105,
+            "target_slot": 0,
+            "type": "LATENT"
+          },
+          {
+            "id": 12,
+            "origin_id": 105,
+            "origin_slot": 0,
+            "target_id": 106,
+            "target_slot": 0,
+            "type": "IMAGE"
+          },
+          {
+            "id": 13,
+            "origin_id": 105,
+            "origin_slot": 3,
+            "target_id": 106,
+            "target_slot": 10,
+            "type": "INT"
+          },
+          {
+            "id": 14,
+            "origin_id": 106,
+            "origin_slot": 0,
+            "target_id": -20,
+            "target_slot": 0,
+            "type": "IMAGE"
+          },
+          {
+            "id": 15,
+            "origin_id": 105,
+            "origin_slot": 2,
+            "target_id": -20,
+            "target_slot": 1,
+            "type": "STRING"
+          },
+          {
+            "id": 16,
+            "origin_id": 106,
+            "origin_slot": 4,
+            "target_id": -20,
+            "target_slot": 2,
+            "type": "STRING"
+          }
+        ],
+        "extra": {
+          "documentation": "The Director stays outside this subgraph because ComfyUI does not reliably promote custom DOM widgets."
+        }
+      }
+    ]
+  },
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.72,
+      "offset": [
+        1220,
+        330
+      ]
+    },
+    "frontendVersion": "1.30.0",
+    "h3studio": {
+      "schema_version": 2,
+      "template_version": "1.0.0",
+      "design_source": "Alier v1.3.7 geometry",
+      "audio_prompt_sections": false,
+      "hub_included": false
+    }
+  },
+  "version": 0.4
+}

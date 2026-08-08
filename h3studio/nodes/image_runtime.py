@@ -979,7 +979,7 @@ class H3StudioTextToImagePrepare:
         return cond, latent, frames, image_prompt, info
 
 
-class H3StudioToImagePrepare:
+class H3StudioImageToImagePrepare:
     """FL2VA source-anchor workflow presented as image-to-image."""
 
     DESCRIPTION = (
@@ -2025,7 +2025,7 @@ NODE_CLASS_MAPPINGS = {
     "H3StudioResolutionPreset": H3StudioResolutionPreset,
     "H3StudioResolution": H3StudioResolution,
     "H3StudioTextToImagePrepare": H3StudioTextToImagePrepare,
-    "H3StudioToImagePrepare": H3StudioToImagePrepare,
+    "H3StudioImageToImagePrepare": H3StudioImageToImagePrepare,
     "H3StudioReferenceEditPrepare": H3StudioReferenceEditPrepare,
     "H3StudioPrepare": H3StudioPrepare,
     "H3StudioDecode": H3StudioDecode,
@@ -2039,7 +2039,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "H3StudioResolutionPreset": "H3 Studio • Resolution Preset",
     "H3StudioResolution": "H3 Studio • Advanced Resolution",
     "H3StudioTextToImagePrepare": "H3 Studio • Text to Image",
-    "H3StudioToImagePrepare": "H3 Studio • Image to Image",
+    "H3StudioImageToImagePrepare": "H3 Studio • Image to Image",
     "H3StudioReferenceEditPrepare": "H3 Studio • Reference Edit",
     "H3StudioPrepare": "H3 Studio • Advanced Combined Prepare",
     "H3StudioDecode": "H3 Studio • Exact Frame Decode",
