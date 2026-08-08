@@ -1,0 +1,16 @@
+{
+  "name": "comfyui-minimax-h3-studio",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Frontend tests and tooling for MiniMax H3 Studio",
+  "scripts": {
+    "test": "node --test tests/frontend/*.test.js",
+    "lint": "node tools/lint_frontend.mjs",
+    "check": "npm run lint && npm test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
+

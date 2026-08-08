@@ -1,0 +1,30 @@
+# Third-party notices
+
+ComfyUI-MiniMax-H3-Studio is an independent project inspired by three existing implementations.
+
+## ComfyUI-MiniMaxH3-Easy
+
+The ordered media interaction, virtual media-link behavior, prompt mention editor, inline reference chips, and parts of `web/h3studio_ui.js` are adapted from `nkxx188/ComfyUI-MiniMaxH3-Easy` under the MIT License.
+
+Copyright (c) 2026 nkxx188
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+Source: https://github.com/nkxx188/ComfyUI-MiniMaxH3-Easy
+
+## ComfyUI-MiniMax-H3-Image-Studio
+
+Resolution math, exact-frame decode concepts, still-selection strategies, sampling-profile organization, workflow validation ideas, and `h3studio/nodes/image_runtime.py` are adapted from `astropuzzo/ComfyUI-MiniMax-H3-Image-Studio`, released under the Unlicense/public-domain dedication.
+
+Source: https://github.com/astropuzzo/ComfyUI-MiniMax-H3-Image-Studio
+
+## H3 Studio Unified Image Director
+
+The role-aware reference compiler, adherence controls, explicit model routing, aspect-ratio/megapixel UX, and structured prompt direction build on Alier's private `H3StudioUnifiedImageDirector_v1_3_7.py` and its paired workflow.
+
+This repository does not include H3 Studio Hub and does not claim compatibility with it.
+

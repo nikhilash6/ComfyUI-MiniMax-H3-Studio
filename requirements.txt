@@ -1,0 +1,4 @@
+# The core extension intentionally has no dependencies beyond ComfyUI.
+# Optional local VLM enhancement dependencies are installed explicitly:
+# pip install -e ".[vlm]"
+

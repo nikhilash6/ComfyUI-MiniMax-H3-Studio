@@ -1,0 +1,54 @@
+[project]
+name = "comfyui-minimax-h3-studio"
+version = "0.1.0"
+description = "A reference-aware MiniMax H3 still-image studio for ComfyUI"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "Alier" }]
+keywords = ["comfyui", "minimax", "h3", "image-generation", "reference-image"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: GPU :: NVIDIA CUDA",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+dependencies = []
+
+[project.optional-dependencies]
+vlm = [
+  "transformers>=4.57.0",
+  "accelerate>=1.1.0",
+  "qwen-vl-utils>=0.0.14",
+]
+dev = [
+  "pytest>=8.0",
+  "pytest-cov>=5.0",
+  "ruff>=0.9",
+]
+
+[project.urls]
+Repository = "https://github.com/thaakeno/ComfyUI-MiniMax-H3-Studio"
+Issues = "https://github.com/thaakeno/ComfyUI-MiniMax-H3-Studio/issues"
+
+[tool.comfy]
+PublisherId = "thaakeno"
+DisplayName = "MiniMax H3 Studio"
+Icon = ""
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-config --strict-markers"
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+extend-exclude = ["h3studio/nodes/image_runtime.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
