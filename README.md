@@ -14,16 +14,16 @@ Build text-to-image, anchored edits, multi-reference compositions, and controlle
 </p>
 
 ## **Direct the image, understand every reference, and keep the graph readable.**
-<img width="1032" height="478" alt="chrome_Qq5N3IDeDL" src="https://github.com/user-attachments/assets/64b62853-aa77-4932-a57f-5801b503a5e9" />
-<img width="1032" height="478" alt="chrome_nKGRTNd8ri" src="https://github.com/user-attachments/assets/b50b4cc1-b8c0-4a7a-85b2-0e16a528edd2" />
+<img width="3264" height="1408" alt="ComfyUI_temp_krtgv_00010_" src="https://github.com/user-attachments/assets/91b541b9-98a4-4d14-8b6a-5916b02baa9d" />
 
 </div>
 
 > [!IMPORTANT]
 > H3 Studio is alpha software built around an evolving audio-video model. Keep working workflow copies when updating ComfyUI, checkpoints, or acceleration nodes. High-resolution generation is experimental; more pixels do not guarantee more learned detail.
 
-<img width="3264" height="1408" alt="ComfyUI_temp_krtgv_00010_" src="https://github.com/user-attachments/assets/91b541b9-98a4-4d14-8b6a-5916b02baa9d" />
 
+<img width="1032" height="478" alt="chrome_Qq5N3IDeDL" src="https://github.com/user-attachments/assets/64b62853-aa77-4932-a57f-5801b503a5e9" />
+<img width="1032" height="478" alt="chrome_nKGRTNd8ri" src="https://github.com/user-attachments/assets/b50b4cc1-b8c0-4a7a-85b2-0e16a528edd2" />
 
 > [!NOTE]
 > **An official image-specific H3 descendant is planned.** In the MiniMax H3 team AMA, H3 researcher Kiro Song said the team is deriving a dedicated image model from a common ancestor in the H3 lineage. It is expected to reuse H3's VAE encoder through weight slicing and receive a dedicated image-generation VAE decoder. MiniMax did not announce a release date or measured quality improvement, so H3 Studio's current still-image and experimental T=1 paths remain community solutions for now. [Read the team response.](https://www.reddit.com/r/StableDiffusion/comments/1vh9rtw/comment/p23ecga/)
