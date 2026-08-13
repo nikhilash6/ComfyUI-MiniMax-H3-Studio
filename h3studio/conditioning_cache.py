@@ -155,13 +155,18 @@ def _encode_prompt(bundle: Any, key: Hashable, build_tokens: Callable[[], Any]):
         trace("conditioning.text.hit", cache="HIT", clip_patcher_id=id(getattr(bundle.clip, "patcher", bundle.clip)))
         return cached, "HIT", 0.0, "warm-cache"
     clip_patcher = getattr(bundle.clip, "patcher", bundle.clip)
-    with span("conditioning.text", state=True, patcher=clip_patcher, cache="MISS") as result:
-        started = time.perf_counter()
-        tokens = build_tokens()
-        tokenized = time.perf_counter()
-        conditioning = bundle.clip.encode_from_tokens_scheduled(tokens)
-        finished = time.perf_counter()
-        result.update(tokenize_s=tokenized - started, encode_s=finished - tokenized)
+    from .runtime_lifecycle import release_stage_model
+
+    try:
+        with span("conditioning.text", state=True, patcher=clip_patcher, cache="MISS") as result:
+            started = time.perf_counter()
+            tokens = build_tokens()
+            tokenized = time.perf_counter()
+            conditioning = bundle.clip.encode_from_tokens_scheduled(tokens)
+            finished = time.perf_counter()
+            result.update(tokenize_s=tokenized - started, encode_s=finished - tokenized)
+    finally:
+        release_stage_model(clip_patcher, "text-encoder->next-stage")
     _PROMPT_CACHE.put(key, conditioning)
     tokenize_seconds = tokenized - started
     encode_seconds = finished - tokenized
@@ -251,6 +256,9 @@ def run_conditioning_pipeline(
         fitted_source, keyframe_latent, source_state = _source_stage(
             bundle, used_images[0], source_id, width, height, source_fit
         )
+        from .runtime_lifecycle import release_stage_model
+
+        release_stage_model(bundle.video_vae, "source-vae->text-encoder")
         reference_state = f"source_vae:{source_state}"
         conditioning, text_state, text_seconds, residency = _encode_prompt(
             bundle,

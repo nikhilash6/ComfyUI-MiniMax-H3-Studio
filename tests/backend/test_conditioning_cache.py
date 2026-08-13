@@ -156,3 +156,4 @@ def test_image_key_uses_fingerprint_or_live_tensor_identity() -> None:
 def test_production_cache_has_no_manual_dynamic_vram_eviction() -> None:
     assert not hasattr(cache, "release_dynamic_device_residency")
     assert "partially_unload" not in __import__("inspect").getsource(cache)
+    assert "soft_empty_cache" not in __import__("inspect").getsource(cache)

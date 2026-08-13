@@ -10,7 +10,6 @@ import logging
 import re
 import threading
 from collections.abc import Iterable
-from contextlib import suppress
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -346,8 +345,6 @@ class H3StudioBundle:
             self._model = None
             self._model_name = ""
             self._model_kind = ""
-            with suppress(Exception):
-                comfy.model_management.soft_empty_cache()
 
     def summary(self) -> str:
         vae_io = detect_vae_io(self.video_vae)
