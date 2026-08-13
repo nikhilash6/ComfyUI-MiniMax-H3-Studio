@@ -4,7 +4,7 @@ import sys
 from types import ModuleType
 
 import h3studio.nodes.preview as preview_module
-from h3studio.nodes.preview import H3StudioTAEH3Preview, _limit_latent, _PreviewWrapper
+from h3studio.nodes.preview import _PATCHER_CACHE, H3StudioTAEH3Preview, _limit_latent, _PreviewWrapper
 
 
 def test_preview_wrapper_advances_executor_instead_of_recursing(monkeypatch) -> None:
@@ -32,6 +32,7 @@ def test_preview_wrapper_advances_executor_instead_of_recursing(monkeypatch) -> 
 
 def test_preview_callback_decodes_before_native_progress_can_reuse_x0(monkeypatch) -> None:
     torch_module = ModuleType("torch")
+    torch_module.float32 = "float32"
     monkeypatch.setitem(sys.modules, "torch", torch_module)
     order = []
     captured = {}
@@ -43,6 +44,15 @@ def test_preview_callback_decodes_before_native_progress_can_reuse_x0(monkeypatc
 
     wrapper = _PreviewWrapper("taeh3.safetensors", "16", 768, 90, 1)
     monkeypatch.setattr(wrapper, "_enqueue", lambda *_args: order.append("preview-enqueued"))
+    monkeypatch.setattr(preview_module, "_first_h3_latent", lambda *_args: FakeLatent())
+
+    class FakeLatent:
+        def detach(self):
+            return self
+
+        def to(self, **_kwargs):
+            return self
+
     wrapper(
         Executor(), "noise", "latent", "sampler", [1.0, 0.5, 0.0], None,
         lambda *_args: order.append("native-progress"), False, 42, [],
@@ -72,6 +82,7 @@ def test_packed_preview_slices_each_channel_before_reshape() -> None:
 
 def test_preview_callback_reports_sampler_elapsed_and_average_step_time(monkeypatch) -> None:
     torch_module = ModuleType("torch")
+    torch_module.float32 = "float32"
     monkeypatch.setitem(sys.modules, "torch", torch_module)
     monkeypatch.setattr(preview_module.time, "perf_counter", iter((10.0, 14.0)).__next__)
     captured = {}
@@ -82,11 +93,24 @@ def test_preview_callback_reports_sampler_elapsed_and_average_step_time(monkeypa
             return "sampled"
 
     wrapper = _PreviewWrapper("taeh3.safetensors", "16", 768, 90, 1)
-    monkeypatch.setattr(wrapper, "_enqueue", lambda *args: captured.update(enqueue=args))
+    monkeypatch.setattr(wrapper, "_enqueue", lambda job: captured.update(enqueue=job))
+    monkeypatch.setattr(preview_module, "_first_h3_latent", lambda *_args: FakeLatent())
+
+    class FakeLatent:
+        def detach(self):
+            return self
+
+        def to(self, **kwargs):
+            captured["copy"] = kwargs
+            return "cpu-snapshot"
+
     wrapper(Executor(), "noise", "latent", "sampler", [1.0, 0.5, 0.0], None, None, False, 42, [])
     captured["callback"](1, "x0", "x", 4)
 
-    assert captured["enqueue"][-2:] == (4.0, 2.0)
+    assert captured["enqueue"].elapsed_seconds == 4.0
+    assert captured["enqueue"].average_step_seconds == 2.0
+    assert captured["enqueue"].latent == "cpu-snapshot"
+    assert captured["copy"] == {"device": "cpu", "dtype": torch_module.float32, "copy": True}
 
 
 def test_preview_downscale_preserves_latent_aspect_ratio() -> None:
@@ -111,7 +135,7 @@ def test_preview_downscale_preserves_latent_aspect_ratio() -> None:
     assert captured["size"] == (10, 5)
 
 
-def test_preview_attach_refreshes_wrapper_for_each_execution(monkeypatch) -> None:
+def test_preview_attach_reuses_one_stable_clone_for_seed_reruns(monkeypatch) -> None:
     class WrappersMP:
         OUTER_SAMPLE = "outer_sample"
 
@@ -120,6 +144,7 @@ def test_preview_attach_refreshes_wrapper_for_each_execution(monkeypatch) -> Non
     comfy_module = ModuleType("comfy")
     comfy_module.__path__ = []
     comfy_module.patcher_extension = patcher_module
+    _PATCHER_CACHE.clear()
     folder_module = ModuleType("folder_paths")
     folder_module.get_full_path = lambda category, name: f"/models/{category}/{name}"
     monkeypatch.setitem(sys.modules, "comfy", comfy_module)
@@ -147,7 +172,8 @@ def test_preview_attach_refreshes_wrapper_for_each_execution(monkeypatch) -> Non
     first = H3StudioTAEH3Preview.attach(model, True, "taeh3.safetensors", 512, 80, 1, "16")[0]
     second = H3StudioTAEH3Preview.attach(model, True, "taeh3.safetensors", 512, 80, 1, "16")[0]
 
-    assert first is not second
-    assert len(clones) == 2
+    assert first is second
+    assert len(clones) == 1
     assert len(first.wrappers) == 1
     assert len(second.wrappers) == 1
+    assert first.wrappers[0][2] is second.wrappers[0][2]
