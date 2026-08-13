@@ -30,6 +30,7 @@ import { element, field, iconButton, numberControl, rangeControl, selectControl 
 import { executedImageUrl, isNodeDownstream, selectOutputView } from "./core/final_output.js";
 import { STUDIO_PANEL_HEIGHT, initialStudioNodeSize, studioPanelSize } from "./core/layout.js";
 import { openImageLightbox } from "./core/lightbox.js";
+import { forEachQueueNode } from "./core/queue_graph.js";
 import { splitReferenceMentions } from "./core/result_text.js";
 import { installTheme } from "./core/theme.js";
 import {
@@ -67,29 +68,15 @@ function queueStage(stage, fields = {}) {
   });
 }
 
-function eachQueueNode(callback) {
-  const seen = new Set();
-  const visitGraph = (graph) => {
-    for (const node of graph?._nodes || []) {
-      if (!node || seen.has(node)) continue;
-      seen.add(node);
-      callback(node);
-      if (node.subgraph) visitGraph(node.subgraph);
-    }
-    for (const subgraph of graph?.subgraphs?.values?.() || []) visitGraph(subgraph);
-  };
-  visitGraph(app.rootGraph || app.graph);
-}
-
 function executeQueueCallbacks(name, isPartialExecution) {
-  eachQueueNode((node) => {
+  forEachQueueNode(app.rootGraph || app.graph, (node) => {
     for (const target of node.widgets || []) target?.[name]?.({ isPartialExecution });
   });
 }
 
 function hasCloudApiNode() {
   let found = false;
-  eachQueueNode((node) => {
+  forEachQueueNode(app.rootGraph || app.graph, (node) => {
     const definition = node?.constructor?.nodeData || node?.nodeData || {};
     if (definition.api_node || definition.is_api_node) found = true;
   });
@@ -174,12 +161,6 @@ function installQueueCoordinator() {
     if (!hasStudioDirector()) return originalQueuePrompt.apply(this, arguments);
     if (activeQueueSubmission) {
       queueStage("command.coalesced", { queued_clicks: ++activeQueueSubmission.coalesced });
-      app.extensionManager?.toast?.add?.({
-        severity: "info",
-        summary: "H3 Studio is submitting",
-        detail: "The earlier Run click is already being submitted; no duplicate was queued.",
-        life: 1800,
-      });
       return Promise.resolve(false);
     }
 
@@ -190,12 +171,6 @@ function installQueueCoordinator() {
     };
     activeQueueSubmission = submission;
     queueStage("command.received", { batch_count: Number(batchCount || 1) });
-    app.extensionManager?.toast?.add?.({
-      severity: "info",
-      summary: "H3 Studio submitting",
-      detail: "Run received. Preparing one prompt for ComfyUI.",
-      life: 2200,
-    });
 
     let result;
     try {

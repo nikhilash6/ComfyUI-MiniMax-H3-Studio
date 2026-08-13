@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
+import { forEachQueueNode } from "../../web/js/core/queue_graph.js";
+
 const source = readFileSync(new URL("../../web/js/studio_extension.js", import.meta.url), "utf8");
 const richEditorSource = readFileSync(new URL("../../web/h3studio_ui.js", import.meta.url), "utf8");
 
@@ -26,14 +28,32 @@ test("post-queue seed rendering yields before rebuilding the Director", () => {
   assert.ok(body.includes('queueTiming(node, "afterQueued")'));
 });
 
-test("queue path reports serialization timing and immediate acknowledgement", () => {
+test("queue path reports serialization timing without custom Run notifications", () => {
   assert.ok(source.includes('queueTiming(this, "serialize.begin")'));
   assert.ok(source.includes('queueTiming(this, "serialize.end"'));
-  assert.ok(source.includes('summary: "H3 Studio submitting"'));
+  assert.equal(source.includes("Run received. Preparing one prompt for ComfyUI."), false);
+  assert.equal(source.includes('summary: "H3 Studio submitting"'), false);
+  assert.equal(source.includes('summary: "H3 Studio is submitting"'), false);
   assert.ok(source.includes('queueStage("command.received"'));
   assert.ok(source.includes('queueStage("workflow_serialize.begin")'));
   assert.ok(source.includes('queueStage("graph_to_prompt.begin")'));
   assert.ok(source.includes('queueStage("fetch.invoked")'));
+});
+
+test("queue graph traversal terminates when subgraphs refer back to an ancestor", () => {
+  const root = { _nodes: [], subgraphs: new Map() };
+  const child = { _nodes: [], subgraphs: new Map() };
+  const rootNode = { subgraph: child };
+  const childNode = { subgraph: root };
+  root._nodes.push(rootNode);
+  child._nodes.push(childNode);
+  root.subgraphs.set("child", child);
+  child.subgraphs.set("root", root);
+
+  const visited = [];
+  forEachQueueNode(root, (node) => visited.push(node));
+
+  assert.deepEqual(visited, [rootNode, childNode]);
 });
 
 test("rapid Run clicks are coalesced before ComfyUI can append duplicate queue items", () => {
