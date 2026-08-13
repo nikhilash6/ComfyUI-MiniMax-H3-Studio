@@ -4,6 +4,8 @@ import test from "node:test";
 import {
   applyReferenceInferences,
   advanceSeedAfterGeneration,
+  releaseSeedQueueReservation,
+  reserveSeedAfterQueue,
   canonicalizeMentions,
   MAX_MEGAPIXELS,
   MAX_REFERENCES,
@@ -156,6 +158,32 @@ test("seed lock persists and controls post-generation advancement", () => {
   const unlocked = normalizeState({ generation: { seed: 42, seed_locked: false } }).generation;
   assert.equal(advanceSeedAfterGeneration(unlocked, () => 99).seed, 99);
   assert.equal(advanceSeedAfterGeneration(unlocked, () => 42).seed, 43);
+});
+
+test("queue-time seed reservations make rapid runs unique without double advancement", () => {
+  let generation = normalizeState({ generation: { seed: 42, seed_locked: false } }).generation;
+  generation = reserveSeedAfterQueue(generation, () => 100);
+  assert.equal(generation.seed, 100);
+  assert.equal(generation.seed_queue_reservations, 1);
+
+  generation = reserveSeedAfterQueue(generation, () => 200);
+  assert.equal(generation.seed, 200);
+  assert.equal(generation.seed_queue_reservations, 2);
+
+  generation = advanceSeedAfterGeneration(generation, () => 999);
+  assert.equal(generation.seed, 200);
+  assert.equal(generation.seed_queue_reservations, 1);
+
+  generation = releaseSeedQueueReservation(generation);
+  assert.equal(generation.seed, 200);
+  assert.equal(generation.seed_queue_reservations, 0);
+});
+
+test("locked seeds never reserve a different queue value", () => {
+  const locked = normalizeState({ generation: { seed: 42, seed_locked: true } }).generation;
+  const reserved = reserveSeedAfterQueue(locked, () => 99);
+  assert.equal(reserved.seed, 42);
+  assert.equal(reserved.seed_queue_reservations, 0);
 });
 
 test("single-line prompt shaping survives state normalization", () => {

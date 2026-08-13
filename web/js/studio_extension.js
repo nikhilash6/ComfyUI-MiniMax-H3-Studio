@@ -20,6 +20,8 @@ import {
   planResolution,
   removeReferenceMentions,
   resolutionTier,
+  reserveSeedAfterQueue,
+  releaseSeedQueueReservation,
   restorePersistedState,
   serializeState,
   validateGenerationContract,
@@ -45,6 +47,7 @@ const STATE_PROPERTY = "h3studio_state";
 const STATE_RECOVERY_PROPERTY = "h3studio_state_recovery";
 const VISIBLE_STUDIO_WIDGETS = new Set(["prompt", "h3_prompt_mentions", "h3studio_controls"]);
 const pendingSeedAdvances = new Map();
+const actualSeedByPrompt = new Map();
 let activePromptId = "";
 
 function widget(node, name) {
@@ -163,17 +166,31 @@ function finishSeedAdvances(detail) {
   }
 }
 
+function releaseFailedSeedReservations() {
+  for (const node of app.graph?._nodes || []) {
+    if (node?.comfyClass !== TARGET) continue;
+    const state = stateFromNode(node);
+    if (state.generation.seed_queue_reservations <= 0) continue;
+    state.generation = releaseSeedQueueReservation(state.generation);
+    applyState(node, state, false);
+    renderPanel(node);
+  }
+}
+
 api.addEventListener("execution_start", ({ detail }) => {
   activePromptId = promptId(detail);
 });
 api.addEventListener("execution_success", ({ detail }) => {
   finishSeedAdvances(detail);
+  actualSeedByPrompt.delete(promptId(detail));
   if (promptId(detail) === activePromptId) activePromptId = "";
 });
 for (const eventName of ["execution_error", "execution_interrupted"]) {
   api.addEventListener(eventName, ({ detail }) => {
     const id = promptId(detail);
     pendingSeedAdvances.delete(id);
+    actualSeedByPrompt.delete(id);
+    releaseFailedSeedReservations();
     if (id === activePromptId) activePromptId = "";
   });
 }
@@ -1165,7 +1182,7 @@ api.addEventListener("executed", ({ detail }) => {
     }
     node.__h3studioFinalImage = {
       url,
-      seed: state.generation.seed,
+      seed: actualSeedByPrompt.get(promptId(detail))?.seed ?? state.generation.seed,
       profile: state.generation.sampling_profile,
       promptId: promptId(detail),
     };
@@ -1219,6 +1236,22 @@ function installPanel(node) {
     };
   }
 
+  const seedWidget = widget(node, "seed");
+  if (seedWidget && !seedWidget.__h3studioQueueReservation) {
+    seedWidget.__h3studioQueueReservation = true;
+    const originalAfterQueued = seedWidget.afterQueued;
+    seedWidget.afterQueued = function h3studioSeedAfterQueued() {
+      const result = originalAfterQueued?.apply(this, arguments);
+      const state = stateFromNode(node);
+      if (!state.generation.seed_locked) {
+        state.generation = reserveSeedAfterQueue(state.generation, randomSeed);
+        applyState(node, state, false);
+        renderPanel(node);
+      }
+      return result;
+    };
+  }
+
   node.__h3studioBeforeSerialize = function h3studioBeforeSerialize() {
     this.__h3studioSerializedState = applyState(this, stateFromNode(this), false);
   };
@@ -1258,6 +1291,10 @@ function installPanel(node) {
       modelStatus: executionValue(message, "analyzer_status")[0] || "",
       diagnostics: executionValue(message, "diagnostics")[0] || "",
     };
+    const executedSeed = Number(executionValue(message, "seed")[0]);
+    if (activePromptId && Number.isFinite(executedSeed) && executedSeed >= 0) {
+      actualSeedByPrompt.set(activePromptId, { nodeId: String(this.id), seed: Math.trunc(executedSeed) });
+    }
     queueMicrotask(() => renderPanel(this));
     // Advance only when the entire prompt succeeds. Director executes before
     // sampling, so changing here would expose a seed that has not generated yet.
