@@ -35,6 +35,10 @@ def release_stage_model(value: Any, transition: str) -> bool:
     patcher = model_patcher(value)
     if patcher is None:
         return False
+    with suppress(Exception):
+        from .runtime_trace import emit
+
+        emit("residency.release.begin", state=True, patcher=patcher, transition=transition)
     try:
         import comfy.model_management as manager
 
@@ -53,7 +57,7 @@ def release_stage_model(value: Any, transition: str) -> bool:
     with suppress(Exception):
         from .runtime_trace import emit
 
-        emit("residency.release", patcher=patcher, transition=transition)
+        emit("residency.release.end", state=True, patcher=patcher, transition=transition)
     return True
 
 

@@ -28,10 +28,10 @@ def _flag(name: str, default: bool) -> bool:
 
 
 def enabled() -> bool:
-    # Full snapshots enumerate manager/process counters and produce large log
-    # lines.  Keep them opt-in now that the constrained-runtime fault has been
-    # isolated; H3STUDIO_RUNTIME_TRACE=1 restores the diagnostic stream.
-    return _flag("H3STUDIO_RUNTIME_TRACE", False)
+    # The stabilization branch keeps detailed lifecycle evidence on by
+    # default until the L4 pin-pressure regression is proven closed. Set
+    # H3STUDIO_RUNTIME_TRACE=0 for the compact production stream.
+    return _flag("H3STUDIO_RUNTIME_TRACE", True)
 
 
 def _clean(value: Any) -> str:
@@ -133,7 +133,7 @@ def _manager_fields() -> dict[str, Any]:
         getter = getattr(manager, "loaded_models", None)
         loaded = tuple(getter()) if callable(getter) else ()
         fields["loaded_model_count"] = len(loaded)
-        expand_models = _flag("H3STUDIO_RUNTIME_TRACE_MODELS", False)
+        expand_models = _flag("H3STUDIO_RUNTIME_TRACE_MODELS", True)
         summaries = []
         for item in loaded:
             summary = f"{type(getattr(item, 'model', item)).__name__}:{id(item)}"

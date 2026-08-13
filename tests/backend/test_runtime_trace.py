@@ -106,12 +106,14 @@ def test_emit_is_read_only_for_cuda_runtime(monkeypatch, caplog) -> None:
     assert "vram_free_gib=4.0000" in caplog.text
 
 
-def test_runtime_trace_is_opt_in(monkeypatch) -> None:
+def test_runtime_trace_is_on_for_stabilization_but_can_be_disabled(monkeypatch) -> None:
     monkeypatch.delenv("H3STUDIO_RUNTIME_TRACE", raising=False)
+    assert runtime_trace.enabled() is True
+    monkeypatch.setenv("H3STUDIO_RUNTIME_TRACE", "0")
     assert runtime_trace.enabled() is False
 
 
-def test_manager_summary_does_not_probe_every_loaded_patcher_by_default(monkeypatch) -> None:
+def test_manager_summary_can_skip_loaded_patcher_details(monkeypatch) -> None:
     manager = ModuleType("comfy.model_management")
     patcher = type("Patcher", (), {"model": object()})()
     manager.TOTAL_PINNED_MEMORY = 0
@@ -122,7 +124,7 @@ def test_manager_summary_does_not_probe_every_loaded_patcher_by_default(monkeypa
     comfy.model_management = manager
     monkeypatch.setitem(sys.modules, "comfy", comfy)
     monkeypatch.setitem(sys.modules, "comfy.model_management", manager)
-    monkeypatch.delenv("H3STUDIO_RUNTIME_TRACE_MODELS", raising=False)
+    monkeypatch.setenv("H3STUDIO_RUNTIME_TRACE_MODELS", "0")
     monkeypatch.setattr(
         runtime_trace,
         "patcher_fields",
