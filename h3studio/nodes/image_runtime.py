@@ -1311,7 +1311,6 @@ class H3StudioDecode:
     CATEGORY = CATEGORY
 
     def decode(self, samples, vae):
-        from ..runtime_lifecycle import ensure_stage_ram_headroom
         from ..runtime_trace import span
 
         latent = samples["samples"]
@@ -1322,25 +1321,11 @@ class H3StudioDecode:
         # Do not fork or tile H3 decode here. Current ComfyUI selects its
         # output-identical chunked path inside VAE.decode when advertised by
         # first_stage_model.comfy_has_chunked_io.
-        # Sampling left only 1.97-2.14 GiB available in the failing traces.
-        # Reclaim completed encoder/transformer pins before VAE pages arrive.
-        ensure_stage_ram_headroom(
-            "sampler->vae",
-            8.0,
-            evict_active_pins=True,
-        )
         decode_started = time.perf_counter()
         with span("vae.decode", state=True, patcher=getattr(vae, "patcher", None)) as result:
             images = vae.decode(latent)
             result.update(output_shape=tuple(getattr(images, "shape", ())))
         decode_seconds = time.perf_counter() - decode_started
-        # Leave the next Run out of the 95%-RAM state that caused both changed
-        # conditioning and transformer sampling to page-fault collapse.
-        ensure_stage_ram_headroom(
-            "vae->idle",
-            8.0,
-            evict_active_pins=True,
-        )
         vae_io = detect_vae_io(vae)
 
         profile_frames = max(

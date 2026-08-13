@@ -2,7 +2,7 @@
   "id": "8cd71a62-633f-4a50-bc6c-6ba5189de832",
   "revision": 0,
   "last_node_id": 101,
-  "last_link_id": 16,
+  "last_link_id": 17,
   "nodes": [
     {
       "id": 1,
@@ -41,8 +41,7 @@
           "name": "MODEL",
           "type": "MODEL",
           "links": [
-            4,
-            5
+            4
           ]
         }
       ],
@@ -51,7 +50,7 @@
         "Node name for S&R": "UNETLoader"
       },
       "widgets_values": [
-        "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+        "minimax_h3_fl2va_pruned_w4a8_mixed.safetensors",
         "default"
       ],
       "color": "#243b36",
@@ -147,7 +146,7 @@
           "name": "VAE",
           "type": "VAE",
           "links": [
-            13
+            14
           ]
         }
       ],
@@ -314,14 +313,14 @@
           "name": "positive",
           "type": "CONDITIONING",
           "links": [
-            6
+            7
           ]
         },
         {
           "name": "h3_latent",
           "type": "LATENT",
           "links": [
-            11
+            12
           ]
         },
         {
@@ -356,14 +355,14 @@
     },
     {
       "id": 6,
-      "type": "BasicScheduler",
+      "type": "LoraLoaderModelOnly",
       "pos": [
         540,
         170
       ],
       "size": [
-        330,
-        106
+        360,
+        110
       ],
       "flags": {},
       "order": 5,
@@ -373,59 +372,107 @@
           "name": "model",
           "type": "MODEL",
           "link": 4
+        },
+        {
+          "name": "lora_name",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "lora_name"
+          }
+        },
+        {
+          "name": "strength_model",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "strength_model"
+          }
         }
       ],
       "outputs": [
         {
-          "name": "SIGMAS",
-          "type": "SIGMAS",
+          "name": "MODEL",
+          "type": "MODEL",
           "links": [
-            8
+            5
           ]
         }
       ],
-      "title": "Native H3 schedule · 12 steps",
+      "title": "LightX v0.1 adapter · proven L4",
       "properties": {
-        "Node name for S&R": "BasicScheduler"
+        "Node name for S&R": "LoraLoaderModelOnly"
       },
       "widgets_values": [
-        "simple",
-        12,
-        1.0
+        "minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_rank_21_bf16.safetensors",
+        0.75
       ],
       "color": "#30405a",
       "bgcolor": "#202b3d"
     },
     {
       "id": 7,
-      "type": "KSamplerSelect",
+      "type": "H3StudioSamplingPreset",
       "pos": [
         540,
         330
       ],
       "size": [
-        330,
-        64
+        360,
+        112
       ],
       "flags": {},
       "order": 6,
       "mode": 0,
-      "inputs": [],
-      "outputs": [
+      "inputs": [
         {
-          "name": "SAMPLER",
-          "type": "SAMPLER",
-          "links": [
-            7
-          ]
+          "name": "model",
+          "type": "MODEL",
+          "link": 5
+        },
+        {
+          "name": "sampling_profile",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "sampling_profile"
+          }
         }
       ],
-      "title": "Native RES sampler",
+      "outputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "links": [
+            6
+          ]
+        },
+        {
+          "name": "sampler",
+          "type": "SAMPLER",
+          "links": [
+            8
+          ]
+        },
+        {
+          "name": "sigmas",
+          "type": "SIGMAS",
+          "links": [
+            9
+          ]
+        },
+        {
+          "name": "sampling_info",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "LightX ER-SDE · proven four-step recipe",
       "properties": {
-        "Node name for S&R": "KSamplerSelect"
+        "Node name for S&R": "H3StudioSamplingPreset"
       },
       "widgets_values": [
-        "res_multistep"
+        "LightX v0.1 | ER-SDE 4 steps"
       ],
       "color": "#30405a",
       "bgcolor": "#202b3d"
@@ -448,12 +495,12 @@
         {
           "name": "model",
           "type": "MODEL",
-          "link": 5
+          "link": 6
         },
         {
           "name": "conditioning",
           "type": "CONDITIONING",
-          "link": 6
+          "link": 7
         }
       ],
       "outputs": [
@@ -461,7 +508,7 @@
           "name": "GUIDER",
           "type": "GUIDER",
           "links": [
-            10
+            11
           ]
         }
       ],
@@ -502,7 +549,7 @@
           "name": "NOISE",
           "type": "NOISE",
           "links": [
-            9
+            10
           ]
         }
       ],
@@ -535,27 +582,27 @@
         {
           "name": "noise",
           "type": "NOISE",
-          "link": 9
+          "link": 10
         },
         {
           "name": "guider",
           "type": "GUIDER",
-          "link": 10
+          "link": 11
         },
         {
           "name": "sampler",
           "type": "SAMPLER",
-          "link": 7
+          "link": 8
         },
         {
           "name": "sigmas",
           "type": "SIGMAS",
-          "link": 8
+          "link": 9
         },
         {
           "name": "latent_image",
           "type": "LATENT",
-          "link": 11
+          "link": 12
         }
       ],
       "outputs": [
@@ -563,7 +610,7 @@
           "name": "output",
           "type": "LATENT",
           "links": [
-            12
+            13
           ]
         },
         {
@@ -598,12 +645,12 @@
         {
           "name": "samples",
           "type": "LATENT",
-          "link": 12
+          "link": 13
         },
         {
           "name": "vae",
           "type": "VAE",
-          "link": 13
+          "link": 14
         }
       ],
       "outputs": [
@@ -611,7 +658,7 @@
           "name": "IMAGE",
           "type": "IMAGE",
           "links": [
-            14
+            15
           ]
         }
       ],
@@ -641,7 +688,7 @@
         {
           "name": "image",
           "type": "IMAGE",
-          "link": 14
+          "link": 15
         },
         {
           "name": "batch_index",
@@ -665,8 +712,8 @@
           "name": "IMAGE",
           "type": "IMAGE",
           "links": [
-            15,
-            16
+            16,
+            17
           ]
         }
       ],
@@ -699,7 +746,7 @@
         {
           "name": "images",
           "type": "IMAGE",
-          "link": 15
+          "link": 16
         }
       ],
       "outputs": [
@@ -735,7 +782,7 @@
         {
           "name": "images",
           "type": "IMAGE",
-          "link": 16
+          "link": 17
         },
         {
           "name": "filename_prefix",
@@ -803,7 +850,7 @@
       },
       "widgets_values": [
         "quick start",
-        "1. Edit the prompt in **Text conditioning**.\n2. Keep the first test at **0.40 MP**, 5 frames, and 12 steps.\n3. Queue once.\n4. Queue the identical prompt again to verify ComfyUI's node cache.\n\n> [!IMPORTANT]\n> This workflow intentionally has no Director, combined model bundle, Condition & Route node, runtime sampling subgraph, analyzer, benchmark branch, or live-video preview."
+        "1. Edit the prompt in **Text conditioning**.\n2. Keep the first test at **0.40 MP**, 5 frames, and the wired LightX ER-SDE four-step recipe.\n3. Queue once.\n4. Queue the identical prompt again to verify ComfyUI's node cache.\n\n> [!IMPORTANT]\n> This workflow intentionally has no Director, combined model bundle, Condition & Route node, runtime sampling subgraph, analyzer, benchmark branch, or live-video preview."
       ],
       "color": "#22322f",
       "bgcolor": "#17211f"
@@ -848,7 +895,7 @@
       },
       "widgets_values": [
         "models",
-        "The 32B encoder, FL2VA transformer, and video VAE are ordinary independent ComfyUI loaders. Text conditioning does not depend on the VAE. The VAE is first needed after sampling. ComfyUI can cache unchanged conditioning and perform memory-pressure handoffs between every heavyweight node."
+        "The required 32B NVFP4 encoder, proven 11.2 GiB W4A8 FL2VA transformer, LightX adapter, and video VAE are independent stages. Text conditioning does not depend on the VAE. The VAE is first needed after sampling. This restores the measured L4 architecture without hiding model loading or conditioning inside the legacy combined nodes."
       ],
       "color": "#22322f",
       "bgcolor": "#17211f"
@@ -889,14 +936,22 @@
     ],
     [
       5,
-      1,
+      6,
+      0,
+      7,
+      0,
+      "MODEL"
+    ],
+    [
+      6,
+      7,
       0,
       8,
       0,
       "MODEL"
     ],
     [
-      6,
+      7,
       5,
       0,
       8,
@@ -904,23 +959,23 @@
       "CONDITIONING"
     ],
     [
+      8,
       7,
-      7,
-      0,
+      1,
       10,
       2,
       "SAMPLER"
     ],
     [
-      8,
-      6,
-      0,
+      9,
+      7,
+      2,
       10,
       3,
       "SIGMAS"
     ],
     [
-      9,
+      10,
       9,
       0,
       10,
@@ -928,7 +983,7 @@
       "NOISE"
     ],
     [
-      10,
+      11,
       8,
       0,
       10,
@@ -936,7 +991,7 @@
       "GUIDER"
     ],
     [
-      11,
+      12,
       5,
       1,
       10,
@@ -944,7 +999,7 @@
       "LATENT"
     ],
     [
-      12,
+      13,
       10,
       0,
       11,
@@ -952,7 +1007,7 @@
       "LATENT"
     ],
     [
-      13,
+      14,
       3,
       0,
       11,
@@ -960,7 +1015,7 @@
       "VAE"
     ],
     [
-      14,
+      15,
       11,
       0,
       12,
@@ -968,7 +1023,7 @@
       "IMAGE"
     ],
     [
-      15,
+      16,
       12,
       0,
       13,
@@ -976,7 +1031,7 @@
       "IMAGE"
     ],
     [
-      16,
+      17,
       12,
       0,
       14,

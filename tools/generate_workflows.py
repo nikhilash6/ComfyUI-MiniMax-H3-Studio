@@ -894,11 +894,12 @@ def build_native_fast_t2i():
     clip_to_prepare = links.add(2, 0, 5, 0, "CLIP")
     width_to_prepare = links.add(4, 0, 5, 2, "INT")
     height_to_prepare = links.add(4, 1, 5, 3, "INT")
-    model_to_scheduler = links.add(1, 0, 6, 0, "MODEL")
-    model_to_guider = links.add(1, 0, 8, 0, "MODEL")
+    model_to_lora = links.add(1, 0, 6, 0, "MODEL")
+    lora_to_recipe = links.add(6, 0, 7, 0, "MODEL")
+    model_to_guider = links.add(7, 0, 8, 0, "MODEL")
     positive_to_guider = links.add(5, 0, 8, 1, "CONDITIONING")
-    sampler_to_sample = links.add(7, 0, 10, 2, "SAMPLER")
-    sigmas_to_sample = links.add(6, 0, 10, 3, "SIGMAS")
+    sampler_to_sample = links.add(7, 1, 10, 2, "SAMPLER")
+    sigmas_to_sample = links.add(7, 2, 10, 3, "SIGMAS")
     noise_to_sample = links.add(9, 0, 10, 0, "NOISE")
     guider_to_sample = links.add(8, 0, 10, 1, "GUIDER")
     latent_to_sample = links.add(5, 1, 10, 4, "LATENT")
@@ -917,8 +918,8 @@ def build_native_fast_t2i():
             [360, 92],
             order=0,
             inputs=[socket("unet_name", "COMBO", widget="unet_name"), socket("weight_dtype", "COMBO", widget="weight_dtype")],
-            outputs=[output("MODEL", "MODEL", [model_to_scheduler, model_to_guider])],
-            widgets=["minimax_h3_fl2va_pruned_int8_convrot.safetensors", "default"],
+            outputs=[output("MODEL", "MODEL", [model_to_lora])],
+            widgets=["minimax_h3_fl2va_pruned_w4a8_mixed.safetensors", "default"],
             color="#243b36",
             bgcolor="#182724",
         ),
@@ -1009,26 +1010,42 @@ def build_native_fast_t2i():
         ),
         node(
             6,
-            "BasicScheduler",
-            "Native H3 schedule · 12 steps",
+            "LoraLoaderModelOnly",
+            "LightX v0.1 adapter · proven L4",
             [540, 170],
-            [330, 106],
+            [360, 110],
             order=5,
-            inputs=[socket("model", "MODEL", model_to_scheduler)],
-            outputs=[output("SIGMAS", "SIGMAS", [sigmas_to_sample])],
-            widgets=["simple", 12, 1.0],
+            inputs=[
+                socket("model", "MODEL", model_to_lora),
+                socket("lora_name", "COMBO", widget="lora_name"),
+                socket("strength_model", "FLOAT", widget="strength_model"),
+            ],
+            outputs=[output("MODEL", "MODEL", [lora_to_recipe])],
+            widgets=[
+                "minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_rank_21_bf16.safetensors",
+                0.75,
+            ],
             color="#30405a",
             bgcolor="#202b3d",
         ),
         node(
             7,
-            "KSamplerSelect",
-            "Native RES sampler",
+            "H3StudioSamplingPreset",
+            "LightX ER-SDE · proven four-step recipe",
             [540, 330],
-            [330, 64],
+            [360, 112],
             order=6,
-            outputs=[output("SAMPLER", "SAMPLER", [sampler_to_sample])],
-            widgets=["res_multistep"],
+            inputs=[
+                socket("model", "MODEL", lora_to_recipe),
+                socket("sampling_profile", "COMBO", widget="sampling_profile"),
+            ],
+            outputs=[
+                output("model", "MODEL", [model_to_guider]),
+                output("sampler", "SAMPLER", [sampler_to_sample]),
+                output("sigmas", "SIGMAS", [sigmas_to_sample]),
+                output("sampling_info", "STRING", None),
+            ],
+            widgets=["LightX v0.1 | ER-SDE 4 steps"],
             color="#30405a",
             bgcolor="#202b3d",
         ),
@@ -1133,7 +1150,7 @@ def build_native_fast_t2i():
             100,
             "START HERE · native fast path",
             "quick start",
-            "1. Edit the prompt in **Text conditioning**.\n2. Keep the first test at **0.40 MP**, 5 frames, and 12 steps.\n3. Queue once.\n4. Queue the identical prompt again to verify ComfyUI's node cache.\n\n> [!IMPORTANT]\n> This workflow intentionally has no Director, combined model bundle, Condition & Route node, runtime sampling subgraph, analyzer, benchmark branch, or live-video preview.",
+            "1. Edit the prompt in **Text conditioning**.\n2. Keep the first test at **0.40 MP**, 5 frames, and the wired LightX ER-SDE four-step recipe.\n3. Queue once.\n4. Queue the identical prompt again to verify ComfyUI's node cache.\n\n> [!IMPORTANT]\n> This workflow intentionally has no Director, combined model bundle, Condition & Route node, runtime sampling subgraph, analyzer, benchmark branch, or live-video preview.",
             [60, 850],
             [820, 300],
             14,
@@ -1142,7 +1159,7 @@ def build_native_fast_t2i():
             101,
             "Why this graph is different",
             "models",
-            "The 32B encoder, FL2VA transformer, and video VAE are ordinary independent ComfyUI loaders. Text conditioning does not depend on the VAE. The VAE is first needed after sampling. ComfyUI can cache unchanged conditioning and perform memory-pressure handoffs between every heavyweight node.",
+            "The required 32B NVFP4 encoder, proven 11.2 GiB W4A8 FL2VA transformer, LightX adapter, and video VAE are independent stages. Text conditioning does not depend on the VAE. The VAE is first needed after sampling. This restores the measured L4 architecture without hiding model loading or conditioning inside the legacy combined nodes.",
             [960, 820],
             [820, 240],
             15,

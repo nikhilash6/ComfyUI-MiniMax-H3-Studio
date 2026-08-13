@@ -125,8 +125,8 @@ def main():
         "CLIPLoader",
         "VAELoader",
         "H3StudioTextToImagePrepare",
-        "BasicScheduler",
-        "KSamplerSelect",
+        "LoraLoaderModelOnly",
+        "H3StudioSamplingPreset",
         "BasicGuider",
         "SamplerCustomAdvanced",
         "VAEDecode",
@@ -142,7 +142,6 @@ def main():
         "H3StudioDirector",
         "H3StudioCondition",
         "H3StudioContextSamplingPreset",
-        "H3StudioSamplingPreset",
         "H3StudioDecode",
         "H3StudioTAEH3Preview",
     }

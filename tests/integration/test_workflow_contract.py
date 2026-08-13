@@ -24,8 +24,8 @@ def test_native_fast_workflow_uses_independent_comfy_execution_stages():
         "CLIPLoader",
         "VAELoader",
         "H3StudioTextToImagePrepare",
-        "BasicScheduler",
-        "KSamplerSelect",
+        "LoraLoaderModelOnly",
+        "H3StudioSamplingPreset",
         "BasicGuider",
         "RandomNoise",
         "SamplerCustomAdvanced",
@@ -39,7 +39,6 @@ def test_native_fast_workflow_uses_independent_comfy_execution_stages():
         "H3StudioDirector",
         "H3StudioCondition",
         "H3StudioContextSamplingPreset",
-        "H3StudioSamplingPreset",
         "H3StudioDecode",
         "H3StudioTAEH3Preview",
     } & types
@@ -75,7 +74,14 @@ def test_native_fast_workflow_uses_required_32b_encoder_and_one_transformer():
         "default",
     ]
     assert len(unets) == 1
-    assert unets[0]["widgets_values"][0] == "minimax_h3_fl2va_pruned_int8_convrot.safetensors"
+    assert unets[0]["widgets_values"][0] == "minimax_h3_fl2va_pruned_w4a8_mixed.safetensors"
+    lora = next(node for node in workflow["nodes"] if node["type"] == "LoraLoaderModelOnly")
+    assert lora["widgets_values"] == [
+        "minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_rank_21_bf16.safetensors",
+        0.75,
+    ]
+    recipe = next(node for node in workflow["nodes"] if node["type"] == "H3StudioSamplingPreset")
+    assert recipe["widgets_values"] == ["LightX v0.1 | ER-SDE 4 steps"]
 
 
 def test_native_fast_functional_nodes_do_not_overlap():
