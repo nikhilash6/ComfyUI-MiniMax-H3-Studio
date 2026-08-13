@@ -61,6 +61,18 @@ def test_explicit_source_never_discards_an_existing_visible_encoder(tmp_path: Pa
     assert layout.visible_encoder.resolve() == layout.ram_encoder.resolve()
 
 
+def test_legacy_persistent_source_is_discovered_after_manual_ram_link(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    legacy = layout.persistent_root.parent / "old-model-cache" / "text_encoders" / ENCODER
+    legacy.parent.mkdir(parents=True)
+    legacy.write_bytes(b"legacy-source")
+    layout.visible_encoder.parent.mkdir(parents=True)
+    layout.visible_encoder.symlink_to(layout.ram_encoder)
+
+    assert stage_encoder(layout, {}, lambda _line: None, safety_bytes=0)
+    assert layout.ram_encoder.read_bytes() == b"legacy-source"
+
+
 def test_insufficient_tmpfs_leaves_regular_model_untouched(tmp_path: Path, monkeypatch) -> None:
     layout = _layout(tmp_path)
     layout.visible_encoder.parent.mkdir(parents=True)

@@ -113,6 +113,21 @@ def _encoder_source(layout: CacheLayout, environ: dict[str, str]) -> Path | None
         target = visible.resolve(strict=False)
         if target.is_file() and not str(target).startswith(("/dev/shm/", "/run/shm/")):
             return target
+    # Recover user-created RAM links whose persistent source predates Studio's
+    # managed directory. This runs only when every cheap, deterministic path
+    # above failed and stops at the first exact regular-file match.
+    excluded = {".git", ".venv", "custom_nodes", "input", "logs", "node_modules", "output", "user"}
+    studio_root = layout.persistent_root.parent
+    if studio_root.is_dir():
+        for directory, names, files in os.walk(studio_root):
+            names[:] = [name for name in names if name not in excluded]
+            if ENCODER not in files:
+                continue
+            candidate = Path(directory) / ENCODER
+            if candidate.is_symlink() or candidate == visible or candidate == layout.ram_encoder:
+                continue
+            if candidate.is_file():
+                return candidate.resolve()
     return None
 
 
