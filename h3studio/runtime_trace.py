@@ -130,13 +130,14 @@ def _manager_fields() -> dict[str, Any]:
         getter = getattr(manager, "loaded_models", None)
         loaded = tuple(getter()) if callable(getter) else ()
         fields["loaded_model_count"] = len(loaded)
+        expand_models = _flag("H3STUDIO_RUNTIME_TRACE_MODELS", False)
         summaries = []
         for item in loaded:
-            identity = patcher_fields(item)
-            summaries.append(
-                f"{type(getattr(item, 'model', item)).__name__}:{id(item)}:"
-                f"{float(identity.get('patcher_loaded_gib', 0)):.2f}GiB"
-            )
+            summary = f"{type(getattr(item, 'model', item)).__name__}:{id(item)}"
+            if expand_models:
+                identity = patcher_fields(item)
+                summary = f"{summary}:{float(identity.get('patcher_loaded_gib', 0)):.2f}GiB"
+            summaries.append(summary)
         fields["loaded_patchers"] = ",".join(summaries) or "none"
     except Exception:
         pass

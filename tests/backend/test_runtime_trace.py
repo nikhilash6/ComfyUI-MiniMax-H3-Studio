@@ -103,3 +103,27 @@ def test_emit_is_read_only_for_cuda_runtime(monkeypatch, caplog) -> None:
     assert calls == ["mem_get_info", "memory_allocated", "memory_reserved"]
     assert "event=test.state" in caplog.text
     assert "vram_free_gib=4.0000" in caplog.text
+
+
+def test_manager_summary_does_not_probe_every_loaded_patcher_by_default(monkeypatch) -> None:
+    manager = ModuleType("comfy.model_management")
+    patcher = type("Patcher", (), {"model": object()})()
+    manager.TOTAL_PINNED_MEMORY = 0
+    manager.MAX_PINNED_MEMORY = 0
+    manager.args = type("Args", (), {"fast_disk": False})()
+    manager.loaded_models = lambda: [patcher]
+    comfy = ModuleType("comfy")
+    comfy.model_management = manager
+    monkeypatch.setitem(sys.modules, "comfy", comfy)
+    monkeypatch.setitem(sys.modules, "comfy.model_management", manager)
+    monkeypatch.delenv("H3STUDIO_RUNTIME_TRACE_MODELS", raising=False)
+    monkeypatch.setattr(
+        runtime_trace,
+        "patcher_fields",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("unexpected patcher probe")),
+    )
+
+    fields = runtime_trace._manager_fields()
+
+    assert fields["loaded_model_count"] == 1
+    assert fields["loaded_patchers"].endswith(f":{id(patcher)}")
