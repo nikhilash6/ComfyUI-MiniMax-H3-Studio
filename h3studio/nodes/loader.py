@@ -262,7 +262,7 @@ def _resident_h3_text_encoder_policy(name: str) -> tuple[bool, str]:
     required_bytes = model_bytes + minimum_bytes + GIB
     capacity_bytes = int(total_bytes * 0.95)
     resident = model_bytes > 0 and required_bytes <= capacity_bytes
-    mode = "resident-stage" if resident else "native-dynamic"
+    mode = "resident-direct" if resident else "native-dynamic"
     return (
         resident,
         f"{mode}; checkpoint={model_bytes / GIB:.2f}GiB; "
@@ -281,6 +281,12 @@ def _load_clip(name: str):
                 ckpt_paths=[clip_path],
                 embedding_directory=folder_paths.get_folder_paths("embeddings"),
                 clip_type=comfy.sd.CLIPType.MINIMAX,
+                # Construct the fitting quantized encoder on its execution
+                # device.  ComfyUI's legacy non-dynamic CPU path otherwise
+                # copies every module separately and synchronizes CUDA after
+                # each module, turning one 14.6 GiB stage into hundreds of
+                # serialized transfers on H3's 32B encoder.
+                model_options={"initial_device": comfy.model_management.text_encoder_device()},
                 disable_dynamic=True,
             )
             LOGGER.info("[H3 Studio] H3 text encoder policy=%s", policy)

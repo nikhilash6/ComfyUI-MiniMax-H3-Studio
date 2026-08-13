@@ -97,7 +97,7 @@ def test_resident_h3_encoder_policy_selects_l4_but_not_16gb(monkeypatch, tmp_pat
     loader.comfy.model_management.get_total_memory = lambda _device: 22 * 1024**3
     resident, policy = loader._resident_h3_text_encoder_policy(checkpoint.name)
     assert resident is True
-    assert policy.startswith("resident-stage")
+    assert policy.startswith("resident-direct")
 
     loader.comfy.model_management.get_total_memory = lambda _device: 16 * 1024**3
     resident, policy = loader._resident_h3_text_encoder_policy(checkpoint.name)
@@ -132,3 +132,4 @@ def test_l4_loads_h3_encoder_with_official_non_dynamic_patcher(monkeypatch, tmp_
     assert loader._load_clip(checkpoint.name) is expected
     assert calls[0]["disable_dynamic"] is True
     assert calls[0]["clip_type"] == "minimax"
+    assert calls[0]["model_options"] == {"initial_device": "cuda:0"}
