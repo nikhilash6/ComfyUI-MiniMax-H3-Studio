@@ -1371,7 +1371,9 @@ function patchGraphToPrompt() {
                 delete promptNode.inputs[`media_type_${index}`];
                 delete promptNode.inputs[`media_filename_${index}`];
             }
-            if (node.__h3sEditor) syncPromptFromEditor(node, false);
+            // Input/change handlers keep the native prompt and prompt document
+            // current. Rewalking the rich-editor DOM here repeats the same
+            // synchronous work inside ComfyUI's graph-to-prompt critical path.
             const runtimeLinks = runtimeReferences(node, output);
             runtimeLinks.forEach((link, index) => {
                 if (link.source_id != null) {

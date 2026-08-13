@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const source = readFileSync(new URL("../../web/js/studio_extension.js", import.meta.url), "utf8");
+const richEditorSource = readFileSync(new URL("../../web/h3studio_ui.js", import.meta.url), "utf8");
 
 test("queue serialization does not reapply the complete Director UI", () => {
   const body = source.match(/node\.__h3studioBeforeSerialize = function[\s\S]+?\n  };/)?.[0] || "";
@@ -40,4 +41,10 @@ test("rapid Run clicks are coalesced before ComfyUI can append duplicate queue i
   assert.ok(body.includes("if (activeQueueSubmission)"));
   assert.ok(body.includes('queueStage("command.coalesced"'));
   assert.ok(body.includes("return Promise.resolve(false)"));
+});
+
+test("graph-to-prompt does not rewalk the synchronized rich-editor DOM", () => {
+  const body = richEditorSource.match(/app\.graphToPrompt = async function graphToPromptWithOrderedMedia[\s\S]+?return promptData;\r?\n    };/)?.[0] || "";
+  assert.ok(body.includes("buildRuntimePrompt(node, runtimeLinks)"));
+  assert.equal(body.includes("syncPromptFromEditor(node"), false);
 });
