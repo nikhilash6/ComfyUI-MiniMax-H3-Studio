@@ -1246,21 +1246,34 @@ function installPanel(node) {
       if (!state.generation.seed_locked) {
         state.generation = reserveSeedAfterQueue(state.generation, randomSeed);
         applyState(node, state, false);
-        renderPanel(node);
+        // Do not rebuild the large Director DOM inside ComfyUI's queue
+        // lifecycle.  Let the request leave the browser first.
+        setTimeout(() => renderPanel(node), 0);
       }
       return result;
     };
   }
 
   node.__h3studioBeforeSerialize = function h3studioBeforeSerialize() {
-    this.__h3studioSerializedState = applyState(this, stateFromNode(this), false);
+    const state = stateFromNode(this);
+    const serialized = serializeState(state);
+    this.__h3studioSerializedState = state;
+    this.__h3studioSerializedPayload = serialized;
+    // UI actions already keep native widgets synchronized.  Queueing only
+    // needs to refresh the two persistence copies; reapplying every Director
+    // widget and every reference card here duplicated the entire state pass.
+    setWidget(this, "studio_state", serialized);
+    this.properties ||= {};
+    this.properties[STATE_PROPERTY] = serialized;
   };
   node.__h3studioAfterSerialize = function h3studioAfterSerialize(data) {
     const state = this.__h3studioSerializedState || stateFromNode(this);
+    const serialized = this.__h3studioSerializedPayload || serializeState(state);
     this.__h3studioSerializedState = null;
+    this.__h3studioSerializedPayload = null;
     if (data) {
       data.properties ||= {};
-      data.properties[STATE_PROPERTY] = serializeState(state);
+      data.properties[STATE_PROPERTY] = serialized;
       data.properties[LINKS_PROPERTY] = normalizedLinks(this);
       if (this.properties?.[STATE_RECOVERY_PROPERTY]) {
         data.properties[STATE_RECOVERY_PROPERTY] = this.properties[STATE_RECOVERY_PROPERTY];
