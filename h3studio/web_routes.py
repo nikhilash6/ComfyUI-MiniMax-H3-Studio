@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
+import time
 from collections import OrderedDict
 from io import BytesIO
 from pathlib import Path
 
 _THUMBNAILS: OrderedDict[tuple[str, int, int], bytes] = OrderedDict()
 _MAX_CACHE_ITEMS = 128
+LOGGER = logging.getLogger(__name__)
 
 
 def _safe_image_path(storage_name: str):
@@ -77,6 +80,27 @@ def register_routes() -> None:
     if server is None or getattr(server, "_h3studio_routes_registered", False):
         return
     server._h3studio_routes_registered = True
+
+    @web.middleware
+    async def h3studio_prompt_timing(request, handler):
+        sequence_id = str(request.headers.get("X-H3-Studio-Queue-Sequence", "")).strip()
+        if request.path != "/prompt" or not sequence_id:
+            return await handler(request)
+        started = time.monotonic()
+        LOGGER.info(
+            "[H3 Studio Queue] sequence_id=%s | stage=server.request.received",
+            sequence_id,
+        )
+        response = await handler(request)
+        LOGGER.info(
+            "[H3 Studio Queue] sequence_id=%s | stage=server.prompt.accepted | elapsed_ms=%.2f | status=%s",
+            sequence_id,
+            (time.monotonic() - started) * 1000,
+            getattr(response, "status", "unknown"),
+        )
+        return response
+
+    server.app.middlewares.append(h3studio_prompt_timing)
 
     @server.routes.get("/h3studio/thumbnail")
     async def h3studio_thumbnail(request):

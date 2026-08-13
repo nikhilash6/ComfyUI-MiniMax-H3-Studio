@@ -28,5 +28,16 @@ test("post-queue seed rendering yields before rebuilding the Director", () => {
 test("queue path reports serialization timing and immediate acknowledgement", () => {
   assert.ok(source.includes('queueTiming(this, "serialize.begin")'));
   assert.ok(source.includes('queueTiming(this, "serialize.end"'));
-  assert.ok(source.includes('summary: "H3 Studio queued"'));
+  assert.ok(source.includes('summary: "H3 Studio submitting"'));
+  assert.ok(source.includes('queueStage("command.received"'));
+  assert.ok(source.includes('queueStage("workflow_serialize.begin")'));
+  assert.ok(source.includes('queueStage("graph_to_prompt.begin")'));
+  assert.ok(source.includes('queueStage("fetch.invoked")'));
+});
+
+test("rapid Run clicks are coalesced before ComfyUI can append duplicate queue items", () => {
+  const body = source.match(/app\.queuePrompt = function h3studioQueuePrompt[\s\S]+?\n  };/)?.[0] || "";
+  assert.ok(body.includes("if (activeQueueSubmission)"));
+  assert.ok(body.includes('queueStage("command.coalesced"'));
+  assert.ok(body.includes("return Promise.resolve(false)"));
 });

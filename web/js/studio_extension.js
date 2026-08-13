@@ -49,6 +49,110 @@ const VISIBLE_STUDIO_WIDGETS = new Set(["prompt", "h3_prompt_mentions", "h3studi
 const pendingSeedAdvances = new Map();
 const actualSeedByPrompt = new Map();
 let activePromptId = "";
+let queueSequence = 0;
+let activeQueueSubmission = null;
+
+function hasStudioDirector() {
+  return (app.graph?._nodes || []).some((node) => node?.comfyClass === TARGET);
+}
+
+function queueStage(stage, fields = {}) {
+  const submission = activeQueueSubmission;
+  const now = performance.now();
+  console.info("[H3 Studio Queue]", {
+    stage,
+    sequence_id: submission?.sequenceId || null,
+    elapsed_ms: submission ? Number((now - submission.started).toFixed(2)) : null,
+    ...fields,
+  });
+}
+
+function installQueueCoordinator() {
+  if (app.__h3studioQueueCoordinatorInstalled) return;
+  app.__h3studioQueueCoordinatorInstalled = true;
+
+  const originalGraphToPrompt = app.graphToPrompt;
+  app.graphToPrompt = async function h3studioMeasuredGraphToPrompt(graph = this.rootGraph) {
+    if (!activeQueueSubmission || !hasStudioDirector()) {
+      return originalGraphToPrompt.apply(this, arguments);
+    }
+    queueStage("graph_to_prompt.begin");
+    const originalSerialize = graph?.serialize;
+    if (typeof originalSerialize === "function") {
+      graph.serialize = function h3studioMeasuredWorkflowSerialize() {
+        queueStage("workflow_serialize.begin");
+        try {
+          return originalSerialize.apply(this, arguments);
+        } finally {
+          queueStage("workflow_serialize.end");
+        }
+      };
+    }
+    try {
+      return await originalGraphToPrompt.apply(this, arguments);
+    } finally {
+      if (typeof originalSerialize === "function") graph.serialize = originalSerialize;
+      queueStage("graph_to_prompt.end");
+    }
+  };
+
+  const originalFetchApi = api.fetchApi;
+  api.fetchApi = function h3studioMeasuredFetchApi(route, options = {}) {
+    if (route !== "/prompt" || !activeQueueSubmission || !hasStudioDirector()) {
+      return originalFetchApi.apply(this, arguments);
+    }
+    const headers = new Headers(options.headers || {});
+    headers.set("X-H3-Studio-Queue-Sequence", String(activeQueueSubmission.sequenceId));
+    queueStage("fetch.invoked");
+    return Promise.resolve(originalFetchApi.call(this, route, { ...options, headers })).then((response) => {
+      queueStage("fetch.response", { status: Number(response?.status || 0) });
+      return response;
+    });
+  };
+
+  const originalQueuePrompt = app.queuePrompt;
+  app.queuePrompt = function h3studioQueuePrompt(number, batchCount, queueNodeIds) {
+    if (!hasStudioDirector()) return originalQueuePrompt.apply(this, arguments);
+    if (activeQueueSubmission) {
+      queueStage("command.coalesced", { queued_clicks: ++activeQueueSubmission.coalesced });
+      app.extensionManager?.toast?.add?.({
+        severity: "info",
+        summary: "H3 Studio is submitting",
+        detail: "The earlier Run click is already being submitted; no duplicate was queued.",
+        life: 1800,
+      });
+      return Promise.resolve(false);
+    }
+
+    const submission = {
+      sequenceId: ++queueSequence,
+      started: performance.now(),
+      coalesced: 0,
+    };
+    activeQueueSubmission = submission;
+    queueStage("command.received", { batch_count: Number(batchCount || 1) });
+    app.extensionManager?.toast?.add?.({
+      severity: "info",
+      summary: "H3 Studio submitting",
+      detail: "Run received. Preparing one prompt for ComfyUI.",
+      life: 2200,
+    });
+
+    let result;
+    try {
+      result = originalQueuePrompt.call(this, number, batchCount, queueNodeIds);
+    } catch (error) {
+      queueStage("command.error", { error: String(error?.message || error) });
+      if (activeQueueSubmission === submission) activeQueueSubmission = null;
+      throw error;
+    }
+    return Promise.resolve(result).finally(() => {
+      if (activeQueueSubmission !== submission) return;
+      queueStage("command.completed", { coalesced_clicks: submission.coalesced });
+      activeQueueSubmission = null;
+    });
+  };
+}
 
 function widget(node, name) {
   return node.widgets?.find((candidate) => candidate.name === name) || null;
@@ -1353,6 +1457,9 @@ function installPanel(node) {
 
 app.registerExtension({
   name: "H3Studio.Controls",
+  setup() {
+    installQueueCoordinator();
+  },
   beforeRegisterNodeDef(nodeType, nodeData) {
     if (nodeData.name !== TARGET) return;
     const originalCreated = nodeType.prototype.onNodeCreated;
