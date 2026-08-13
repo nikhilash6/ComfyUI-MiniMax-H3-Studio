@@ -50,6 +50,7 @@ def _fake_clip():
         load_device="cuda:0",
         model_size=lambda: 15 * gib,
         loaded_size=lambda: 0,
+        is_dynamic=lambda: False,
     )
     original_calls = []
     clip = SimpleNamespace(
@@ -82,6 +83,20 @@ def test_low_vram_text_encoder_keeps_native_dynamic_loading(monkeypatch) -> None
 
     with full_text_encoder_when_safe(clip, {"tokens": 1}) as policy:
         assert policy.startswith("native-dynamic")
+        assert clip.load_model is original
+
+    assert calls == []
+    assert original_calls == []
+
+
+def test_dynamic_patcher_does_not_claim_force_full_load(monkeypatch) -> None:
+    calls = _manager_stubs(monkeypatch, free_bytes=22 * 1024**3)
+    clip, original_calls = _fake_clip()
+    clip.patcher.is_dynamic = lambda: True
+    original = clip.load_model
+
+    with full_text_encoder_when_safe(clip, {"tokens": 1}) as policy:
+        assert policy == "native-dynamic; reason=dynamic-patcher"
         assert clip.load_model is original
 
     assert calls == []

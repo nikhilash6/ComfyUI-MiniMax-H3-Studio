@@ -11,6 +11,7 @@ import re
 import threading
 from collections.abc import Iterable
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 import folder_paths
@@ -39,6 +40,7 @@ LEGACY_H3_INT8_TEXT_ENCODER = "qwen3vl_32b_minimax_h3_int8_convrot.safetensors"
 _WEIGHT_SUFFIXES = (".safetensors", ".gguf", ".ckpt", ".pt", ".pth", ".bin")
 _H3_TOKENS = ("minimax", "h3", "fl2va", "ref2va")
 LOGGER = logging.getLogger(__name__)
+GIB = 1024**3
 
 
 def _normalize(name: str) -> str:
@@ -239,7 +241,57 @@ def _load_unet(name: str):
     return result[0]
 
 
+def _resident_h3_text_encoder_policy(name: str) -> tuple[bool, str]:
+    """Keep the 32B encoder non-dynamic only when it fits as one GPU stage."""
+
+    try:
+        manager = comfy.model_management
+        device = manager.text_encoder_device()
+        total_bytes = max(0, int(manager.get_total_memory(device)))
+        minimum_bytes = max(GIB, int(manager.minimum_inference_memory()))
+        path = folder_paths.get_full_path_or_raise("text_encoders", name)
+        model_bytes = max(0, int(Path(path).stat().st_size))
+    except Exception as error:
+        return False, f"native-dynamic; budget unavailable ({type(error).__name__})"
+
+    # File size is a reliable upper-bound proxy for the quantized H3 encoder's
+    # resident weights (the official NVFP4 artifact and staged model are both
+    # about 14.6 GiB). Keep an additional 1 GiB plus ComfyUI's own inference
+    # reserve and 5% allocator headroom. This selects 20+ GiB GPUs such as L4,
+    # while 16 GiB and smaller cards retain DynamicVRAM.
+    required_bytes = model_bytes + minimum_bytes + GIB
+    capacity_bytes = int(total_bytes * 0.95)
+    resident = model_bytes > 0 and required_bytes <= capacity_bytes
+    mode = "resident-stage" if resident else "native-dynamic"
+    return (
+        resident,
+        f"{mode}; checkpoint={model_bytes / GIB:.2f}GiB; "
+        f"required={required_bytes / GIB:.2f}GiB; gpu={total_bytes / GIB:.2f}GiB",
+    )
+
+
 def _load_clip(name: str):
+    resident, policy = _resident_h3_text_encoder_policy(name)
+    if resident:
+        try:
+            import comfy.sd
+
+            clip_path = folder_paths.get_full_path_or_raise("text_encoders", name)
+            clip = comfy.sd.load_clip(
+                ckpt_paths=[clip_path],
+                embedding_directory=folder_paths.get_folder_paths("embeddings"),
+                clip_type=comfy.sd.CLIPType.MINIMAX,
+                disable_dynamic=True,
+            )
+            LOGGER.info("[H3 Studio] H3 text encoder policy=%s", policy)
+            return clip
+        except (AttributeError, TypeError) as error:
+            LOGGER.warning(
+                "[H3 Studio] Resident H3 text encoder unsupported by this ComfyUI (%s); using DynamicVRAM.",
+                type(error).__name__,
+            )
+
+    LOGGER.info("[H3 Studio] H3 text encoder policy=%s", policy)
     loader = nodes.CLIPLoader()
     try:
         return loader.load_clip(name, "minimax")[0]

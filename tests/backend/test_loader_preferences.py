@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import importlib
 import sys
-from types import ModuleType
+from pathlib import Path
+from types import ModuleType, SimpleNamespace
 
 import pytest
 
@@ -77,3 +78,57 @@ def test_prompt_writer_supports_shared_4b_8b_and_mixed_choices(monkeypatch) -> N
         analyzer_clip=shared,
     )
     assert bundle.writer_for_enhancement() is shared
+
+
+def test_resident_h3_encoder_policy_selects_l4_but_not_16gb(monkeypatch, tmp_path: Path) -> None:
+    loader = _load_with_models(monkeypatch, ["qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"])
+    checkpoint = tmp_path / "encoder.safetensors"
+    checkpoint.write_bytes(b"x")
+    monkeypatch.setattr(loader.Path, "stat", lambda _self: type("Stat", (), {"st_size": int(14.61 * 1024**3)})())
+    monkeypatch.setattr(
+        loader.folder_paths,
+        "get_full_path_or_raise",
+        lambda _category, _name: str(checkpoint),
+        raising=False,
+    )
+    loader.comfy.model_management.text_encoder_device = lambda: "cuda:0"
+    loader.comfy.model_management.minimum_inference_memory = lambda: int(1.2 * 1024**3)
+
+    loader.comfy.model_management.get_total_memory = lambda _device: 22 * 1024**3
+    resident, policy = loader._resident_h3_text_encoder_policy(checkpoint.name)
+    assert resident is True
+    assert policy.startswith("resident-stage")
+
+    loader.comfy.model_management.get_total_memory = lambda _device: 16 * 1024**3
+    resident, policy = loader._resident_h3_text_encoder_policy(checkpoint.name)
+    assert resident is False
+    assert policy.startswith("native-dynamic")
+
+
+def test_l4_loads_h3_encoder_with_official_non_dynamic_patcher(monkeypatch, tmp_path: Path) -> None:
+    loader = _load_with_models(monkeypatch, ["qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"])
+    checkpoint = tmp_path / "encoder.safetensors"
+    checkpoint.write_bytes(b"x")
+    monkeypatch.setattr(loader.Path, "stat", lambda _self: type("Stat", (), {"st_size": int(14.61 * 1024**3)})())
+    monkeypatch.setattr(
+        loader.folder_paths,
+        "get_full_path_or_raise",
+        lambda _category, _name: str(checkpoint),
+        raising=False,
+    )
+    monkeypatch.setattr(loader.folder_paths, "get_folder_paths", lambda _category: [str(tmp_path)], raising=False)
+    loader.comfy.model_management.text_encoder_device = lambda: "cuda:0"
+    loader.comfy.model_management.minimum_inference_memory = lambda: int(1.2 * 1024**3)
+    loader.comfy.model_management.get_total_memory = lambda _device: 22 * 1024**3
+
+    calls = []
+    expected = object()
+    sd = ModuleType("comfy.sd")
+    sd.CLIPType = SimpleNamespace(MINIMAX="minimax")
+    sd.load_clip = lambda **kwargs: calls.append(kwargs) or expected
+    loader.comfy.sd = sd
+    monkeypatch.setitem(sys.modules, "comfy.sd", sd)
+
+    assert loader._load_clip(checkpoint.name) is expected
+    assert calls[0]["disable_dynamic"] is True
+    assert calls[0]["clip_type"] == "minimax"

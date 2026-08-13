@@ -81,6 +81,16 @@ def full_text_encoder_when_safe(clip: Any, tokens: Any):
         yield "native-dynamic"
         return
 
+    is_dynamic = getattr(patcher, "is_dynamic", None)
+    with suppress(Exception):
+        if callable(is_dynamic) and is_dynamic():
+            # Current ComfyUI's ModelPatcherDynamic intentionally ignores
+            # force_full_load and keeps VBAR streaming active. Do not report a
+            # false full-residency policy; fitting H3 encoders are constructed
+            # as non-dynamic patchers by the Loader instead.
+            yield "native-dynamic; reason=dynamic-patcher"
+            return
+
     try:
         import comfy.model_management as manager
 
