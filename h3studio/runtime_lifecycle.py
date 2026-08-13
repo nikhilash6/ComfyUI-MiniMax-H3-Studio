@@ -1,19 +1,21 @@
 """Stage-boundary residency handoffs for constrained H3 systems.
 
-ComfyUI remains the only model loader.  H3 Studio merely tells ComfyUI when a
-model and all of its derived clones are no longer needed by the completed
-stage, using ComfyUI's public targeted-unload helper.  This is intentionally
-not a global cache flush and never manipulates DynamicVRAM internals.
+ComfyUI remains the only model loader and residency manager. H3 Studio invokes
+its cache, AIMDO-pin, and targeted-unload helpers only at completed H3 stage
+boundaries. This is intentionally not a global cache flush and never mutates
+DynamicVRAM internals.
 """
 
 from __future__ import annotations
 
 import logging
+import time
 from contextlib import contextmanager, suppress
 from typing import Any
 
 LOGGER = logging.getLogger(__name__)
 GIB = 1024**3
+PIN_EVICTION_HYSTERESIS = 512 * 1024**2
 
 
 def model_patcher(value: Any) -> Any | None:
@@ -59,6 +61,130 @@ def release_stage_model(value: Any, transition: str) -> bool:
 
         emit("residency.release.end", state=True, patcher=patcher, transition=transition)
     return True
+
+
+def ensure_stage_ram_headroom(
+    transition: str,
+    target_gib: float,
+    *,
+    evict_active_pins: bool = False,
+) -> int:
+    """Ask ComfyUI to reclaim inactive AIMDO pins before a heavy H3 stage.
+
+    ComfyUI normally checks RAM pressure only after a node completes and while
+    each new HostBuffer allocation is already in progress. H3 Studio's
+    conditioning node runs the 32B encoder and selects the transformer inside
+    one node, so a repeat prompt can otherwise begin with the previous
+    transformer and VAE still resident. Reclaim through ComfyUI's own cache and
+    pin managers; never mutate HostBuffers/VBARs or globally unload models.
+    """
+
+    try:
+        import comfy.memory_management as memory
+        import comfy.model_management as manager
+        import psutil
+    except Exception:
+        return 0
+
+    try:
+        snapshot = psutil.virtual_memory()
+        total_bytes = max(0, int(snapshot.total))
+        available_before = max(0, int(snapshot.available))
+        # A fixed 14 GiB target is appropriate for the measured 32 GiB L4, but
+        # smaller hosts must retain most of their RAM for Python and live
+        # tensors. The 45% cap makes this policy degrade conservatively there.
+        configured_headroom = max(0, int(getattr(memory, "RAM_CACHE_HEADROOM", 0)))
+        target_bytes = min(
+            max(configured_headroom, max(0, int(float(target_gib) * GIB))),
+            int(total_bytes * 0.45),
+        )
+    except Exception:
+        return 0
+
+    if target_bytes <= 0 or available_before >= target_bytes:
+        return 0
+
+    with suppress(Exception):
+        from .runtime_trace import emit
+
+        emit(
+            "ram_handoff.begin",
+            state=True,
+            transition=transition,
+            target_gib=target_bytes / GIB,
+            available_before_gib=available_before / GIB,
+            evict_active_pins=evict_active_pins,
+        )
+
+    cache_freed = 0
+    release_cache = getattr(memory, "extra_ram_release", None)
+    if callable(release_cache):
+        with suppress(Exception):
+            cache_freed = max(0, int(release_cache(target_bytes, free_active=False) or 0))
+
+    try:
+        available_after_cache = max(0, int(psutil.virtual_memory().available))
+    except Exception:
+        available_after_cache = available_before
+    shortfall = max(0, target_bytes - available_after_cache)
+
+    pins_freed = 0
+    free_pins = getattr(manager, "free_pins", None)
+    if shortfall > 0 and callable(free_pins):
+        try:
+            # Evicting pins from the stage that just completed is safe only
+            # after its asynchronous CUDA work has reached the stage boundary.
+            if evict_active_pins:
+                synchronize = getattr(manager, "synchronize", None)
+                if callable(synchronize):
+                    synchronize()
+            pins_freed = max(
+                0,
+                int(
+                    free_pins(
+                        shortfall + PIN_EVICTION_HYSTERESIS,
+                        evict_active=evict_active_pins,
+                    )
+                    or 0
+                ),
+            )
+            # AIMDO decommit can briefly outrun Linux's available-RAM counter.
+            if pins_freed > 64 * 1024**2:
+                time.sleep(0.05)
+        except Exception as error:
+            LOGGER.debug("H3 Studio RAM handoff unavailable for %s: %s", transition, error)
+
+    try:
+        available_after = max(0, int(psutil.virtual_memory().available))
+    except Exception:
+        available_after = available_after_cache
+    released = cache_freed + pins_freed
+    if released:
+        LOGGER.info(
+            "[H3 Studio] RAM handoff %s: available %.2f -> %.2f GiB; "
+            "cache %.2f GiB, AIMDO pins %.2f GiB",
+            transition,
+            available_before / GIB,
+            available_after / GIB,
+            cache_freed / GIB,
+            pins_freed / GIB,
+        )
+
+    with suppress(Exception):
+        from .runtime_trace import emit
+
+        emit(
+            "ram_handoff.end",
+            state=True,
+            transition=transition,
+            target_gib=target_bytes / GIB,
+            available_before_gib=available_before / GIB,
+            available_after_gib=available_after / GIB,
+            cache_freed_gib=cache_freed / GIB,
+            pins_freed_gib=pins_freed / GIB,
+            evict_active_pins=evict_active_pins,
+        )
+    return released
 
 
 def _callable_int(value: Any, name: str) -> int:
@@ -152,4 +278,9 @@ def full_text_encoder_when_safe(clip: Any, tokens: Any):
                 delattr(clip, "load_model")
 
 
-__all__ = ["full_text_encoder_when_safe", "model_patcher", "release_stage_model"]
+__all__ = [
+    "ensure_stage_ram_headroom",
+    "full_text_encoder_when_safe",
+    "model_patcher",
+    "release_stage_model",
+]

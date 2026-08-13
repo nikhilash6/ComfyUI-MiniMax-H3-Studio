@@ -28,6 +28,7 @@ from ..prompting.compiler import PromptCompiler
 from ..prompting.vlm import compile_with_optional_vlm
 from ..references import ReferenceImage, stable_reference_id
 from ..routing import choose_route, validate_generation_contract
+from ..runtime_lifecycle import ensure_stage_ram_headroom
 from ..runtime_trace import emit as trace
 from ..state import StudioState
 from .loader import H3StudioBundle
@@ -448,6 +449,15 @@ class H3StudioCondition:
             frame_preset=frame_preset,
             source_fit="crop_center",
             reference_size="max_identity_2048",
+        )
+        # The transformer is selected inside this same node, before ComfyUI's
+        # normal between-node RAM-pressure callback can run. Restore the
+        # headroom observed on the fast 24.78-second cold condition before the
+        # sampler begins materializing transformer pages.
+        ensure_stage_ram_headroom(
+            "conditioning->transformer",
+            10.0,
+            evict_active_pins=True,
         )
         model = h3_bundle.model_for(route)
         run_info = (

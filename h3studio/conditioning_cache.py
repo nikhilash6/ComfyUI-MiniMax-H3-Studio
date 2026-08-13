@@ -166,6 +166,17 @@ def _encode_prompt(bundle: Any, key: Hashable, build_tokens: Callable[[], Any]):
             clip_materialized=getattr(bundle.clip, "_clip", None) is not None,
         )
         return cached, "HIT", 0.0, "warm-cache"
+    from .runtime_lifecycle import ensure_stage_ram_headroom
+
+    # The measured repeat-run collapse began with only 1.47 GiB available and
+    # the previous transformer + VAE still pinned. Reclaim those completed
+    # stages before the encoder starts faulting checkpoint pages, while keeping
+    # any reusable encoder pins whenever native MRU order permits it.
+    ensure_stage_ram_headroom(
+        "transformer/vae->text-encoder",
+        14.0,
+        evict_active_pins=True,
+    )
     select_clip = getattr(bundle, "text_encoder_for_conditioning", None)
     clip = select_clip() if callable(select_clip) else bundle.clip
     clip_patcher = getattr(clip, "patcher", clip)
