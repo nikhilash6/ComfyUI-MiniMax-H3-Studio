@@ -86,7 +86,7 @@ def _selected_model_key(bundle: Any, route: str) -> str:
 def _clip_key(bundle: Any) -> tuple[Any, ...]:
     # Conditioning depends on checkpoint content, not the lifetime of the
     # reloadable CLIP handle. Including object identity invalidated an otherwise
-    # exact prompt hit after the completed 32B stage was discarded.
+    # exact prompt hit after the completed 32B stage was unloaded.
     return (str(getattr(bundle, "clip_name", "")),)
 
 
@@ -185,17 +185,15 @@ def _encode_prompt(bundle: Any, key: Hashable, build_tokens: Callable[[], Any]):
             )
     finally:
         release_text_encoder = getattr(bundle, "release_text_encoder", None)
-        discarded = callable(release_text_encoder) and release_text_encoder()
-        if not discarded:
+        released = callable(release_text_encoder) and release_text_encoder()
+        if not released:
             release_stage_model(clip_patcher, "text-encoder->next-stage")
-        else:
-            # Drop the last local references before the transformer checkpoint
-            # is constructed. This is a stage-boundary collection, not a CUDA
-            # cache flush; ComfyUI's targeted unload remains the sole allocator
-            # authority.
-            clip = None
-            clip_patcher = None
-            gc.collect()
+        # Drop only local call-frame references. The bundle intentionally keeps
+        # the parsed mmap-backed encoder object, while ComfyUI's targeted unload
+        # remains the sole pin/VBAR/allocator authority.
+        clip = None
+        clip_patcher = None
+        gc.collect()
     _PROMPT_CACHE.put(key, conditioning)
     tokenize_seconds = tokenized - started
     encode_seconds = finished - tokenized

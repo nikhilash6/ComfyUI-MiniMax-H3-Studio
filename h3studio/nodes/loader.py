@@ -256,12 +256,13 @@ def _load_clip(name: str):
 
 
 class H3StudioTextEncoder:
-    """Transparent, reloadable CLIP handle with an explicit stage lifetime.
+    """Transparent CLIP handle with a bounded residency lifetime.
 
     H3's encoder and transformer each fit an L4, but retaining both through
-    CPU offload exhausts a 32 GiB host.  The handle preserves the public CLIP
-    output while allowing the completed encoder instance to be discarded once
-    its small conditioning result has entered the prompt cache.
+    CPU offload exhausts a 32 GiB host. The handle preserves the parsed model
+    and mmap-backed checkpoint identity while releasing DynamicVRAM residency
+    after every MISS. That keeps later changed prompts out of the true first-
+    touch path without retaining encoder pins beside the transformer.
     """
 
     def __init__(self, name: str, clip: Any = None):
@@ -277,8 +278,27 @@ class H3StudioTextEncoder:
         with self._lock:
             if self._clip is None:
                 LOGGER.info("[H3 Studio] Reloading text encoder stage=%s", self.name)
-                self._clip = _load_clip(self.name)
+                with span("loader.text_encoder.reload", state=True, model=self.name) as result:
+                    self._clip = _load_clip(self.name)
+                    result.update(patcher_id=id(getattr(self._clip, "patcher", self._clip)))
+            else:
+                trace(
+                    "loader.text_encoder.reuse",
+                    patcher=getattr(self._clip, "patcher", self._clip),
+                    model=self.name,
+                )
             return self._clip
+
+    def release_residency(self, transition: str = "text-encoder->transformer") -> bool:
+        """Release pins/VBAR state but retain the parsed mmap-backed encoder."""
+
+        with self._lock:
+            clip = self._clip
+        if clip is None:
+            return False
+        from ..runtime_lifecycle import release_stage_model
+
+        return bool(release_stage_model(clip, transition))
 
     def discard(self, transition: str = "text-encoder->transformer") -> bool:
         with self._lock:
@@ -340,8 +360,8 @@ class H3StudioBundle:
         return materialize() if callable(materialize) else self.clip
 
     def release_text_encoder(self) -> bool:
-        discard = getattr(self.clip, "discard", None)
-        return bool(discard()) if callable(discard) else False
+        release = getattr(self.clip, "release_residency", None)
+        return bool(release()) if callable(release) else False
 
     def analyzer_for_analysis(self):
         if not self.analyzer_name:
