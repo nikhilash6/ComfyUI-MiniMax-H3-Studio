@@ -176,6 +176,9 @@ let lastCapturedDropAt = 0;
 let deferredCreateMenuPending = false;
 let deferredCreateMenuToken = 0;
 const videoThumbnailCache = new Map();
+const activeVideoThumbnailLoads = new Set();
+const MAX_ACTIVE_VIDEO_THUMBNAILS = 2;
+const VIDEO_THUMBNAIL_RETRY_MS = 5 * 60 * 1000;
 let mentionPreviewRefreshTimer = null;
 let suppressNativeDropUntil = 0;
 let nativeSearchSuppressStyle = null;
@@ -1728,14 +1731,16 @@ function getVideoFrameThumbnail(videoUrl) {
     if (cached?.dataUrl) return cached.dataUrl;
     if (cached?.loading) return "";
     if (cached?.failed) {
-        if (Date.now() - Number(cached.failedAt || 0) < 1800) return "";
+        if (Date.now() - Number(cached.failedAt || 0) < VIDEO_THUMBNAIL_RETRY_MS) return "";
         videoThumbnailCache.delete(videoUrl);
     }
     if (!isLikelyVideoUrl(videoUrl) && !/^blob:|^data:video\//i.test(videoUrl)) return "";
+    if (activeVideoThumbnailLoads.size >= MAX_ACTIVE_VIDEO_THUMBNAILS) return "";
 
     const entry = { loading: true, dataUrl: "" };
     videoThumbnailCache.set(videoUrl, entry);
     const video = document.createElement("video");
+    activeVideoThumbnailLoads.add(video);
     video.muted = true;
     video.playsInline = true;
     video.preload = "metadata";
@@ -1743,8 +1748,12 @@ function getVideoFrameThumbnail(videoUrl) {
     let sampleTimes = [];
     let sampleIndex = 0;
     let bestFrame = null;
+    let timeoutId = null;
 
     const cleanup = () => {
+        if (timeoutId != null) clearTimeout(timeoutId);
+        activeVideoThumbnailLoads.delete(video);
+        video.pause?.();
         video.removeAttribute("src");
         video.load?.();
     };
@@ -1823,7 +1832,7 @@ function getVideoFrameThumbnail(videoUrl) {
         }
     };
 
-    setTimeout(fail, 4500);
+    timeoutId = setTimeout(fail, 4500);
     video.addEventListener("loadedmetadata", () => {
         const duration = Number(video.duration);
         if (!Number.isFinite(duration) || duration <= 0) sampleTimes = [0];

@@ -7,6 +7,13 @@ import { forEachQueueNode } from "../../web/js/core/queue_graph.js";
 const source = readFileSync(new URL("../../web/js/studio_extension.js", import.meta.url), "utf8");
 const richEditorSource = readFileSync(new URL("../../web/h3studio_ui.js", import.meta.url), "utf8");
 
+test("video thumbnail failures cannot exhaust browser media players", () => {
+  assert.ok(richEditorSource.includes("MAX_ACTIVE_VIDEO_THUMBNAILS = 2"));
+  assert.ok(richEditorSource.includes("activeVideoThumbnailLoads.size >= MAX_ACTIVE_VIDEO_THUMBNAILS"));
+  assert.ok(richEditorSource.includes("activeVideoThumbnailLoads.delete(video)"));
+  assert.ok(richEditorSource.includes("VIDEO_THUMBNAIL_RETRY_MS = 5 * 60 * 1000"));
+});
+
 test("queue serialization does not reapply the complete Director UI", () => {
   const body = source.match(/node\.__h3studioBeforeSerialize = function[\s\S]+?\n  };/)?.[0] || "";
   assert.ok(body.includes("STATE_PROPERTY"));
