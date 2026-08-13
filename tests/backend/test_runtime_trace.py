@@ -96,6 +96,7 @@ def test_emit_is_read_only_for_cuda_runtime(monkeypatch, caplog) -> None:
     monkeypatch.setitem(sys.modules, "torch", torch)
     monkeypatch.setattr(runtime_trace, "_process_fields", lambda: {})
     monkeypatch.setattr(runtime_trace, "_manager_fields", lambda: {})
+    monkeypatch.setenv("H3STUDIO_RUNTIME_TRACE", "1")
 
     with caplog.at_level(logging.INFO, logger=runtime_trace.__name__):
         runtime_trace.emit("test.state", state=True)
@@ -103,6 +104,11 @@ def test_emit_is_read_only_for_cuda_runtime(monkeypatch, caplog) -> None:
     assert calls == ["mem_get_info", "memory_allocated", "memory_reserved"]
     assert "event=test.state" in caplog.text
     assert "vram_free_gib=4.0000" in caplog.text
+
+
+def test_runtime_trace_is_opt_in(monkeypatch) -> None:
+    monkeypatch.delenv("H3STUDIO_RUNTIME_TRACE", raising=False)
+    assert runtime_trace.enabled() is False
 
 
 def test_manager_summary_does_not_probe_every_loaded_patcher_by_default(monkeypatch) -> None:

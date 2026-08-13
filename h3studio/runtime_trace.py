@@ -28,7 +28,10 @@ def _flag(name: str, default: bool) -> bool:
 
 
 def enabled() -> bool:
-    return _flag("H3STUDIO_RUNTIME_TRACE", True)
+    # Full snapshots enumerate manager/process counters and produce large log
+    # lines.  Keep them opt-in now that the constrained-runtime fault has been
+    # isolated; H3STUDIO_RUNTIME_TRACE=1 restores the diagnostic stream.
+    return _flag("H3STUDIO_RUNTIME_TRACE", False)
 
 
 def _clean(value: Any) -> str:
