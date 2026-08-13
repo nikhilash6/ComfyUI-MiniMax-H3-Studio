@@ -1312,7 +1312,6 @@ class H3StudioDecode:
 
     def decode(self, samples, vae):
         from ..runtime_trace import span
-        from ..runtime_lifecycle import release_stage_model
 
         latent = samples["samples"]
         if latent.is_nested:
@@ -1322,18 +1321,10 @@ class H3StudioDecode:
         # Do not fork or tile H3 decode here. Current ComfyUI selects its
         # output-identical chunked path inside VAE.decode when advertised by
         # first_stage_model.comfy_has_chunked_io.
-        # The denoiser (including profile/preview clones) is finished once the
-        # sampled latent reaches this node.  Keeping it resident while loading
-        # H3's VAE caused severe VBAR/pinned-RAM thrashing on 22 GB VRAM / 32 GB
-        # RAM systems.  Release that one clone family before native VAE decode.
-        release_stage_model(samples.get("h3studio_sampling_model"), "sampler->vae-decode")
         decode_started = time.perf_counter()
-        try:
-            with span("vae.decode", state=True, patcher=getattr(vae, "patcher", None)) as result:
-                images = vae.decode(latent)
-                result.update(output_shape=tuple(getattr(images, "shape", ())))
-        finally:
-            release_stage_model(vae, "vae-decode->idle")
+        with span("vae.decode", state=True, patcher=getattr(vae, "patcher", None)) as result:
+            images = vae.decode(latent)
+            result.update(output_shape=tuple(getattr(images, "shape", ())))
         decode_seconds = time.perf_counter() - decode_started
         vae_io = detect_vae_io(vae)
 

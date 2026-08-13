@@ -1,9 +1,17 @@
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
 
 from h3studio.context import H3StudioContext
 from h3studio.nodes.preview import _resolve_packed_latent
+
+
+def test_required_h3_stages_do_not_force_native_model_unloads() -> None:
+    root = Path(__file__).parents[2]
+    for relative in ("h3studio/nodes/director.py", "h3studio/nodes/image_runtime.py"):
+        source = (root / relative).read_text(encoding="utf-8")
+        assert "release_stage_model" not in source
 
 
 def test_taeh3_restores_video_latent_from_flattened_video_plus_audio_pack() -> None:

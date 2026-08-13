@@ -256,13 +256,11 @@ def _load_clip(name: str):
 
 
 class H3StudioTextEncoder:
-    """Transparent CLIP handle with a bounded residency lifetime.
+    """Transparent CLIP handle whose residency is owned by ComfyUI.
 
-    H3's encoder and transformer each fit an L4, but retaining both through
-    CPU offload exhausts a 32 GiB host. The handle preserves the parsed model
-    and mmap-backed checkpoint identity while releasing DynamicVRAM residency
-    after every MISS. That keeps later changed prompts out of the true first-
-    touch path without retaining encoder pins beside the transformer.
+    The handle preserves the parsed model and mmap-backed checkpoint identity.
+    DynamicVRAM decides which VRAM pages and lower-priority host pins survive
+    each stage according to native pressure and MRU policy.
     """
 
     def __init__(self, name: str, clip: Any = None):
@@ -288,17 +286,6 @@ class H3StudioTextEncoder:
                     model=self.name,
                 )
             return self._clip
-
-    def release_residency(self, transition: str = "text-encoder->transformer") -> bool:
-        """Release pins/VBAR state but retain the parsed mmap-backed encoder."""
-
-        with self._lock:
-            clip = self._clip
-        if clip is None:
-            return False
-        from ..runtime_lifecycle import release_stage_model
-
-        return bool(release_stage_model(clip, transition))
 
     def discard(self, transition: str = "text-encoder->transformer") -> bool:
         with self._lock:
@@ -358,10 +345,6 @@ class H3StudioBundle:
     def text_encoder_for_conditioning(self):
         materialize = getattr(self.clip, "materialize", None)
         return materialize() if callable(materialize) else self.clip
-
-    def release_text_encoder(self) -> bool:
-        release = getattr(self.clip, "release_residency", None)
-        return bool(release()) if callable(release) else False
 
     def analyzer_for_analysis(self):
         if not self.analyzer_name:

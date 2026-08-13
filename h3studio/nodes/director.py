@@ -422,15 +422,6 @@ class H3StudioCondition:
             raise ValueError("Connect H3 Studio Loader's h3_bundle output.")
         if not isinstance(studio_context, H3StudioContext):
             raise ValueError("Connect H3 Studio Director's studio_context output.")
-        from ..runtime_lifecycle import release_stage_model
-
-        # A cancelled/failed previous prompt may have left a completed-stage
-        # model resident.  Release only this bundle's known stage models before
-        # beginning conditioning; ComfyUI retains construction and file caches.
-        release_stage_model(h3_bundle._model, "previous-sampler->conditioning")
-        release_stage_model(h3_bundle.video_vae, "previous-decode->conditioning")
-        release_stage_model(h3_bundle.image_vae, "previous-image-decode->conditioning")
-
         route = studio_context.route.selected
         images = tuple(studio_context.images)
         runtime_mode = "text_to_image (FL2VA)"
@@ -458,8 +449,6 @@ class H3StudioCondition:
             source_fit="crop_center",
             reference_size="max_identity_2048",
         )
-        release_stage_model(h3_bundle.video_vae, "conditioning-vae->sampler")
-        release_stage_model(h3_bundle.image_vae, "conditioning-image-vae->sampler")
         model = h3_bundle.model_for(route)
         run_info = (
             f"{studio_context.summary()}\n\nRuntime: {stages.runtime_info} "

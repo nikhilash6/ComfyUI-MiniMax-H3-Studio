@@ -169,31 +169,26 @@ def _encode_prompt(bundle: Any, key: Hashable, build_tokens: Callable[[], Any]):
     select_clip = getattr(bundle, "text_encoder_for_conditioning", None)
     clip = select_clip() if callable(select_clip) else bundle.clip
     clip_patcher = getattr(clip, "patcher", clip)
-    from .runtime_lifecycle import release_stage_model
+    with span("conditioning.text", state=True, patcher=clip_patcher, cache="MISS") as result:
+        started = time.perf_counter()
+        tokens = build_tokens()
+        tokenized = time.perf_counter()
+        conditioning = clip.encode_from_tokens_scheduled(tokens)
+        finished = time.perf_counter()
+        result.update(
+            tokenize_s=tokenized - started,
+            encode_s=finished - tokenized,
+            load_policy="native-dynamic",
+        )
 
-    try:
-        with span("conditioning.text", state=True, patcher=clip_patcher, cache="MISS") as result:
-            started = time.perf_counter()
-            tokens = build_tokens()
-            tokenized = time.perf_counter()
-            conditioning = clip.encode_from_tokens_scheduled(tokens)
-            finished = time.perf_counter()
-            result.update(
-                tokenize_s=tokenized - started,
-                encode_s=finished - tokenized,
-                load_policy="native-dynamic",
-            )
-    finally:
-        release_text_encoder = getattr(bundle, "release_text_encoder", None)
-        released = callable(release_text_encoder) and release_text_encoder()
-        if not released:
-            release_stage_model(clip_patcher, "text-encoder->next-stage")
-        # Drop only local call-frame references. The bundle intentionally keeps
-        # the parsed mmap-backed encoder object, while ComfyUI's targeted unload
-        # remains the sole pin/VBAR/allocator authority.
-        clip = None
-        clip_patcher = None
-        gc.collect()
+    # ComfyUI 0.32 owns DynamicVRAM/VBAR eviction and its lower-priority
+    # weights-loaded MRU cache. A targeted model unload also destroys that RAM
+    # cache, forcing the 14.6 GiB checkpoint to be read again on every changed
+    # prompt. Keep only the parsed handle here and let native RAM pressure
+    # choose which inactive pins to retain before the transformer runs.
+    clip = None
+    clip_patcher = None
+    gc.collect()
     _PROMPT_CACHE.put(key, conditioning)
     tokenize_seconds = tokenized - started
     encode_seconds = finished - tokenized
@@ -283,9 +278,6 @@ def run_conditioning_pipeline(
         fitted_source, keyframe_latent, source_state = _source_stage(
             bundle, used_images[0], source_id, width, height, source_fit
         )
-        from .runtime_lifecycle import release_stage_model
-
-        release_stage_model(bundle.video_vae, "source-vae->text-encoder")
         reference_state = f"source_vae:{source_state}"
         conditioning, text_state, text_seconds, residency = _encode_prompt(
             bundle,

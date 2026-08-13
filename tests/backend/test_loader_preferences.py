@@ -109,13 +109,9 @@ def test_text_encoder_handle_discards_and_reloads_completed_stage(monkeypatch) -
     assert handle.materialize() is second
 
 
-def test_text_encoder_handle_releases_residency_without_reparsing_checkpoint(monkeypatch) -> None:
+def test_text_encoder_handle_leaves_residency_to_comfy_without_reparsing_checkpoint(monkeypatch) -> None:
     loader = _load_with_models(monkeypatch, ["qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"])
     first = SimpleNamespace(marker="first")
-    releases = []
-    lifecycle = ModuleType("h3studio.runtime_lifecycle")
-    lifecycle.release_stage_model = lambda value, transition: releases.append((value, transition)) or True
-    monkeypatch.setitem(sys.modules, "h3studio.runtime_lifecycle", lifecycle)
     monkeypatch.setattr(
         loader,
         "_load_clip",
@@ -123,6 +119,5 @@ def test_text_encoder_handle_releases_residency_without_reparsing_checkpoint(mon
     )
 
     handle = loader.H3StudioTextEncoder("encoder.safetensors", first)
-    assert handle.release_residency() is True
-    assert releases == [(first, "text-encoder->transformer")]
+    assert "release_residency" not in type(handle).__dict__
     assert handle.materialize() is first
