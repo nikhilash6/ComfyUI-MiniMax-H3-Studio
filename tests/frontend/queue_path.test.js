@@ -21,4 +21,11 @@ test("queue validation stays synchronous before ComfyUI serializes", () => {
 test("post-queue seed rendering yields before rebuilding the Director", () => {
   const body = source.match(/seedWidget\.afterQueued = function[\s\S]+?\n    };/)?.[0] || "";
   assert.ok(body.includes("setTimeout(() => renderPanel(node), 0)"));
+  assert.ok(body.includes('queueTiming(node, "afterQueued")'));
+});
+
+test("queue path reports serialization timing and immediate acknowledgement", () => {
+  assert.ok(source.includes('queueTiming(this, "serialize.begin")'));
+  assert.ok(source.includes('queueTiming(this, "serialize.end"'));
+  assert.ok(source.includes('summary: "H3 Studio queued"'));
 });

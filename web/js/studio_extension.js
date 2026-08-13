@@ -166,6 +166,18 @@ function finishSeedAdvances(detail) {
   }
 }
 
+function queueTiming(node, stage, fields = {}) {
+  const now = performance.now();
+  node.__h3studioQueueTiming ||= { started: now };
+  const elapsed = now - node.__h3studioQueueTiming.started;
+  console.info("[H3 Studio Queue]", {
+    stage,
+    elapsed_ms: Number(elapsed.toFixed(2)),
+    node_id: node.id,
+    ...fields,
+  });
+}
+
 function releaseFailedSeedReservations() {
   for (const node of app.graph?._nodes || []) {
     if (node?.comfyClass !== TARGET) continue;
@@ -1214,6 +1226,8 @@ function installPanel(node) {
     stateWidget.__h3studioQueueValidation = true;
     const originalBeforeQueued = stateWidget.beforeQueued;
     stateWidget.beforeQueued = function h3studioBeforeQueued() {
+      node.__h3studioQueueTiming = { started: performance.now() };
+      queueTiming(node, "beforeQueued.begin");
       const state = stateFromNode(node);
       const missingOrdinals = missingReferenceOrdinals(state);
       const missingLabels = missingOrdinals.map((ordinal) => `@Image${ordinal}`);
@@ -1233,7 +1247,9 @@ function installPanel(node) {
       }
       // Keep the ordinary valid path synchronous. An async wrapper adds a
       // needless queue-lifecycle yield before ComfyUI can serialize and POST.
-      return originalBeforeQueued?.apply(this, arguments);
+      const result = originalBeforeQueued?.apply(this, arguments);
+      queueTiming(node, "beforeQueued.end");
+      return result;
     };
   }
 
@@ -1243,6 +1259,13 @@ function installPanel(node) {
     const originalAfterQueued = seedWidget.afterQueued;
     seedWidget.afterQueued = function h3studioSeedAfterQueued() {
       const result = originalAfterQueued?.apply(this, arguments);
+      queueTiming(node, "afterQueued");
+      app.extensionManager?.toast?.add?.({
+        severity: "info",
+        summary: "H3 Studio queued",
+        detail: "Prompt submitted to ComfyUI.",
+        life: 1800,
+      });
       const state = stateFromNode(node);
       if (!state.generation.seed_locked) {
         state.generation = reserveSeedAfterQueue(state.generation, randomSeed);
@@ -1256,6 +1279,7 @@ function installPanel(node) {
   }
 
   node.__h3studioBeforeSerialize = function h3studioBeforeSerialize() {
+    queueTiming(this, "serialize.begin");
     const state = stateFromNode(this);
     const serialized = serializeState(state);
     this.__h3studioSerializedState = state;
@@ -1266,6 +1290,7 @@ function installPanel(node) {
     setWidget(this, "studio_state", serialized);
     this.properties ||= {};
     this.properties[STATE_PROPERTY] = serialized;
+    queueTiming(this, "serialize.end", { payload_bytes: serialized.length });
   };
   node.__h3studioAfterSerialize = function h3studioAfterSerialize(data) {
     const state = this.__h3studioSerializedState || stateFromNode(this);
