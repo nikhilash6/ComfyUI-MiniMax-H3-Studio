@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-import logging
-import time
 from collections import OrderedDict
 from io import BytesIO
 from pathlib import Path
 
 _THUMBNAILS: OrderedDict[tuple[str, int, int], bytes] = OrderedDict()
 _MAX_CACHE_ITEMS = 128
-LOGGER = logging.getLogger(__name__)
 
 
 def _safe_image_path(storage_name: str):
@@ -110,19 +107,3 @@ def register_routes() -> None:
                 status=500,
                 headers={"Cache-Control": "no-store"},
             )
-
-    @server.routes.post("/h3studio/queue-probe")
-    async def h3studio_queue_probe(request):
-        received = time.time() * 1000.0
-        try:
-            payload = await request.json()
-        except Exception:
-            payload = {}
-        client_ms = float(payload.get("client_ms", 0) or 0)
-        LOGGER.info(
-            "[H3 Studio Queue] browser probe received | node=%s | stage=%s | client_to_server_ms=%.2f",
-            str(payload.get("node_id", "")),
-            str(payload.get("stage", "beforeQueued")),
-            max(0.0, received - client_ms) if client_ms else -1.0,
-        )
-        return web.json_response({"received_ms": received}, headers={"Cache-Control": "no-store"})

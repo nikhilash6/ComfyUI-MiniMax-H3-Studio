@@ -178,18 +178,6 @@ function queueTiming(node, stage, fields = {}) {
   });
 }
 
-function sendQueueProbe(node, stage) {
-  void api.fetchApi("/h3studio/queue-probe", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      node_id: node.id,
-      stage,
-      client_ms: Date.now(),
-    }),
-  }).catch(() => {});
-}
-
 function releaseFailedSeedReservations() {
   for (const node of app.graph?._nodes || []) {
     if (node?.comfyClass !== TARGET) continue;
@@ -1240,13 +1228,6 @@ function installPanel(node) {
     stateWidget.beforeQueued = function h3studioBeforeQueued() {
       node.__h3studioQueueTiming = { started: performance.now() };
       queueTiming(node, "beforeQueued.begin");
-      sendQueueProbe(node, "beforeQueued.begin");
-      app.extensionManager?.toast?.add?.({
-        severity: "info",
-        summary: "H3 Studio preparing",
-        detail: "Run accepted; serializing the workflow.",
-        life: 1800,
-      });
       const state = stateFromNode(node);
       const missingOrdinals = missingReferenceOrdinals(state);
       const missingLabels = missingOrdinals.map((ordinal) => `@Image${ordinal}`);
@@ -1299,23 +1280,14 @@ function installPanel(node) {
 
   node.__h3studioBeforeSerialize = function h3studioBeforeSerialize() {
     queueTiming(this, "serialize.begin");
-    const state = stateFromNode(this);
-    const serialized = serializeState(state);
-    this.__h3studioSerializedState = state;
-    this.__h3studioSerializedPayload = serialized;
-    // UI actions already keep native widgets synchronized.  Queueing only
-    // needs to refresh the two persistence copies; reapplying every Director
-    // widget and every reference card here duplicated the entire state pass.
-    setWidget(this, "studio_state", serialized);
-    this.properties ||= {};
-    this.properties[STATE_PROPERTY] = serialized;
+    // applyState keeps the widget and property synchronized whenever Studio
+    // state changes. Reparse/normalize/stringify during ComfyUI's synchronous
+    // graph serialization only duplicates work on the critical queue path.
+    const serialized = String(this.properties?.[STATE_PROPERTY] || widget(this, "studio_state")?.value || "");
     queueTiming(this, "serialize.end", { payload_bytes: serialized.length });
   };
   node.__h3studioAfterSerialize = function h3studioAfterSerialize(data) {
-    const state = this.__h3studioSerializedState || stateFromNode(this);
-    const serialized = this.__h3studioSerializedPayload || serializeState(state);
-    this.__h3studioSerializedState = null;
-    this.__h3studioSerializedPayload = null;
+    const serialized = String(this.properties?.[STATE_PROPERTY] || widget(this, "studio_state")?.value || "");
     if (data) {
       data.properties ||= {};
       data.properties[STATE_PROPERTY] = serialized;

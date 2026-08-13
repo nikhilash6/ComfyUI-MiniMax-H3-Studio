@@ -6,8 +6,9 @@ const source = readFileSync(new URL("../../web/js/studio_extension.js", import.m
 
 test("queue serialization does not reapply the complete Director UI", () => {
   const body = source.match(/node\.__h3studioBeforeSerialize = function[\s\S]+?\n  };/)?.[0] || "";
-  assert.ok(body.includes("stateFromNode(this)"));
-  assert.ok(body.includes("serializeState(state)"));
+  assert.ok(body.includes("STATE_PROPERTY"));
+  assert.equal(body.includes("stateFromNode(this)"), false);
+  assert.equal(body.includes("serializeState(state)"), false);
   assert.equal(body.includes("applyState("), false);
 });
 
@@ -25,8 +26,6 @@ test("post-queue seed rendering yields before rebuilding the Director", () => {
 });
 
 test("queue path reports serialization timing and immediate acknowledgement", () => {
-  assert.ok(source.includes('sendQueueProbe(node, "beforeQueued.begin")'));
-  assert.ok(source.includes('summary: "H3 Studio preparing"'));
   assert.ok(source.includes('queueTiming(this, "serialize.begin")'));
   assert.ok(source.includes('queueTiming(this, "serialize.end"'));
   assert.ok(source.includes('summary: "H3 Studio queued"'));

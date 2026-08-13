@@ -3948,7 +3948,10 @@ function installNode(nodeType, nodeData) {
 
     const originalSerialize = nodeType.prototype.onSerialize;
     nodeType.prototype.onSerialize = function onSerializeH3Easy(info) {
-        if (this.__h3sEditor) syncPromptFromEditor(this, false);
+        // The editor's input/change handlers already synchronize the native
+        // prompt widget. Rewalking the DOM here blocks ComfyUI's synchronous
+        // graph-to-prompt pass and delays both /prompt and every diagnostic
+        // fetch until the browser event loop is released.
         this.__h3studioBeforeSerialize?.(info);
         const result = originalSerialize?.apply(this, arguments);
         if (info && this.properties?.[PROMPT_DOC_PROP]) {
