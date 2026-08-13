@@ -43,6 +43,15 @@ test("rapid Run clicks are coalesced before ComfyUI can append duplicate queue i
   assert.ok(body.includes("return Promise.resolve(false)"));
 });
 
+test("single local-model prompts on Lightning bypass the unrelated cloud auth wait", () => {
+  assert.ok(source.includes('host.endsWith(".cloudspaces.litng.ai")'));
+  assert.ok(source.includes("!hasCloudApiNode()"));
+  assert.ok(source.includes('queueStage("native_auth.bypassed"'));
+  assert.ok(source.includes("result = submitLightningPrompt(number)"));
+  assert.ok(source.includes('executeQueueCallbacks("beforeQueued", false)'));
+  assert.ok(source.includes('executeQueueCallbacks("afterQueued", false)'));
+});
+
 test("graph-to-prompt does not rewalk the synchronized rich-editor DOM", () => {
   const body = richEditorSource.match(/app\.graphToPrompt = async function graphToPromptWithOrderedMedia[\s\S]+?return promptData;\r?\n    };/)?.[0] || "";
   assert.ok(body.includes("buildRuntimePrompt(node, runtimeLinks)"));

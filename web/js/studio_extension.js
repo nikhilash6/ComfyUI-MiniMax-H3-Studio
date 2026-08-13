@@ -67,6 +67,65 @@ function queueStage(stage, fields = {}) {
   });
 }
 
+function eachQueueNode(callback) {
+  const seen = new Set();
+  const visitGraph = (graph) => {
+    for (const node of graph?._nodes || []) {
+      if (!node || seen.has(node)) continue;
+      seen.add(node);
+      callback(node);
+      if (node.subgraph) visitGraph(node.subgraph);
+    }
+    for (const subgraph of graph?.subgraphs?.values?.() || []) visitGraph(subgraph);
+  };
+  visitGraph(app.rootGraph || app.graph);
+}
+
+function executeQueueCallbacks(name, isPartialExecution) {
+  eachQueueNode((node) => {
+    for (const target of node.widgets || []) target?.[name]?.({ isPartialExecution });
+  });
+}
+
+function hasCloudApiNode() {
+  let found = false;
+  eachQueueNode((node) => {
+    const definition = node?.constructor?.nodeData || node?.nodeData || {};
+    if (definition.api_node || definition.is_api_node) found = true;
+  });
+  return found;
+}
+
+function useLightningDirectSubmit(batchCount, queueNodeIds) {
+  const host = String(globalThis.location?.hostname || "").toLowerCase();
+  return host.endsWith(".cloudspaces.litng.ai")
+    && Number(batchCount || 1) === 1
+    && !queueNodeIds?.length
+    && !hasCloudApiNode();
+}
+
+async function submitLightningPrompt(number) {
+  // ComfyUI 1.48.7 waits for a Comfy/Firebase token before it starts widget
+  // callbacks or graph serialization. Lightning's private ComfyUI endpoint and
+  // this local-model workflow do not use cloud API nodes, so avoid placing that
+  // unrelated network dependency on the Run critical path.
+  api.dispatchCustomEvent?.("promptQueueing", {
+    requestId: activeQueueSubmission?.sequenceId || 0,
+    batchCount: 1,
+    number,
+  });
+  queueStage("before_queued.begin", { submission_path: "lightning_direct" });
+  executeQueueCallbacks("beforeQueued", false);
+  queueStage("before_queued.end", { submission_path: "lightning_direct" });
+  const prompt = await app.graphToPrompt(app.rootGraph || app.graph);
+  const response = await api.queuePrompt(number, prompt);
+  executeQueueCallbacks("afterQueued", false);
+  api.dispatchCustomEvent?.("promptQueued", { number, batchCount: 1 });
+  app.canvas?.draw?.(true, true);
+  const nodeErrors = response?.node_errors;
+  return !(nodeErrors && Object.keys(nodeErrors).length);
+}
+
 function installQueueCoordinator() {
   if (app.__h3studioQueueCoordinatorInstalled) return;
   app.__h3studioQueueCoordinatorInstalled = true;
@@ -140,7 +199,12 @@ function installQueueCoordinator() {
 
     let result;
     try {
-      result = originalQueuePrompt.call(this, number, batchCount, queueNodeIds);
+      if (useLightningDirectSubmit(batchCount, queueNodeIds)) {
+        queueStage("native_auth.bypassed", { reason: "lightning_local_models" });
+        result = submitLightningPrompt(number);
+      } else {
+        result = originalQueuePrompt.call(this, number, batchCount, queueNodeIds);
+      }
     } catch (error) {
       queueStage("command.error", { error: String(error?.message || error) });
       if (activeQueueSubmission === submission) activeQueueSubmission = null;
