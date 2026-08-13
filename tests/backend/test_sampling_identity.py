@@ -3,22 +3,34 @@ from __future__ import annotations
 import sys
 from types import ModuleType, SimpleNamespace
 
+_previous_folder_paths = sys.modules.get("folder_paths")
+_previous_nodes = sys.modules.get("nodes")
 sys.modules.setdefault("folder_paths", ModuleType("folder_paths"))
 sys.modules.setdefault("nodes", ModuleType("nodes"))
-
 
 class H3StudioSamplingPreset:
     def build(self, model, profile):
         return model, "sampler", "sigmas", profile
 
 
-image_runtime = ModuleType("h3studio.nodes.image_runtime")
-image_runtime.H3StudioSamplingPreset = H3StudioSamplingPreset
-sys.modules.setdefault("h3studio.nodes.image_runtime", image_runtime)
-
 import h3studio.nodes.director as director_module  # noqa: E402
 from h3studio.context import H3StudioContext  # noqa: E402
 from h3studio.nodes.director import H3StudioContextSamplingPreset  # noqa: E402
+
+if _previous_folder_paths is None:
+    sys.modules.pop("folder_paths", None)
+else:
+    sys.modules["folder_paths"] = _previous_folder_paths
+if _previous_nodes is None:
+    sys.modules.pop("nodes", None)
+else:
+    sys.modules["nodes"] = _previous_nodes
+
+
+def _install_fake_image_runtime(monkeypatch) -> None:
+    image_runtime = ModuleType("h3studio.nodes.image_runtime")
+    image_runtime.H3StudioSamplingPreset = H3StudioSamplingPreset
+    monkeypatch.setitem(sys.modules, "h3studio.nodes.image_runtime", image_runtime)
 
 
 def _context(*, profile: str = "base_quality_20", custom_loras=()) -> H3StudioContext:
@@ -38,6 +50,7 @@ def _context(*, profile: str = "base_quality_20", custom_loras=()) -> H3StudioCo
 
 
 def test_base_profile_reuses_one_shifted_model_identity(monkeypatch) -> None:
+    _install_fake_image_runtime(monkeypatch)
     source_model = object()
     built_model = object()
     calls = []
@@ -62,6 +75,7 @@ def test_base_profile_reuses_one_shifted_model_identity(monkeypatch) -> None:
 
 
 def test_base_custom_lora_is_applied_before_stable_sampling_patch(monkeypatch) -> None:
+    _install_fake_image_runtime(monkeypatch)
     source_model = object()
     lora_model = object()
     built_model = object()
