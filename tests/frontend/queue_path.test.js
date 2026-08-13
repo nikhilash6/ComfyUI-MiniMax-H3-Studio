@@ -25,6 +25,8 @@ test("post-queue seed rendering yields before rebuilding the Director", () => {
 });
 
 test("queue path reports serialization timing and immediate acknowledgement", () => {
+  assert.ok(source.includes('sendQueueProbe(node, "beforeQueued.begin")'));
+  assert.ok(source.includes('summary: "H3 Studio preparing"'));
   assert.ok(source.includes('queueTiming(this, "serialize.begin")'));
   assert.ok(source.includes('queueTiming(this, "serialize.end"'));
   assert.ok(source.includes('summary: "H3 Studio queued"'));

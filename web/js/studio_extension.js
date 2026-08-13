@@ -178,6 +178,18 @@ function queueTiming(node, stage, fields = {}) {
   });
 }
 
+function sendQueueProbe(node, stage) {
+  void api.fetchApi("/h3studio/queue-probe", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      node_id: node.id,
+      stage,
+      client_ms: Date.now(),
+    }),
+  }).catch(() => {});
+}
+
 function releaseFailedSeedReservations() {
   for (const node of app.graph?._nodes || []) {
     if (node?.comfyClass !== TARGET) continue;
@@ -1228,6 +1240,13 @@ function installPanel(node) {
     stateWidget.beforeQueued = function h3studioBeforeQueued() {
       node.__h3studioQueueTiming = { started: performance.now() };
       queueTiming(node, "beforeQueued.begin");
+      sendQueueProbe(node, "beforeQueued.begin");
+      app.extensionManager?.toast?.add?.({
+        severity: "info",
+        summary: "H3 Studio preparing",
+        detail: "Run accepted; serializing the workflow.",
+        life: 1800,
+      });
       const state = stateFromNode(node);
       const missingOrdinals = missingReferenceOrdinals(state);
       const missingLabels = missingOrdinals.map((ordinal) => `@Image${ordinal}`);
