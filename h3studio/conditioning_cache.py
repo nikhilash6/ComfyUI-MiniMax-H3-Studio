@@ -155,22 +155,26 @@ def _encode_prompt(bundle: Any, key: Hashable, build_tokens: Callable[[], Any]):
         trace("conditioning.text.hit", cache="HIT", clip_patcher_id=id(getattr(bundle.clip, "patcher", bundle.clip)))
         return cached, "HIT", 0.0, "warm-cache"
     clip_patcher = getattr(bundle.clip, "patcher", bundle.clip)
-    from .runtime_lifecycle import release_stage_model
+    from .runtime_lifecycle import full_text_encoder_when_safe, release_stage_model
 
     try:
         with span("conditioning.text", state=True, patcher=clip_patcher, cache="MISS") as result:
             started = time.perf_counter()
             tokens = build_tokens()
             tokenized = time.perf_counter()
-            conditioning = bundle.clip.encode_from_tokens_scheduled(tokens)
+            with full_text_encoder_when_safe(bundle.clip, tokens) as load_policy:
+                conditioning = bundle.clip.encode_from_tokens_scheduled(tokens)
             finished = time.perf_counter()
-            result.update(tokenize_s=tokenized - started, encode_s=finished - tokenized)
+            result.update(tokenize_s=tokenized - started, encode_s=finished - tokenized, load_policy=load_policy)
     finally:
         release_stage_model(clip_patcher, "text-encoder->next-stage")
     _PROMPT_CACHE.put(key, conditioning)
     tokenize_seconds = tokenized - started
     encode_seconds = finished - tokenized
-    runtime = f"native-comfy-manager; tokenize={tokenize_seconds:.3f}s; encode={encode_seconds:.3f}s"
+    runtime = (
+        f"{load_policy}; tokenize={tokenize_seconds:.3f}s; "
+        f"encode={encode_seconds:.3f}s"
+    )
     return conditioning, "MISS", finished - started, runtime
 
 
