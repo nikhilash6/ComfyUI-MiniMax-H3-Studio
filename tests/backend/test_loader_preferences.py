@@ -117,6 +117,7 @@ def test_l4_loads_h3_encoder_with_official_non_dynamic_patcher(monkeypatch, tmp_
         raising=False,
     )
     monkeypatch.setattr(loader.folder_paths, "get_folder_paths", lambda _category: [str(tmp_path)], raising=False)
+    monkeypatch.setattr(loader, "_stage_model_locally", lambda path: path)
     loader.comfy.model_management.text_encoder_device = lambda: "cuda:0"
     loader.comfy.model_management.minimum_inference_memory = lambda: int(1.2 * 1024**3)
     loader.comfy.model_management.get_total_memory = lambda _device: 22 * 1024**3

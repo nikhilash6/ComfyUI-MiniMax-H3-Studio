@@ -15,7 +15,7 @@ from .nodes.director import (
 )
 from .nodes.image_runtime import NODE_CLASS_MAPPINGS as IMAGE_NODE_CLASS_MAPPINGS
 from .nodes.image_runtime import NODE_DISPLAY_NAME_MAPPINGS as IMAGE_NODE_DISPLAY_NAME_MAPPINGS
-from .nodes.loader import H3StudioLoader
+from .nodes.loader import H3StudioLoader, start_preferred_encoder_staging
 from .nodes.preview import H3StudioTAEH3Preview
 from .nodes.save import NODE_CLASS_MAPPINGS as SAVE_NODE_CLASS_MAPPINGS
 from .nodes.save import NODE_DISPLAY_NAME_MAPPINGS as SAVE_NODE_DISPLAY_NAME_MAPPINGS
@@ -24,6 +24,7 @@ from .web_routes import register_routes
 
 install_runtime_guards()
 register_routes()
+start_preferred_encoder_staging()
 
 NODE_CLASS_MAPPINGS = {
     "H3StudioLoader": H3StudioLoader,
