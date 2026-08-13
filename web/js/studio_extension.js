@@ -298,6 +298,11 @@ function finishSeedAdvances(detail) {
 }
 
 function queueTiming(node, stage, fields = {}) {
+  // ComfyUI serializes workflows for autosave and other background work. Those
+  // calls are not Run submissions and previously flooded the console with
+  // misleading queue timings, especially while failed media previews were
+  // already making the page unresponsive.
+  if (!activeQueueSubmission) return;
   const now = performance.now();
   node.__h3studioQueueTiming ||= { started: now };
   const elapsed = now - node.__h3studioQueueTiming.started;

@@ -364,7 +364,11 @@ function normalizeLinks(node, removeMissing = true) {
         const sourceId = Number(link?.source_id);
         const sourceSlot = Number(link?.source_slot) || 0;
         const mediaType = String(link?.media_type || "image").toLowerCase();
-        if (!Number.isFinite(sourceId) || !["image", "video", "audio"].includes(mediaType)) continue;
+        // H3 image generation accepts image references only. Older workflow
+        // revisions persisted video/audio virtual links; retaining them kept
+        // background media widgets alive and could exhaust Chromium's player
+        // pool before a Run command reached ComfyUI.
+        if (!Number.isFinite(sourceId) || mediaType !== "image") continue;
         if (Number.isFinite(Number(node?.id)) && sourceId === Number(node.id)) continue;
         const key = `${sourceId}:${sourceSlot}:${mediaType}`;
         if (seen.has(key)) continue;
@@ -1123,7 +1127,7 @@ function installQuickCreateCapture(canvas) {
             closeNativeNodeSearchSoon();
             return;
         }
-        const allowed = isReferenceMode(pending.targetNode) ? ["image", "video", "audio"] : ["image"];
+        const allowed = ["image"];
         if (scheduleDeferredInputCreateMenu(canvas, event, pending, allowed)) {
             lastCapturedDropAt = performance.now();
         }
@@ -1707,7 +1711,7 @@ function watchMediaSourceNode(node) {
 
 function installMediaSourceNode(nodeType, nodeData) {
     const name = String(nodeData?.name || "").toLowerCase();
-    if (!name.includes("loadimage") && !name.includes("loadvideo") && !name.includes("loadaudio")) return;
+    if (!name.includes("loadimage")) return;
     if (nodeType.prototype.__h3sMediaSourceInstalled) return;
     nodeType.prototype.__h3sMediaSourceInstalled = true;
     const originalCreated = nodeType.prototype.onNodeCreated;
@@ -1858,6 +1862,11 @@ function getVideoFrameThumbnail(videoUrl) {
 function sourcePreviewUrl(node, mediaType) {
     if (!node) return "";
     if (mediaType === "audio") return "";
+    // H3 Image Studio accepts image references only. Creating hidden <video>
+    // decoders for graph media nodes exhausted Chromium's WebMediaPlayer pool,
+    // then made Run and Abort lag while failed resources kept retrying. Use an
+    // icon when a video node has no poster instead of decoding it client-side.
+    if (mediaType === "video") return "";
     if (mediaType === "image") {
         const currentImageUrl = mediaViewUrlFromWidgets(node, ["image", "file", "filename"]);
         if (currentImageUrl) return currentImageUrl;
@@ -1871,7 +1880,6 @@ function sourcePreviewUrl(node, mediaType) {
         const video = element?.matches?.("video") ? element : element?.querySelector?.("video");
         if (mediaType === "video" && video?.poster) return video.poster;
     }
-    if (mediaType === "video") return getVideoFrameThumbnail(getNodeVideoSrc(node));
     const value = getWidget(node, "image")?.value;
     const filename = typeof value === "object" ? value?.filename : value;
     if (!filename) return "";

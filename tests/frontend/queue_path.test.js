@@ -7,11 +7,19 @@ import { forEachQueueNode } from "../../web/js/core/queue_graph.js";
 const source = readFileSync(new URL("../../web/js/studio_extension.js", import.meta.url), "utf8");
 const richEditorSource = readFileSync(new URL("../../web/h3studio_ui.js", import.meta.url), "utf8");
 
-test("video thumbnail failures cannot exhaust browser media players", () => {
-  assert.ok(richEditorSource.includes("MAX_ACTIVE_VIDEO_THUMBNAILS = 2"));
-  assert.ok(richEditorSource.includes("activeVideoThumbnailLoads.size >= MAX_ACTIVE_VIDEO_THUMBNAILS"));
-  assert.ok(richEditorSource.includes("activeVideoThumbnailLoads.delete(video)"));
-  assert.ok(richEditorSource.includes("VIDEO_THUMBNAIL_RETRY_MS = 5 * 60 * 1000"));
+test("image-only Studio never starts hidden video decoders", () => {
+  const body = richEditorSource.match(/function sourcePreviewUrl[\s\S]+?\n}/)?.[0] || "";
+  assert.ok(body.includes('if (mediaType === "video") return ""'));
+  assert.equal(body.includes("getVideoFrameThumbnail("), false);
+});
+
+test("legacy non-image virtual links are pruned instead of watched", () => {
+  const normalizeBody = richEditorSource.match(/function normalizeLinks[\s\S]+?\n}/)?.[0] || "";
+  const installBody = richEditorSource.match(/function installMediaSourceNode[\s\S]+?\n}/)?.[0] || "";
+  assert.ok(normalizeBody.includes('mediaType !== "image"'));
+  assert.equal(installBody.includes('name.includes("loadvideo")'), false);
+  assert.equal(installBody.includes('name.includes("loadaudio")'), false);
+  assert.ok(richEditorSource.includes('const allowed = ["image"]'));
 });
 
 test("queue serialization does not reapply the complete Director UI", () => {
@@ -47,6 +55,11 @@ test("queue path reports serialization timing without custom Run notifications",
   assert.ok(source.includes('queueStage("workflow_serialize.begin")'));
   assert.ok(source.includes('queueStage("graph_to_prompt.begin")'));
   assert.ok(source.includes('queueStage("fetch.invoked")'));
+});
+
+test("background workflow autosaves do not emit Run timing spam", () => {
+  const body = source.match(/function queueTiming[\s\S]+?\n}/)?.[0] || "";
+  assert.ok(body.includes("if (!activeQueueSubmission) return"));
 });
 
 test("queue graph traversal terminates when subgraphs refer back to an ancestor", () => {
