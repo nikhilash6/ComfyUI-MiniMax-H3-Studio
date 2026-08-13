@@ -131,10 +131,11 @@ def test_prompt_cache_invalidates_for_encoder_and_model(monkeypatch) -> None:
         assert "text_conditioning=MISS" in result.diagnostics
 
 
-def test_prompt_cache_key_survives_reloadable_handle_replacement() -> None:
+def test_prompt_cache_key_tracks_the_eager_native_encoder_instance() -> None:
     first = SimpleNamespace(clip_name="clip-a", clip=object())
     second = SimpleNamespace(clip_name="clip-a", clip=object())
-    assert cache._clip_key(first) == cache._clip_key(second) == ("clip-a",)
+    assert cache._clip_key(first)[0] == cache._clip_key(second)[0] == "clip-a"
+    assert cache._clip_key(first) != cache._clip_key(second)
 
 
 def test_prompt_cache_hit_does_not_materialize_lazy_encoder() -> None:

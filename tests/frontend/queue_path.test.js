@@ -22,12 +22,8 @@ test("legacy non-image virtual links are pruned instead of watched", () => {
   assert.ok(richEditorSource.includes('const allowed = ["image"]'));
 });
 
-test("queue serialization does not reapply the complete Director UI", () => {
-  const body = source.match(/node\.__h3studioBeforeSerialize = function[\s\S]+?\n  };/)?.[0] || "";
-  assert.ok(body.includes("STATE_PROPERTY"));
-  assert.equal(body.includes("stateFromNode(this)"), false);
-  assert.equal(body.includes("serializeState(state)"), false);
-  assert.equal(body.includes("applyState("), false);
+test("queue serialization performs no custom Director pre-pass", () => {
+  assert.equal(source.includes("node.__h3studioBeforeSerialize"), false);
 });
 
 test("queue validation stays synchronous before ComfyUI serializes", () => {
@@ -40,26 +36,19 @@ test("queue validation stays synchronous before ComfyUI serializes", () => {
 test("post-queue seed rendering yields before rebuilding the Director", () => {
   const body = source.match(/seedWidget\.afterQueued = function[\s\S]+?\n    };/)?.[0] || "";
   assert.ok(body.includes("setTimeout(() => renderPanel(node), 0)"));
-  assert.ok(body.includes('queueTiming(node, "afterQueued")'));
 });
 
-test("queue path reports serialization timing without custom Run notifications", () => {
-  assert.ok(source.includes('queueTiming(this, "serialize.begin")'));
-  assert.ok(source.includes('queueTiming(this, "serialize.end"'));
+test("H3 Studio leaves Run submission entirely to native ComfyUI", () => {
   assert.equal(source.includes("Run received. Preparing one prompt for ComfyUI."), false);
   assert.equal(source.includes('summary: "H3 Studio submitting"'), false);
   assert.equal(source.includes('summary: "H3 Studio is submitting"'), false);
   assert.equal(source.includes('summary: "H3 Studio queued"'), false);
   assert.equal(source.includes("Prompt submitted to ComfyUI."), false);
-  assert.ok(source.includes('queueStage("command.received"'));
-  assert.ok(source.includes('queueStage("workflow_serialize.begin")'));
-  assert.ok(source.includes('queueStage("graph_to_prompt.begin")'));
-  assert.ok(source.includes('queueStage("fetch.invoked")'));
-});
-
-test("background workflow autosaves do not emit Run timing spam", () => {
-  const body = source.match(/function queueTiming[\s\S]+?\n}/)?.[0] || "";
-  assert.ok(body.includes("if (!activeQueueSubmission) return"));
+  assert.equal(source.includes("app.queuePrompt ="), false);
+  assert.equal(source.includes("app.graphToPrompt ="), false);
+  assert.equal(source.includes("api.fetchApi ="), false);
+  assert.equal(source.includes("activeQueueSubmission"), false);
+  assert.equal(source.includes("queueTiming("), false);
 });
 
 test("queue graph traversal terminates when subgraphs refer back to an ancestor", () => {
@@ -76,22 +65,6 @@ test("queue graph traversal terminates when subgraphs refer back to an ancestor"
   forEachQueueNode(root, (node) => visited.push(node));
 
   assert.deepEqual(visited, [rootNode, childNode]);
-});
-
-test("rapid Run clicks are coalesced before ComfyUI can append duplicate queue items", () => {
-  const body = source.match(/app\.queuePrompt = function h3studioQueuePrompt[\s\S]+?\n  };/)?.[0] || "";
-  assert.ok(body.includes("if (activeQueueSubmission)"));
-  assert.ok(body.includes('queueStage("command.coalesced"'));
-  assert.ok(body.includes("return Promise.resolve(false)"));
-});
-
-test("single local-model prompts on Lightning bypass the unrelated cloud auth wait", () => {
-  assert.ok(source.includes('host.endsWith(".cloudspaces.litng.ai")'));
-  assert.equal(source.includes("hasCloudApiNode"), false);
-  assert.ok(source.includes('queueStage("native_auth.bypassed"'));
-  assert.ok(source.includes("result = submitLightningPrompt(number)"));
-  assert.ok(source.includes('executeQueueCallbacks("beforeQueued", false)'));
-  assert.ok(source.includes('executeQueueCallbacks("afterQueued", false)'));
 });
 
 test("graph-to-prompt does not rewalk the synchronized rich-editor DOM", () => {

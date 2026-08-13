@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import gc
 import logging
 import math
 import threading
@@ -11,9 +10,6 @@ from collections import OrderedDict
 from collections.abc import Callable, Hashable
 from dataclasses import dataclass
 from typing import Any
-
-from .runtime_trace import emit as trace
-from .runtime_trace import span
 
 LOGGER = logging.getLogger(__name__)
 
@@ -84,10 +80,8 @@ def _selected_model_key(bundle: Any, route: str) -> str:
 
 
 def _clip_key(bundle: Any) -> tuple[Any, ...]:
-    # Conditioning depends on checkpoint content, not the lifetime of the
-    # reloadable CLIP handle. Including object identity invalidated an otherwise
-    # exact prompt hit after the completed 32B stage was unloaded.
-    return (str(getattr(bundle, "clip_name", "")),)
+    clip = bundle.clip
+    return str(getattr(bundle, "clip_name", "")), id(getattr(clip, "patcher", clip))
 
 
 def _vae_key(bundle: Any) -> tuple[Any, ...]:
@@ -155,44 +149,16 @@ def _preview_black(width: int, height: int):
 def _encode_prompt(bundle: Any, key: Hashable, build_tokens: Callable[[], Any]):
     cached = _PROMPT_CACHE.get(key)
     if cached is not None:
-        # Do not inspect attributes on the lazy encoder handle here.
-        # H3StudioTextEncoder.__getattr__ materializes the 14.6 GiB encoder;
-        # this early return then skips the MISS cleanup and leaves it pinned
-        # beside the sampler on the next generation.
-        trace(
-            "conditioning.text.hit",
-            cache="HIT",
-            clip_handle_id=id(bundle.clip),
-            clip_materialized=getattr(bundle.clip, "_clip", None) is not None,
-        )
         return cached, "HIT", 0.0, "warm-cache"
-    select_clip = getattr(bundle, "text_encoder_for_conditioning", None)
-    clip = select_clip() if callable(select_clip) else bundle.clip
-    clip_patcher = getattr(clip, "patcher", clip)
-    with span("conditioning.text", state=True, patcher=clip_patcher, cache="MISS") as result:
-        started = time.perf_counter()
-        tokens = build_tokens()
-        tokenized = time.perf_counter()
-        conditioning = clip.encode_from_tokens_scheduled(tokens)
-        finished = time.perf_counter()
-        result.update(
-            tokenize_s=tokenized - started,
-            encode_s=finished - tokenized,
-            load_policy="native-dynamic",
-        )
-
-    # ComfyUI 0.32 owns DynamicVRAM/VBAR eviction and its lower-priority
-    # weights-loaded MRU cache. A targeted model unload also destroys that RAM
-    # cache, forcing the 14.6 GiB checkpoint to be read again on every changed
-    # prompt. Keep only the parsed handle here and let native RAM pressure
-    # choose which inactive pins to retain before the transformer runs.
-    clip = None
-    clip_patcher = None
-    gc.collect()
+    started = time.perf_counter()
+    tokens = build_tokens()
+    tokenized = time.perf_counter()
+    conditioning = bundle.clip.encode_from_tokens_scheduled(tokens)
+    finished = time.perf_counter()
     _PROMPT_CACHE.put(key, conditioning)
     tokenize_seconds = tokenized - started
     encode_seconds = finished - tokenized
-    runtime = f"native-dynamic; tokenize={tokenize_seconds:.3f}s; encode={encode_seconds:.3f}s"
+    runtime = f"native-comfy-manager; tokenize={tokenize_seconds:.3f}s; encode={encode_seconds:.3f}s"
     return conditioning, "MISS", finished - started, runtime
 
 
@@ -202,11 +168,9 @@ def _source_stage(bundle: Any, image: Any, image_id: Hashable, width: int, heigh
     key = _vae_key(bundle), image_id, int(width), int(height), str(source_fit)
     cached = _SOURCE_VAE_CACHE.get(key)
     if cached is not None:
-        trace("conditioning.source_vae.hit", cache="HIT")
         return (*cached, "HIT")
     fitted = _resize_image(image[:1], width, height, source_fit)
-    with span("conditioning.source_vae", state=True, patcher=getattr(bundle.video_vae, "patcher", None)):
-        latent = bundle.video_vae.encode(fitted)
+    latent = bundle.video_vae.encode(fitted)
     value = fitted, latent
     _SOURCE_VAE_CACHE.put(key, value)
     return (*value, "MISS")
@@ -228,12 +192,10 @@ def _reference_vae_stage(
     key = _vae_key(bundle), image_id, str(reference_size), dimension_key
     cached = _REFERENCE_VAE_CACHE.get(key)
     if cached is not None:
-        trace("conditioning.reference_vae.hit", cache="HIT")
         return (*cached, "HIT")
     if resized_image is None:
         resized_image, tw, th = _reference_resize(image, width, height, reference_size)
-    with span("conditioning.reference_vae", state=True, patcher=getattr(bundle.video_vae, "patcher", None)):
-        latent = bundle.video_vae.encode(resized_image)
+    latent = bundle.video_vae.encode(resized_image)
     value = latent, tw, th
     _REFERENCE_VAE_CACHE.put(key, value)
     return (*value, "MISS")

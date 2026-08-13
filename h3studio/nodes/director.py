@@ -459,12 +459,10 @@ class H3StudioCondition:
             if studio_context.state.generation.frame_profile == "image_vae_1"
             else h3_bundle.video_vae
         )
-        runtime_latent = dict(stages.latent)
-        runtime_latent["h3studio_sampling_model"] = model
         generation = H3StudioGeneration(
             model=model,
             conditioning=stages.conditioning,
-            latent=runtime_latent,
+            latent=stages.latent,
             video_vae=final_vae,
             requested_frames=stages.requested_frames,
             context=studio_context,
@@ -475,7 +473,7 @@ class H3StudioCondition:
             model,
             generation,
             stages.conditioning,
-            runtime_latent,
+            stages.latent,
             final_vae,
             stages.requested_frames,
             run_info,

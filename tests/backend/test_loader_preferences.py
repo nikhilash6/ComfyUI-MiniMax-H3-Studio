@@ -92,32 +92,9 @@ def test_h3_encoder_uses_native_dynamic_clip_loader(monkeypatch, tmp_path: Path)
     assert calls == [("encoder.safetensors", "minimax")]
 
 
-def test_text_encoder_handle_discards_and_reloads_completed_stage(monkeypatch) -> None:
+def test_loader_keeps_alpha12_eager_native_encoder_lifecycle(monkeypatch) -> None:
     loader = _load_with_models(monkeypatch, ["qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"])
-    first = SimpleNamespace(marker="first")
-    second = SimpleNamespace(marker="second")
-    releases = []
-    lifecycle = ModuleType("h3studio.runtime_lifecycle")
-    lifecycle.release_stage_model = lambda value, transition: releases.append((value, transition)) or True
-    monkeypatch.setitem(sys.modules, "h3studio.runtime_lifecycle", lifecycle)
-    monkeypatch.setattr(loader, "_load_clip", lambda _name: second)
-
-    handle = loader.H3StudioTextEncoder("encoder.safetensors", first)
-    assert handle.materialize() is first
-    assert handle.discard() is True
-    assert releases == [(first, "text-encoder->transformer")]
-    assert handle.materialize() is second
-
-
-def test_text_encoder_handle_leaves_residency_to_comfy_without_reparsing_checkpoint(monkeypatch) -> None:
-    loader = _load_with_models(monkeypatch, ["qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"])
-    first = SimpleNamespace(marker="first")
-    monkeypatch.setattr(
-        loader,
-        "_load_clip",
-        lambda _name: (_ for _ in ()).throw(AssertionError("checkpoint was reparsed")),
-    )
-
-    handle = loader.H3StudioTextEncoder("encoder.safetensors", first)
-    assert "release_residency" not in type(handle).__dict__
-    assert handle.materialize() is first
+    source = Path(loader.__file__).read_text(encoding="utf-8")
+    assert "class H3StudioTextEncoder" not in source
+    assert "text_encoder_for_conditioning" not in source
+    assert "clip = _load_clip(resolved_text_encoder)" in source

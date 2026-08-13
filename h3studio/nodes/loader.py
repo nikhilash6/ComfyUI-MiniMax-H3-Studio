@@ -10,14 +10,13 @@ import logging
 import re
 import threading
 from collections.abc import Iterable
+from contextlib import suppress
 from dataclasses import dataclass, field
 from typing import Any
 
 import folder_paths
 import nodes
 
-from ..runtime_trace import emit as trace
-from ..runtime_trace import model_source_fields, span
 from ..vae_io import detect_vae_io
 
 try:
@@ -240,66 +239,11 @@ def _load_unet(name: str):
 
 
 def _load_clip(name: str):
-    """Use ComfyUI's native dynamic CLIP loader.
-
-    Current ComfyUI uses its threaded AIMDO/HostBuffer path here. Forcing a
-    non-dynamic patcher serializes hundreds of H3 module transfers and performs
-    repeated CUDA synchronizations, which is dramatically slower on the L4.
-    """
-
-    LOGGER.info("[H3 Studio] H3 text encoder policy=native-dynamic")
     loader = nodes.CLIPLoader()
     try:
         return loader.load_clip(name, "minimax")[0]
     except TypeError:
         return loader.load_clip(name, type="minimax")[0]
-
-
-class H3StudioTextEncoder:
-    """Transparent CLIP handle whose residency is owned by ComfyUI.
-
-    The handle preserves the parsed model and mmap-backed checkpoint identity.
-    DynamicVRAM decides which VRAM pages and lower-priority host pins survive
-    each stage according to native pressure and MRU policy.
-    """
-
-    def __init__(self, name: str, clip: Any = None):
-        self.name = str(name)
-        self._clip = clip
-        self._lock = threading.RLock()
-
-    @property
-    def cache_identity(self) -> tuple[str, int]:
-        return self.name, id(self)
-
-    def materialize(self):
-        with self._lock:
-            if self._clip is None:
-                LOGGER.info("[H3 Studio] Reloading text encoder stage=%s", self.name)
-                with span("loader.text_encoder.reload", state=True, model=self.name) as result:
-                    self._clip = _load_clip(self.name)
-                    result.update(patcher_id=id(getattr(self._clip, "patcher", self._clip)))
-            else:
-                trace(
-                    "loader.text_encoder.reuse",
-                    patcher=getattr(self._clip, "patcher", self._clip),
-                    model=self.name,
-                )
-            return self._clip
-
-    def discard(self, transition: str = "text-encoder->transformer") -> bool:
-        with self._lock:
-            clip = self._clip
-            self._clip = None
-        if clip is None:
-            return False
-        from ..runtime_lifecycle import release_stage_model
-
-        release_stage_model(clip, transition)
-        return True
-
-    def __getattr__(self, name: str):
-        return getattr(self.materialize(), name)
 
 
 def _load_analyzer_clip(name: str):
@@ -342,10 +286,6 @@ class H3StudioBundle:
             return fallback
         raise ValueError("Select at least one H3 transformer in H3 Studio Loader.")
 
-    def text_encoder_for_conditioning(self):
-        materialize = getattr(self.clip, "materialize", None)
-        return materialize() if callable(materialize) else self.clip
-
     def analyzer_for_analysis(self):
         if not self.analyzer_name:
             return None
@@ -383,18 +323,10 @@ class H3StudioBundle:
         name = self.selected_name(kind)
         with self._lock:
             if self._model is not None and self._model_name == name:
-                trace("transformer.route.hit", patcher=self._model, route=kind, model=name)
                 return self._model
             self.release_model()
             LOGGER.info("[H3 Studio] Loading transformer route=%s model=%s", kind, name)
-            with span(
-                "transformer.construct",
-                state=True,
-                route=kind,
-                **model_source_fields("diffusion_models", name, "transformer"),
-            ) as result:
-                self._model = _load_unet(name)
-                result.update(patcher_id=id(self._model), model_id=id(getattr(self._model, "model", None)))
+            self._model = _load_unet(name)
             self._model_name = name
             self._model_kind = kind
             return self._model
@@ -404,6 +336,8 @@ class H3StudioBundle:
             self._model = None
             self._model_name = ""
             self._model_kind = ""
+            with suppress(Exception):
+                comfy.model_management.soft_empty_cache()
 
     def summary(self) -> str:
         vae_io = detect_vae_io(self.video_vae)
@@ -505,21 +439,8 @@ class H3StudioLoader:
                 resolved_text_encoder,
                 _preferred_nvfp4_encoder() or OFFICIAL_H3_TEXT_ENCODER,
             )
-        trace(
-            "loader.begin",
-            state=True,
-            **model_source_fields("text_encoders", resolved_text_encoder, "text_encoder"),
-            **model_source_fields("vae", video_vae, "video_vae"),
-            **model_source_fields("diffusion_models", fl2va_model, "fl2va"),
-            **model_source_fields("diffusion_models", ref2va_model, "ref2va"),
-        )
-        with span("loader.text_encoder.construct", state=True, model=resolved_text_encoder) as result:
-            loaded_clip = _load_clip(resolved_text_encoder)
-            clip = H3StudioTextEncoder(resolved_text_encoder, loaded_clip)
-            result.update(patcher_id=id(getattr(loaded_clip, "patcher", loaded_clip)))
-        with span("loader.video_vae.construct", state=True, model=video_vae) as result:
-            vae = _load_vae(video_vae)
-            result.update(patcher_id=id(getattr(vae, "patcher", vae)))
+        clip = _load_clip(resolved_text_encoder)
+        vae = _load_vae(video_vae)
         analyzer_name = _resolve_analyzer(image_analyzer)
         prompt_writer_name = _resolve_prompt_writer(prompt_writer, analyzer_name)
         bundle = H3StudioBundle(
@@ -532,13 +453,6 @@ class H3StudioLoader:
             prompt_writer_name=prompt_writer_name,
             clip=clip,
             video_vae=vae,
-        )
-        trace(
-            "loader.end",
-            state=True,
-            bundle_id=id(bundle),
-            clip_patcher_id=id(getattr(clip, "patcher", clip)),
-            vae_patcher_id=id(getattr(vae, "patcher", vae)),
         )
         vae_io = detect_vae_io(vae)
         if vae_io.chunked:

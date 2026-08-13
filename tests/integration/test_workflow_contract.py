@@ -254,7 +254,7 @@ def test_director_lifecycle_has_one_dispatcher_and_one_state_serializer():
         assert assignment not in modular
     assert "this.__h3studioBeforeSerialize?.(info)" in legacy
     assert "this.__h3studioAfterSerialize?.(info)" in legacy
-    assert "node.__h3studioBeforeSerialize" in modular
+    assert "node.__h3studioBeforeSerialize" not in modular
     assert "node.__h3studioAfterSerialize" in modular
 
 
