@@ -1213,8 +1213,7 @@ function installPanel(node) {
   if (stateWidget && !stateWidget.__h3studioQueueValidation) {
     stateWidget.__h3studioQueueValidation = true;
     const originalBeforeQueued = stateWidget.beforeQueued;
-    stateWidget.beforeQueued = async function h3studioBeforeQueued() {
-      const result = await originalBeforeQueued?.apply(this, arguments);
+    stateWidget.beforeQueued = function h3studioBeforeQueued() {
       const state = stateFromNode(node);
       const missingOrdinals = missingReferenceOrdinals(state);
       const missingLabels = missingOrdinals.map((ordinal) => `@Image${ordinal}`);
@@ -1232,7 +1231,9 @@ function installPanel(node) {
         });
         throw new Error(message);
       }
-      return result;
+      // Keep the ordinary valid path synchronous. An async wrapper adds a
+      // needless queue-lifecycle yield before ComfyUI can serialize and POST.
+      return originalBeforeQueued?.apply(this, arguments);
     };
   }
 
