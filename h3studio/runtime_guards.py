@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import gc
 import logging
-from contextlib import suppress
 
 from .prompting import comfy_analyzer
+from .runtime_lifecycle import release_stage_model
 
 LOGGER = logging.getLogger(__name__)
 
@@ -35,18 +35,13 @@ def _release_optional_helpers(bundle) -> None:
     if analyzer is None and writer is None:
         return
 
+    release_stage_model(analyzer, "visual-analyzer->h3-conditioning")
+    if writer is not analyzer:
+        release_stage_model(writer, "prompt-writer->h3-conditioning")
     bundle.analyzer_clip = None
     bundle.prompt_writer_clip = None
     del analyzer, writer
     gc.collect()
-
-    # Comfy's loaded-model registry keeps weak references to model patchers.
-    # Once Studio drops the helper CLIP objects, ask Comfy to prune dead entries.
-    # Do not manually unload the H3 encoder/transformer or alter DynamicVRAM.
-    with suppress(Exception):
-        import comfy.model_management
-
-        comfy.model_management.cleanup_models_gc()
 
     LOGGER.info("[H3 Studio] Released optional Qwen analyzer/writer before H3 conditioning")
 

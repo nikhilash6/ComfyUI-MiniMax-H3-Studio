@@ -48,3 +48,18 @@ def test_runtime_guard_installation_is_idempotent() -> None:
     runtime_guards.install_runtime_guards()
     assert comfy_analyzer.analyze_references is first
     assert getattr(first, "__h3studio_helper_release_guard__", False) is True
+
+
+def test_helper_release_targets_each_distinct_model_once(monkeypatch) -> None:
+    analyzer = object()
+    writer = object()
+    bundle = type("Bundle", (), {"analyzer_clip": analyzer, "prompt_writer_clip": writer})()
+    calls = []
+    monkeypatch.setattr(runtime_guards, "release_stage_model", lambda value, transition: calls.append((value, transition)))
+    monkeypatch.setattr(runtime_guards.gc, "collect", lambda: 0)
+
+    runtime_guards._release_optional_helpers(bundle)
+
+    assert [value for value, _transition in calls] == [analyzer, writer]
+    assert bundle.analyzer_clip is None
+    assert bundle.prompt_writer_clip is None
