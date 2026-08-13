@@ -9,8 +9,10 @@ const richEditorSource = readFileSync(new URL("../../web/h3studio_ui.js", import
 
 test("image-only Studio never starts hidden video decoders", () => {
   const body = richEditorSource.match(/function sourcePreviewUrl[\s\S]+?\n}/)?.[0] || "";
+  const thumbnailBody = richEditorSource.match(/function getVideoFrameThumbnail[\s\S]+?\n}/)?.[0] || "";
   assert.ok(body.includes('if (mediaType === "video") return ""'));
   assert.equal(body.includes("getVideoFrameThumbnail("), false);
+  assert.ok(thumbnailBody.indexOf('return ""') < thumbnailBody.indexOf('document.createElement("video")'));
 });
 
 test("legacy non-image virtual links are pruned instead of watched", () => {

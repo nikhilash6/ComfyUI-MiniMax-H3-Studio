@@ -175,10 +175,6 @@ let activePromptNode = null;
 let lastCapturedDropAt = 0;
 let deferredCreateMenuPending = false;
 let deferredCreateMenuToken = 0;
-const videoThumbnailCache = new Map();
-const activeVideoThumbnailLoads = new Set();
-const MAX_ACTIVE_VIDEO_THUMBNAILS = 2;
-const VIDEO_THUMBNAIL_RETRY_MS = 5 * 60 * 1000;
 let mentionPreviewRefreshTimer = null;
 let suppressNativeDropUntil = 0;
 let nativeSearchSuppressStyle = null;
@@ -1730,6 +1726,10 @@ function installMediaSourceNode(nodeType, nodeData) {
 }
 
 function getVideoFrameThumbnail(videoUrl) {
+    // H3 Studio is image-only. Never allocate Chromium media players here;
+    // stale legacy media metadata must degrade to an icon, not a decoder.
+    return "";
+    /* istanbul ignore next -- retained only for old workflow source compatibility */
     if (!videoUrl) return "";
     const cached = videoThumbnailCache.get(videoUrl);
     if (cached?.dataUrl) return cached.dataUrl;
@@ -1871,14 +1871,12 @@ function sourcePreviewUrl(node, mediaType) {
         const currentImageUrl = mediaViewUrlFromWidgets(node, ["image", "file", "filename"]);
         if (currentImageUrl) return currentImageUrl;
     }
-    const image = (node.imgs || []).find((item) => item?.src && !isLikelyVideoUrl(item.src));
+    const image = (node.imgs || []).find((item) => item?.src);
     if (image?.src) return image.src;
     for (const widget of node.widgets || []) {
         const element = widget?.element;
         const img = element?.matches?.("img") ? element : element?.querySelector?.("img");
         if (img?.src) return img.src;
-        const video = element?.matches?.("video") ? element : element?.querySelector?.("video");
-        if (mediaType === "video" && video?.poster) return video.poster;
     }
     const value = getWidget(node, "image")?.value;
     const filename = typeof value === "object" ? value?.filename : value;

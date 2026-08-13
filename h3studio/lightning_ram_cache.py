@@ -219,7 +219,7 @@ def stage_encoder(
         if target.is_file() and not target.is_symlink():
             _atomic_symlink(layout.visible_encoder, target)
             printer(f"[H3 RAM] Encoder already resident in tmpfs · {_human(target.stat().st_size)}")
-            printer("[H3 RAM] Warning: persistent recovery source was not discovered automatically.")
+            printer("[H3 RAM] Current run is RAM-accelerated; persistent recovery source was not discovered.")
             return True
         printer(f"[H3 RAM] Encoder source not found; leaving ComfyUI model paths unchanged ({ENCODER}).")
         return False

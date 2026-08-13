@@ -805,7 +805,7 @@
         "Node name for S&R": "SaveImage"
       },
       "widgets_values": [
-        "H3StudioNative/%date:yyyy-MM-dd%/H3_%seed%"
+        "H3StudioNative/%date:yyyy-MM-dd%/H3"
       ],
       "color": "#47314f",
       "bgcolor": "#302136"

@@ -12,7 +12,9 @@ if inserted:
     sys.path.insert(0, str(root))
 try:
     from h3studio.lightning_ram_cache import run_startup
+    from h3studio.startup_compat import quarantine_conflicting_frontends
 
+    quarantine_conflicting_frontends(root)
     run_startup(root)
 except Exception as error:
     print(f"[H3 RAM] Startup cache unavailable; standard ComfyUI paths remain active: {error}")
