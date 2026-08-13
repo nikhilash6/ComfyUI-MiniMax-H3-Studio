@@ -28,6 +28,7 @@ from ..prompting.compiler import PromptCompiler
 from ..prompting.vlm import compile_with_optional_vlm
 from ..references import ReferenceImage, stable_reference_id
 from ..routing import choose_route, validate_generation_contract
+from ..runtime_trace import emit as trace
 from ..state import StudioState
 from .loader import H3StudioBundle
 
@@ -556,6 +557,14 @@ class H3StudioContextSamplingPreset:
         else:
             runtime_profile = SAMPLING_PROFILE_TO_RUNTIME[profile]
             result = H3StudioSamplingPreset().build(model, runtime_profile)
+        trace(
+            "sampling.prepared",
+            state=True,
+            patcher=result[0],
+            profile=profile,
+            upstream_patcher_id=id(model),
+            sampling_patcher_id=id(result[0]),
+        )
         LOGGER.info("\n[H3 Studio] Sampling resolved\n  %s", result[3])
         return result
 

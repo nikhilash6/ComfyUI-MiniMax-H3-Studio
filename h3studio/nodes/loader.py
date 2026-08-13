@@ -17,6 +17,8 @@ from typing import Any
 import folder_paths
 import nodes
 
+from ..runtime_trace import emit as trace
+from ..runtime_trace import model_source_fields, span
 from ..vae_io import detect_vae_io
 
 try:
@@ -323,10 +325,18 @@ class H3StudioBundle:
         name = self.selected_name(kind)
         with self._lock:
             if self._model is not None and self._model_name == name:
+                trace("transformer.route.hit", patcher=self._model, route=kind, model=name)
                 return self._model
             self.release_model()
             LOGGER.info("[H3 Studio] Loading transformer route=%s model=%s", kind, name)
-            self._model = _load_unet(name)
+            with span(
+                "transformer.construct",
+                state=True,
+                route=kind,
+                **model_source_fields("diffusion_models", name, "transformer"),
+            ) as result:
+                self._model = _load_unet(name)
+                result.update(patcher_id=id(self._model), model_id=id(getattr(self._model, "model", None)))
             self._model_name = name
             self._model_kind = kind
             return self._model
@@ -439,8 +449,20 @@ class H3StudioLoader:
                 resolved_text_encoder,
                 _preferred_nvfp4_encoder() or OFFICIAL_H3_TEXT_ENCODER,
             )
-        clip = _load_clip(resolved_text_encoder)
-        vae = _load_vae(video_vae)
+        trace(
+            "loader.begin",
+            state=True,
+            **model_source_fields("text_encoders", resolved_text_encoder, "text_encoder"),
+            **model_source_fields("vae", video_vae, "video_vae"),
+            **model_source_fields("diffusion_models", fl2va_model, "fl2va"),
+            **model_source_fields("diffusion_models", ref2va_model, "ref2va"),
+        )
+        with span("loader.text_encoder.construct", state=True, model=resolved_text_encoder) as result:
+            clip = _load_clip(resolved_text_encoder)
+            result.update(patcher_id=id(getattr(clip, "patcher", clip)))
+        with span("loader.video_vae.construct", state=True, model=video_vae) as result:
+            vae = _load_vae(video_vae)
+            result.update(patcher_id=id(getattr(vae, "patcher", vae)))
         analyzer_name = _resolve_analyzer(image_analyzer)
         prompt_writer_name = _resolve_prompt_writer(prompt_writer, analyzer_name)
         bundle = H3StudioBundle(
@@ -453,6 +475,13 @@ class H3StudioLoader:
             prompt_writer_name=prompt_writer_name,
             clip=clip,
             video_vae=vae,
+        )
+        trace(
+            "loader.end",
+            state=True,
+            bundle_id=id(bundle),
+            clip_patcher_id=id(getattr(clip, "patcher", clip)),
+            vae_patcher_id=id(getattr(vae, "patcher", vae)),
         )
         vae_io = detect_vae_io(vae)
         if vae_io.chunked:

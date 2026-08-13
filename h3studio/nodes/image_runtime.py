@@ -1311,6 +1311,8 @@ class H3StudioDecode:
     CATEGORY = CATEGORY
 
     def decode(self, samples, vae):
+        from ..runtime_trace import span
+
         latent = samples["samples"]
         if latent.is_nested:
             latent = latent.unbind()[0]
@@ -1320,7 +1322,9 @@ class H3StudioDecode:
         # output-identical chunked path inside VAE.decode when advertised by
         # first_stage_model.comfy_has_chunked_io.
         decode_started = time.perf_counter()
-        images = vae.decode(latent)
+        with span("vae.decode", state=True, patcher=getattr(vae, "patcher", None)) as result:
+            images = vae.decode(latent)
+            result.update(output_shape=tuple(getattr(images, "shape", ())))
         decode_seconds = time.perf_counter() - decode_started
         vae_io = detect_vae_io(vae)
 

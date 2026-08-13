@@ -11,6 +11,9 @@ from collections.abc import Callable, Hashable
 from dataclasses import dataclass
 from typing import Any
 
+from .runtime_trace import emit as trace
+from .runtime_trace import span
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -149,12 +152,16 @@ def _preview_black(width: int, height: int):
 def _encode_prompt(bundle: Any, key: Hashable, build_tokens: Callable[[], Any]):
     cached = _PROMPT_CACHE.get(key)
     if cached is not None:
+        trace("conditioning.text.hit", cache="HIT", clip_patcher_id=id(getattr(bundle.clip, "patcher", bundle.clip)))
         return cached, "HIT", 0.0, "warm-cache"
-    started = time.perf_counter()
-    tokens = build_tokens()
-    tokenized = time.perf_counter()
-    conditioning = bundle.clip.encode_from_tokens_scheduled(tokens)
-    finished = time.perf_counter()
+    clip_patcher = getattr(bundle.clip, "patcher", bundle.clip)
+    with span("conditioning.text", state=True, patcher=clip_patcher, cache="MISS") as result:
+        started = time.perf_counter()
+        tokens = build_tokens()
+        tokenized = time.perf_counter()
+        conditioning = bundle.clip.encode_from_tokens_scheduled(tokens)
+        finished = time.perf_counter()
+        result.update(tokenize_s=tokenized - started, encode_s=finished - tokenized)
     _PROMPT_CACHE.put(key, conditioning)
     tokenize_seconds = tokenized - started
     encode_seconds = finished - tokenized
@@ -168,9 +175,11 @@ def _source_stage(bundle: Any, image: Any, image_id: Hashable, width: int, heigh
     key = _vae_key(bundle), image_id, int(width), int(height), str(source_fit)
     cached = _SOURCE_VAE_CACHE.get(key)
     if cached is not None:
+        trace("conditioning.source_vae.hit", cache="HIT")
         return (*cached, "HIT")
     fitted = _resize_image(image[:1], width, height, source_fit)
-    latent = bundle.video_vae.encode(fitted)
+    with span("conditioning.source_vae", state=True, patcher=getattr(bundle.video_vae, "patcher", None)):
+        latent = bundle.video_vae.encode(fitted)
     value = fitted, latent
     _SOURCE_VAE_CACHE.put(key, value)
     return (*value, "MISS")
@@ -192,10 +201,12 @@ def _reference_vae_stage(
     key = _vae_key(bundle), image_id, str(reference_size), dimension_key
     cached = _REFERENCE_VAE_CACHE.get(key)
     if cached is not None:
+        trace("conditioning.reference_vae.hit", cache="HIT")
         return (*cached, "HIT")
     if resized_image is None:
         resized_image, tw, th = _reference_resize(image, width, height, reference_size)
-    latent = bundle.video_vae.encode(resized_image)
+    with span("conditioning.reference_vae", state=True, patcher=getattr(bundle.video_vae, "patcher", None)):
+        latent = bundle.video_vae.encode(resized_image)
     value = latent, tw, th
     _REFERENCE_VAE_CACHE.put(key, value)
     return (*value, "MISS")

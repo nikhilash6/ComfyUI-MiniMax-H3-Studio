@@ -345,6 +345,8 @@ class _PreviewWrapper:
     ):
         import torch
 
+        from ..runtime_trace import emit as trace
+
         self.run_serial += 1
         self.first_frame_reported = False
         run_id = f"{self.node_id}:{self.run_serial}"
@@ -352,11 +354,20 @@ class _PreviewWrapper:
         self._discard_pending()
         total_steps = max(0, len(sigmas) - 1) if sigmas is not None and hasattr(sigmas, "__len__") else 0
         sampling_started = time.perf_counter()
+        trace_started = time.monotonic()
         LOGGER.info(
             "[H3 Studio] TAEH3 sampler wrapper entered | node=%s | steps=%d | latent_shapes=%s | decoder=cpu",
             self.node_id,
             total_steps,
             latent_shapes,
+        )
+        trace(
+            "sampling.begin",
+            state=True,
+            seed=seed,
+            steps=total_steps,
+            preview="cpu",
+            preview_node=self.node_id,
         )
         try:
             self._reset_frontend(total_steps, run_id)
@@ -386,17 +397,37 @@ class _PreviewWrapper:
             if callback is not None:
                 callback(step, x0, x, total_steps)
 
-        return executor(
-            noise,
-            latent_image,
-            sampler,
-            sigmas,
-            denoise_mask,
-            preview_callback,
-            disable_pbar,
-            seed,
-            latent_shapes=latent_shapes,
+        try:
+            result = executor(
+                noise,
+                latent_image,
+                sampler,
+                sigmas,
+                denoise_mask,
+                preview_callback,
+                disable_pbar,
+                seed,
+                latent_shapes=latent_shapes,
+            )
+        except Exception as error:
+            trace(
+                "sampling.error",
+                state=True,
+                seed=seed,
+                steps=total_steps,
+                elapsed_s=time.monotonic() - trace_started,
+                error_type=type(error).__name__,
+                error=str(error),
+            )
+            raise
+        trace(
+            "sampling.end",
+            state=True,
+            seed=seed,
+            steps=total_steps,
+            elapsed_s=time.monotonic() - trace_started,
         )
+        return result
 
 
 class H3StudioTAEH3Preview:
@@ -489,5 +520,16 @@ class H3StudioTAEH3Preview:
             tiny_vae,
             int(max_resolution),
             max(1, int(preview_every_n_steps)),
+        )
+        from ..runtime_trace import emit as trace
+
+        trace(
+            "preview.attach",
+            patcher=patched,
+            node=node_id,
+            identity=identity,
+            upstream_patcher_id=id(model),
+            preview_patcher_id=id(patched),
+            decoder="cpu",
         )
         return (patched,)
