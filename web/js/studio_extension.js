@@ -202,12 +202,10 @@ function randomSeed() {
 }
 
 function hideWidget(target) {
-  if (!target) return;
-  if (!target.__h3studioHidden) {
-    target.__h3studioHidden = true;
-    target.__h3studioComputeSize = target.computeSize;
-    target.__h3studioType = target.type;
-  }
+  if (!target || target.__h3studioHidden) return;
+  target.__h3studioHidden = true;
+  target.__h3studioComputeSize = target.computeSize;
+  target.__h3studioType = target.type;
   target.computeSize = () => [0, -4];
   target.hidden = true;
   target.type = "h3studio_hidden";

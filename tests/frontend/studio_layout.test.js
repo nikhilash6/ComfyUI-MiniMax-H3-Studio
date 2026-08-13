@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -9,6 +10,8 @@ import {
   initialStudioNodeSize,
   studioPanelSize,
 } from "../../web/js/core/layout.js";
+
+const studioSource = readFileSync(new URL("../../web/js/studio_extension.js", import.meta.url), "utf8");
 
 test("Studio panel height stays fixed while width follows Comfy allocation", () => {
   assert.deepEqual(studioPanelSize(900), [900, STUDIO_PANEL_HEIGHT]);
@@ -27,4 +30,10 @@ test("Director preserves a previously accepted user size during automatic recomp
 
 test("initial Director normalization still resets runaway serialized height", () => {
   assert.deepEqual(initialStudioNodeSize([760, 4000]), [760, STUDIO_NODE_HEIGHT]);
+});
+
+test("canvas redraws do not rewrite already-hidden reactive widgets", () => {
+  const body = studioSource.match(/function hideWidget[\s\S]+?\n}/)?.[0] || "";
+  assert.ok(body.includes("target.__h3studioHidden) return"));
+  assert.equal(body.includes("if (!target.__h3studioHidden)"), false);
 });
