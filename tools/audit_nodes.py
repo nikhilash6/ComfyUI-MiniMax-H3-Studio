@@ -46,12 +46,12 @@ def workflow_custom_types(value):
 
 def main():
     registered = set().union(*(mapping_keys(path) for path in SOURCES))
-    workflow = json.loads((ROOT / "example_workflows" / "H3_Studio_Unified_Image.json").read_text(encoding="utf-8"))
+    workflow = json.loads((ROOT / "example_workflows" / "H3_Studio_Native_Fast_T2I.json").read_text(encoding="utf-8"))
     referenced = workflow_custom_types(workflow)
     missing = referenced - registered
     if missing:
         raise SystemExit(f"Workflow references unregistered H3 Studio nodes: {sorted(missing)}")
-    required = {"H3StudioDirector", "H3StudioLoader", "H3StudioCondition", "H3StudioDecode", "H3StudioFrameSelector"}
+    required = {"H3StudioResolutionPreset", "H3StudioTextToImagePrepare", "H3StudioWorkflowNote"}
     if required - registered:
         raise SystemExit(f"Required node mappings are absent: {sorted(required - registered)}")
     if "H3StudioToImagePrepare" in registered:

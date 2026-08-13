@@ -14,6 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_PATH = ROOT / "example_workflows" / "H3_Studio_Unified_Image.json"
+NATIVE_FAST_T2I_PATH = ROOT / "example_workflows" / "H3_Studio_Native_Fast_T2I.json"
 SUBGRAPH_PATH = ROOT / "subgraphs" / "H3_Studio_Sampling_and_Decode.json"
 BLUEPRINT_ID = "8345c465-1de3-58e2-84dd-7bfbe9263ab2"
 SUBGRAPH_ID = "5930b00d-9f8e-4b87-9cb5-ff5f7cf3b30a"
@@ -880,13 +881,319 @@ def encoded(value):
     return json.dumps(value, indent=2, ensure_ascii=False) + "\n"
 
 
+def build_native_fast_t2i():
+    """Build the primary L4 workflow from ordinary ComfyUI execution stages.
+
+    The legacy Studio workflow deliberately remains available as a comparison,
+    but this graph does not use H3StudioLoader, H3StudioDirector,
+    H3StudioCondition, a bundled generation object, or a sampling subgraph.
+    ComfyUI can therefore cache and release each heavyweight stage normally.
+    """
+
+    links = Links()
+    clip_to_prepare = links.add(2, 0, 5, 0, "CLIP")
+    width_to_prepare = links.add(4, 0, 5, 2, "INT")
+    height_to_prepare = links.add(4, 1, 5, 3, "INT")
+    model_to_scheduler = links.add(1, 0, 6, 0, "MODEL")
+    model_to_guider = links.add(1, 0, 8, 0, "MODEL")
+    positive_to_guider = links.add(5, 0, 8, 1, "CONDITIONING")
+    sampler_to_sample = links.add(7, 0, 10, 2, "SAMPLER")
+    sigmas_to_sample = links.add(6, 0, 10, 3, "SIGMAS")
+    noise_to_sample = links.add(9, 0, 10, 0, "NOISE")
+    guider_to_sample = links.add(8, 0, 10, 1, "GUIDER")
+    latent_to_sample = links.add(5, 1, 10, 4, "LATENT")
+    sample_to_decode = links.add(10, 0, 11, 0, "LATENT")
+    vae_to_decode = links.add(3, 0, 11, 1, "VAE")
+    decode_to_frame = links.add(11, 0, 12, 0, "IMAGE")
+    frame_to_preview = links.add(12, 0, 13, 0, "IMAGE")
+    frame_to_save = links.add(12, 0, 14, 0, "IMAGE")
+
+    nodes = [
+        node(
+            1,
+            "UNETLoader",
+            "FL2VA transformer · native loader",
+            [60, 180],
+            [360, 92],
+            order=0,
+            inputs=[socket("unet_name", "COMBO", widget="unet_name"), socket("weight_dtype", "COMBO", widget="weight_dtype")],
+            outputs=[output("MODEL", "MODEL", [model_to_scheduler, model_to_guider])],
+            widgets=["minimax_h3_fl2va_pruned_int8_convrot.safetensors", "default"],
+            color="#243b36",
+            bgcolor="#182724",
+        ),
+        node(
+            2,
+            "CLIPLoader",
+            "Qwen3-VL 32B · native CLIP loader",
+            [60, 420],
+            [360, 126],
+            order=1,
+            inputs=[
+                socket("clip_name", "COMBO", widget="clip_name"),
+                socket("type", "COMBO", widget="type"),
+                socket("device", "COMBO", widget="device"),
+            ],
+            outputs=[output("CLIP", "CLIP", [clip_to_prepare])],
+            widgets=["qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors", "minimax", "default"],
+            color="#243b36",
+            bgcolor="#182724",
+        ),
+        node(
+            3,
+            "VAELoader",
+            "Video VAE · decode only",
+            [60, 680],
+            [360, 72],
+            order=2,
+            inputs=[socket("vae_name", "COMBO", widget="vae_name")],
+            outputs=[output("VAE", "VAE", [vae_to_decode])],
+            widgets=["minimax_h3_video_vae_fp16.safetensors"],
+            color="#243b36",
+            bgcolor="#182724",
+        ),
+        node(
+            4,
+            "H3StudioResolutionPreset",
+            "H3-native canvas",
+            [500, 520],
+            [380, 170],
+            order=3,
+            inputs=[
+                socket("source_image", "IMAGE"),
+                socket("aspect_ratio", "COMBO", widget="aspect_ratio"),
+                socket("resolution_profile", "COMBO", widget="resolution_profile"),
+                socket("custom_megapixels", "FLOAT", widget="custom_megapixels"),
+                socket("limit_to_native_area", "BOOLEAN", widget="limit_to_native_area"),
+            ],
+            outputs=[
+                output("width", "INT", [width_to_prepare]),
+                output("height", "INT", [height_to_prepare]),
+                output("resolution_info", "STRING", None),
+            ],
+            widgets=["1:1 square", "fast preview | 0.40 MP", 1.0, True],
+            color="#39402b",
+            bgcolor="#262b1d",
+        ),
+        node(
+            5,
+            "H3StudioTextToImagePrepare",
+            "Text conditioning · independently cacheable",
+            [960, 350],
+            [500, 350],
+            order=4,
+            inputs=[
+                socket("clip", "CLIP", clip_to_prepare),
+                socket("prompt", "STRING", widget="prompt"),
+                socket("width", "INT", width_to_prepare, widget="width"),
+                socket("height", "INT", height_to_prepare, widget="height"),
+                socket("quality_profile", "COMBO", widget="quality_profile"),
+                socket("optimize_for_still", "BOOLEAN", widget="optimize_for_still"),
+            ],
+            outputs=[
+                output("positive", "CONDITIONING", [positive_to_guider]),
+                output("h3_latent", "LATENT", [latent_to_sample]),
+                output("requested_frames", "INT", None),
+                output("image_prompt", "STRING", None),
+                output("run_info", "STRING", None),
+            ],
+            widgets=[
+                "A finished cinematic still image with a clear subject, deliberate composition, precise detail, natural texture, controlled lighting, and a coherent background.",
+                1024,
+                1024,
+                "recommended | 5 frames",
+                True,
+            ],
+            color="#4a3e24",
+            bgcolor="#302918",
+        ),
+        node(
+            6,
+            "BasicScheduler",
+            "Native H3 schedule · 12 steps",
+            [540, 170],
+            [330, 106],
+            order=5,
+            inputs=[socket("model", "MODEL", model_to_scheduler)],
+            outputs=[output("SIGMAS", "SIGMAS", [sigmas_to_sample])],
+            widgets=["simple", 12, 1.0],
+            color="#30405a",
+            bgcolor="#202b3d",
+        ),
+        node(
+            7,
+            "KSamplerSelect",
+            "Native RES sampler",
+            [540, 330],
+            [330, 64],
+            order=6,
+            outputs=[output("SAMPLER", "SAMPLER", [sampler_to_sample])],
+            widgets=["res_multistep"],
+            color="#30405a",
+            bgcolor="#202b3d",
+        ),
+        node(
+            8,
+            "BasicGuider",
+            "Native positive guider",
+            [1530, 230],
+            [310, 90],
+            order=7,
+            inputs=[socket("model", "MODEL", model_to_guider), socket("conditioning", "CONDITIONING", positive_to_guider)],
+            outputs=[output("GUIDER", "GUIDER", [guider_to_sample])],
+            color="#30405a",
+            bgcolor="#202b3d",
+        ),
+        node(
+            9,
+            "RandomNoise",
+            "Seed",
+            [1530, 400],
+            [310, 82],
+            order=8,
+            inputs=[socket("noise_seed", "INT", widget="noise_seed")],
+            outputs=[output("NOISE", "NOISE", [noise_to_sample])],
+            widgets=[42, "randomize"],
+            color="#30405a",
+            bgcolor="#202b3d",
+        ),
+        node(
+            10,
+            "SamplerCustomAdvanced",
+            "Native sampling",
+            [1930, 260],
+            [350, 156],
+            order=9,
+            inputs=[
+                socket("noise", "NOISE", noise_to_sample),
+                socket("guider", "GUIDER", guider_to_sample),
+                socket("sampler", "SAMPLER", sampler_to_sample),
+                socket("sigmas", "SIGMAS", sigmas_to_sample),
+                socket("latent_image", "LATENT", latent_to_sample),
+            ],
+            outputs=[output("output", "LATENT", [sample_to_decode]), output("denoised_output", "LATENT", None)],
+            color="#30405a",
+            bgcolor="#202b3d",
+        ),
+        node(
+            11,
+            "VAEDecode",
+            "Native VAE decode",
+            [2370, 280],
+            [300, 90],
+            order=10,
+            inputs=[socket("samples", "LATENT", sample_to_decode), socket("vae", "VAE", vae_to_decode)],
+            outputs=[output("IMAGE", "IMAGE", [decode_to_frame])],
+            color="#47314f",
+            bgcolor="#302136",
+        ),
+        node(
+            12,
+            "ImageFromBatch",
+            "Select first finished still",
+            [2750, 250],
+            [320, 110],
+            order=11,
+            inputs=[
+                socket("image", "IMAGE", decode_to_frame),
+                socket("batch_index", "INT", widget="batch_index"),
+                socket("length", "INT", widget="length"),
+            ],
+            outputs=[output("IMAGE", "IMAGE", [frame_to_preview, frame_to_save])],
+            widgets=[0, 1],
+            color="#47314f",
+            bgcolor="#302136",
+        ),
+        node(
+            13,
+            "PreviewImage",
+            "Final still · preview",
+            [3160, 120],
+            [410, 360],
+            order=12,
+            inputs=[socket("images", "IMAGE", frame_to_preview)],
+            outputs=[output("IMAGE", "IMAGE", None)],
+            color="#47314f",
+            bgcolor="#302136",
+        ),
+        node(
+            14,
+            "SaveImage",
+            "Final still · native PNG save",
+            [3160, 560],
+            [410, 110],
+            order=13,
+            inputs=[socket("images", "IMAGE", frame_to_save), socket("filename_prefix", "STRING", widget="filename_prefix")],
+            outputs=[output("images", "IMAGE", None)],
+            widgets=["H3StudioNative/%date:yyyy-MM-dd%/H3_%seed%"],
+            color="#47314f",
+            bgcolor="#302136",
+        ),
+        note(
+            100,
+            "START HERE · native fast path",
+            "quick start",
+            "1. Edit the prompt in **Text conditioning**.\n2. Keep the first test at **0.40 MP**, 5 frames, and 12 steps.\n3. Queue once.\n4. Queue the identical prompt again to verify ComfyUI's node cache.\n\n> [!IMPORTANT]\n> This workflow intentionally has no Director, combined model bundle, Condition & Route node, runtime sampling subgraph, analyzer, benchmark branch, or live-video preview.",
+            [60, 850],
+            [820, 300],
+            14,
+        ),
+        note(
+            101,
+            "Why this graph is different",
+            "models",
+            "The 32B encoder, FL2VA transformer, and video VAE are ordinary independent ComfyUI loaders. Text conditioning does not depend on the VAE. The VAE is first needed after sampling. ComfyUI can cache unchanged conditioning and perform memory-pressure handoffs between every heavyweight node.",
+            [960, 820],
+            [820, 240],
+            15,
+        ),
+    ]
+
+    groups = [
+        {"id": 1, "title": "01 · INDEPENDENT MODEL LOADERS", "bounding": [20, 100, 440, 700], "color": "#355b54", "font_size": 24, "flags": {}},
+        {"id": 2, "title": "02 · NATIVE SCHEDULE", "bounding": [480, 100, 440, 350], "color": "#3f536b", "font_size": 24, "flags": {}},
+        {"id": 3, "title": "03 · CONDITIONING ONLY", "bounding": [920, 280, 590, 470], "color": "#66553d", "font_size": 24, "flags": {}},
+        {"id": 4, "title": "04 · NATIVE SAMPLE", "bounding": [1490, 150, 840, 390], "color": "#3f536b", "font_size": 24, "flags": {}},
+        {"id": 5, "title": "05 · DECODE AND SAVE", "bounding": [2330, 80, 1290, 650], "color": "#59405f", "font_size": 24, "flags": {}},
+    ]
+
+    return {
+        "id": "8cd71a62-633f-4a50-bc6c-6ba5189de832",
+        "revision": 0,
+        "last_node_id": 101,
+        "last_link_id": links.next_id - 1,
+        "nodes": nodes,
+        "links": links.items,
+        "groups": groups,
+        "definitions": {"subgraphs": []},
+        "config": {},
+        "extra": {
+            "ds": {"scale": 0.72, "offset": [420, 240]},
+            "frontendVersion": "1.30.0",
+            "h3studio": {
+                "schema_version": 1,
+                "template_version": "native-fast-t2i-1",
+                "runtime_structure": "independent-native-comfy-stages",
+                "required_encoder": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+                "hub_included": False,
+            },
+        },
+        "version": 0.4,
+    }
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", help="Fail when committed outputs differ from generated data.")
     args = parser.parse_args()
     workflow_text = encoded(build_workflow())
+    native_fast_t2i_text = encoded(build_native_fast_t2i())
     subgraph_text = encoded(build_subgraph_blueprint())
-    expected = [(WORKFLOW_PATH, workflow_text), (SUBGRAPH_PATH, subgraph_text)]
+    expected = [
+        (WORKFLOW_PATH, workflow_text),
+        (NATIVE_FAST_T2I_PATH, native_fast_t2i_text),
+        (SUBGRAPH_PATH, subgraph_text),
+    ]
     if args.check:
         stale = [
             str(path.relative_to(ROOT))
