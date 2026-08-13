@@ -133,3 +133,20 @@ def test_l4_loads_h3_encoder_with_official_non_dynamic_patcher(monkeypatch, tmp_
     assert calls[0]["disable_dynamic"] is True
     assert calls[0]["clip_type"] == "minimax"
     assert calls[0]["model_options"] == {"initial_device": "cuda:0"}
+
+
+def test_text_encoder_handle_discards_and_reloads_completed_stage(monkeypatch) -> None:
+    loader = _load_with_models(monkeypatch, ["qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"])
+    first = SimpleNamespace(marker="first")
+    second = SimpleNamespace(marker="second")
+    releases = []
+    lifecycle = ModuleType("h3studio.runtime_lifecycle")
+    lifecycle.release_stage_model = lambda value, transition: releases.append((value, transition)) or True
+    monkeypatch.setitem(sys.modules, "h3studio.runtime_lifecycle", lifecycle)
+    monkeypatch.setattr(loader, "_load_clip", lambda _name: second)
+
+    handle = loader.H3StudioTextEncoder("encoder.safetensors", first)
+    assert handle.materialize() is first
+    assert handle.discard() is True
+    assert releases == [(first, "text-encoder->transformer")]
+    assert handle.materialize() is second

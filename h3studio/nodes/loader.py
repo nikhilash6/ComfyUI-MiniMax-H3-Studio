@@ -305,6 +305,46 @@ def _load_clip(name: str):
         return loader.load_clip(name, type="minimax")[0]
 
 
+class H3StudioTextEncoder:
+    """Transparent, reloadable CLIP handle with an explicit stage lifetime.
+
+    H3's encoder and transformer each fit an L4, but retaining both through
+    CPU offload exhausts a 32 GiB host.  The handle preserves the public CLIP
+    output while allowing the completed encoder instance to be discarded once
+    its small conditioning result has entered the prompt cache.
+    """
+
+    def __init__(self, name: str, clip: Any = None):
+        self.name = str(name)
+        self._clip = clip
+        self._lock = threading.RLock()
+
+    @property
+    def cache_identity(self) -> tuple[str, int]:
+        return self.name, id(self)
+
+    def materialize(self):
+        with self._lock:
+            if self._clip is None:
+                LOGGER.info("[H3 Studio] Reloading text encoder stage=%s", self.name)
+                self._clip = _load_clip(self.name)
+            return self._clip
+
+    def discard(self, transition: str = "text-encoder->transformer") -> bool:
+        with self._lock:
+            clip = self._clip
+            self._clip = None
+        if clip is None:
+            return False
+        from ..runtime_lifecycle import release_stage_model
+
+        release_stage_model(clip, transition)
+        return True
+
+    def __getattr__(self, name: str):
+        return getattr(self.materialize(), name)
+
+
 def _load_analyzer_clip(name: str):
     loader = nodes.CLIPLoader()
     try:
@@ -344,6 +384,14 @@ class H3StudioBundle:
         if not _is_none(fallback):
             return fallback
         raise ValueError("Select at least one H3 transformer in H3 Studio Loader.")
+
+    def text_encoder_for_conditioning(self):
+        materialize = getattr(self.clip, "materialize", None)
+        return materialize() if callable(materialize) else self.clip
+
+    def release_text_encoder(self) -> bool:
+        discard = getattr(self.clip, "discard", None)
+        return bool(discard()) if callable(discard) else False
 
     def analyzer_for_analysis(self):
         if not self.analyzer_name:
@@ -513,8 +561,9 @@ class H3StudioLoader:
             **model_source_fields("diffusion_models", ref2va_model, "ref2va"),
         )
         with span("loader.text_encoder.construct", state=True, model=resolved_text_encoder) as result:
-            clip = _load_clip(resolved_text_encoder)
-            result.update(patcher_id=id(getattr(clip, "patcher", clip)))
+            loaded_clip = _load_clip(resolved_text_encoder)
+            clip = H3StudioTextEncoder(resolved_text_encoder, loaded_clip)
+            result.update(patcher_id=id(getattr(loaded_clip, "patcher", loaded_clip)))
         with span("loader.video_vae.construct", state=True, model=video_vae) as result:
             vae = _load_vae(video_vae)
             result.update(patcher_id=id(getattr(vae, "patcher", vae)))

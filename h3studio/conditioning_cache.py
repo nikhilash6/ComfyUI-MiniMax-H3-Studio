@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gc
 import logging
 import math
 import threading
@@ -84,7 +85,8 @@ def _selected_model_key(bundle: Any, route: str) -> str:
 
 def _clip_key(bundle: Any) -> tuple[Any, ...]:
     clip = bundle.clip
-    return str(getattr(bundle, "clip_name", "")), id(getattr(clip, "patcher", clip))
+    identity = getattr(clip, "cache_identity", None)
+    return str(getattr(bundle, "clip_name", "")), identity if identity is not None else id(getattr(clip, "patcher", clip))
 
 
 def _vae_key(bundle: Any) -> tuple[Any, ...]:
@@ -154,7 +156,9 @@ def _encode_prompt(bundle: Any, key: Hashable, build_tokens: Callable[[], Any]):
     if cached is not None:
         trace("conditioning.text.hit", cache="HIT", clip_patcher_id=id(getattr(bundle.clip, "patcher", bundle.clip)))
         return cached, "HIT", 0.0, "warm-cache"
-    clip_patcher = getattr(bundle.clip, "patcher", bundle.clip)
+    select_clip = getattr(bundle, "text_encoder_for_conditioning", None)
+    clip = select_clip() if callable(select_clip) else bundle.clip
+    clip_patcher = getattr(clip, "patcher", clip)
     from .runtime_lifecycle import full_text_encoder_when_safe, release_stage_model
 
     try:
@@ -162,12 +166,23 @@ def _encode_prompt(bundle: Any, key: Hashable, build_tokens: Callable[[], Any]):
             started = time.perf_counter()
             tokens = build_tokens()
             tokenized = time.perf_counter()
-            with full_text_encoder_when_safe(bundle.clip, tokens) as load_policy:
-                conditioning = bundle.clip.encode_from_tokens_scheduled(tokens)
+            with full_text_encoder_when_safe(clip, tokens) as load_policy:
+                conditioning = clip.encode_from_tokens_scheduled(tokens)
             finished = time.perf_counter()
             result.update(tokenize_s=tokenized - started, encode_s=finished - tokenized, load_policy=load_policy)
     finally:
-        release_stage_model(clip_patcher, "text-encoder->next-stage")
+        release_text_encoder = getattr(bundle, "release_text_encoder", None)
+        discarded = callable(release_text_encoder) and release_text_encoder()
+        if not discarded:
+            release_stage_model(clip_patcher, "text-encoder->next-stage")
+        else:
+            # Drop the last local references before the transformer checkpoint
+            # is constructed. This is a stage-boundary collection, not a CUDA
+            # cache flush; ComfyUI's targeted unload remains the sole allocator
+            # authority.
+            clip = None
+            clip_patcher = None
+            gc.collect()
     _PROMPT_CACHE.put(key, conditioning)
     tokenize_seconds = tokenized - started
     encode_seconds = finished - tokenized
