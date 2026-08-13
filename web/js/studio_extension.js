@@ -74,21 +74,11 @@ function executeQueueCallbacks(name, isPartialExecution) {
   });
 }
 
-function hasCloudApiNode() {
-  let found = false;
-  forEachQueueNode(app.rootGraph || app.graph, (node) => {
-    const definition = node?.constructor?.nodeData || node?.nodeData || {};
-    if (definition.api_node || definition.is_api_node) found = true;
-  });
-  return found;
-}
-
 function useLightningDirectSubmit(batchCount, queueNodeIds) {
   const host = String(globalThis.location?.hostname || "").toLowerCase();
   return host.endsWith(".cloudspaces.litng.ai")
     && Number(batchCount || 1) === 1
-    && !queueNodeIds?.length
-    && !hasCloudApiNode();
+    && !queueNodeIds?.length;
 }
 
 async function submitLightningPrompt(number) {
@@ -1403,12 +1393,6 @@ function installPanel(node) {
     seedWidget.afterQueued = function h3studioSeedAfterQueued() {
       const result = originalAfterQueued?.apply(this, arguments);
       queueTiming(node, "afterQueued");
-      app.extensionManager?.toast?.add?.({
-        severity: "info",
-        summary: "H3 Studio queued",
-        detail: "Prompt submitted to ComfyUI.",
-        life: 1800,
-      });
       const state = stateFromNode(node);
       if (!state.generation.seed_locked) {
         state.generation = reserveSeedAfterQueue(state.generation, randomSeed);

@@ -34,6 +34,8 @@ test("queue path reports serialization timing without custom Run notifications",
   assert.equal(source.includes("Run received. Preparing one prompt for ComfyUI."), false);
   assert.equal(source.includes('summary: "H3 Studio submitting"'), false);
   assert.equal(source.includes('summary: "H3 Studio is submitting"'), false);
+  assert.equal(source.includes('summary: "H3 Studio queued"'), false);
+  assert.equal(source.includes("Prompt submitted to ComfyUI."), false);
   assert.ok(source.includes('queueStage("command.received"'));
   assert.ok(source.includes('queueStage("workflow_serialize.begin")'));
   assert.ok(source.includes('queueStage("graph_to_prompt.begin")'));
@@ -65,7 +67,7 @@ test("rapid Run clicks are coalesced before ComfyUI can append duplicate queue i
 
 test("single local-model prompts on Lightning bypass the unrelated cloud auth wait", () => {
   assert.ok(source.includes('host.endsWith(".cloudspaces.litng.ai")'));
-  assert.ok(source.includes("!hasCloudApiNode()"));
+  assert.equal(source.includes("hasCloudApiNode"), false);
   assert.ok(source.includes('queueStage("native_auth.bypassed"'));
   assert.ok(source.includes("result = submitLightningPrompt(number)"));
   assert.ok(source.includes('executeQueueCallbacks("beforeQueued", false)'));
