@@ -137,6 +137,26 @@ def test_prompt_cache_key_survives_reloadable_handle_replacement() -> None:
     assert cache._clip_key(first) == cache._clip_key(second) == ("clip-a",)
 
 
+def test_prompt_cache_hit_does_not_materialize_lazy_encoder() -> None:
+    class LazyClip:
+        _clip = None
+
+        def __getattr__(self, name):
+            raise AssertionError(f"cache hit accessed lazy encoder attribute {name}")
+
+    bundle = SimpleNamespace(clip=LazyClip())
+    cache._PROMPT_CACHE.put(("warm",), {"conditioning": "cached"})
+
+    result, state, seconds, runtime = cache._encode_prompt(
+        bundle,
+        ("warm",),
+        lambda: (_ for _ in ()).throw(AssertionError("cache hit tokenized again")),
+    )
+
+    assert result == {"conditioning": "cached"}
+    assert (state, seconds, runtime) == ("HIT", 0.0, "warm-cache")
+
+
 def test_reference_vae_cache_invalidates_only_changed_image(monkeypatch) -> None:
     _runtime_stubs(monkeypatch)
     monkeypatch.setattr(cache, "_reference_target_size", lambda *args: (512, 512))

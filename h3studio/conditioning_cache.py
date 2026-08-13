@@ -155,7 +155,16 @@ def _preview_black(width: int, height: int):
 def _encode_prompt(bundle: Any, key: Hashable, build_tokens: Callable[[], Any]):
     cached = _PROMPT_CACHE.get(key)
     if cached is not None:
-        trace("conditioning.text.hit", cache="HIT", clip_patcher_id=id(getattr(bundle.clip, "patcher", bundle.clip)))
+        # Do not inspect attributes on the lazy encoder handle here.
+        # H3StudioTextEncoder.__getattr__ materializes the 14.6 GiB encoder;
+        # this early return then skips the MISS cleanup and leaves it pinned
+        # beside the sampler on the next generation.
+        trace(
+            "conditioning.text.hit",
+            cache="HIT",
+            clip_handle_id=id(bundle.clip),
+            clip_materialized=getattr(bundle.clip, "_clip", None) is not None,
+        )
         return cached, "HIT", 0.0, "warm-cache"
     select_clip = getattr(bundle, "text_encoder_for_conditioning", None)
     clip = select_clip() if callable(select_clip) else bundle.clip
