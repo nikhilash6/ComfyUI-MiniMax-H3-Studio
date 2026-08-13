@@ -131,6 +131,12 @@ def test_prompt_cache_invalidates_for_encoder_and_model(monkeypatch) -> None:
         assert "text_conditioning=MISS" in result.diagnostics
 
 
+def test_prompt_cache_key_survives_reloadable_handle_replacement() -> None:
+    first = SimpleNamespace(clip_name="clip-a", clip=object())
+    second = SimpleNamespace(clip_name="clip-a", clip=object())
+    assert cache._clip_key(first) == cache._clip_key(second) == ("clip-a",)
+
+
 def test_reference_vae_cache_invalidates_only_changed_image(monkeypatch) -> None:
     _runtime_stubs(monkeypatch)
     monkeypatch.setattr(cache, "_reference_target_size", lambda *args: (512, 512))

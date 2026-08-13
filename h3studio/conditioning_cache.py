@@ -84,9 +84,10 @@ def _selected_model_key(bundle: Any, route: str) -> str:
 
 
 def _clip_key(bundle: Any) -> tuple[Any, ...]:
-    clip = bundle.clip
-    identity = getattr(clip, "cache_identity", None)
-    return str(getattr(bundle, "clip_name", "")), identity if identity is not None else id(getattr(clip, "patcher", clip))
+    # Conditioning depends on checkpoint content, not the lifetime of the
+    # reloadable CLIP handle. Including object identity invalidated an otherwise
+    # exact prompt hit after the completed 32B stage was discarded.
+    return (str(getattr(bundle, "clip_name", "")),)
 
 
 def _vae_key(bundle: Any) -> tuple[Any, ...]:
