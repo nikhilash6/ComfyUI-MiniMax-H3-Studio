@@ -160,17 +160,20 @@ def _encode_prompt(bundle: Any, key: Hashable, build_tokens: Callable[[], Any]):
     select_clip = getattr(bundle, "text_encoder_for_conditioning", None)
     clip = select_clip() if callable(select_clip) else bundle.clip
     clip_patcher = getattr(clip, "patcher", clip)
-    from .runtime_lifecycle import full_text_encoder_when_safe, release_stage_model
+    from .runtime_lifecycle import release_stage_model
 
     try:
         with span("conditioning.text", state=True, patcher=clip_patcher, cache="MISS") as result:
             started = time.perf_counter()
             tokens = build_tokens()
             tokenized = time.perf_counter()
-            with full_text_encoder_when_safe(clip, tokens) as load_policy:
-                conditioning = clip.encode_from_tokens_scheduled(tokens)
+            conditioning = clip.encode_from_tokens_scheduled(tokens)
             finished = time.perf_counter()
-            result.update(tokenize_s=tokenized - started, encode_s=finished - tokenized, load_policy=load_policy)
+            result.update(
+                tokenize_s=tokenized - started,
+                encode_s=finished - tokenized,
+                load_policy="native-dynamic",
+            )
     finally:
         release_text_encoder = getattr(bundle, "release_text_encoder", None)
         discarded = callable(release_text_encoder) and release_text_encoder()
@@ -187,10 +190,7 @@ def _encode_prompt(bundle: Any, key: Hashable, build_tokens: Callable[[], Any]):
     _PROMPT_CACHE.put(key, conditioning)
     tokenize_seconds = tokenized - started
     encode_seconds = finished - tokenized
-    runtime = (
-        f"{load_policy}; tokenize={tokenize_seconds:.3f}s; "
-        f"encode={encode_seconds:.3f}s"
-    )
+    runtime = f"native-dynamic; tokenize={tokenize_seconds:.3f}s; encode={encode_seconds:.3f}s"
     return conditioning, "MISS", finished - started, runtime
 
 

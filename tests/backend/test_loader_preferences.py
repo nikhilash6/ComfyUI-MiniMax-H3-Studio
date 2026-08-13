@@ -80,60 +80,16 @@ def test_prompt_writer_supports_shared_4b_8b_and_mixed_choices(monkeypatch) -> N
     assert bundle.writer_for_enhancement() is shared
 
 
-def test_resident_h3_encoder_policy_selects_l4_but_not_16gb(monkeypatch, tmp_path: Path) -> None:
+def test_h3_encoder_uses_native_dynamic_clip_loader(monkeypatch, tmp_path: Path) -> None:
     loader = _load_with_models(monkeypatch, ["qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"])
-    checkpoint = tmp_path / "encoder.safetensors"
-    checkpoint.write_bytes(b"x")
-    monkeypatch.setattr(loader.Path, "stat", lambda _self: type("Stat", (), {"st_size": int(14.61 * 1024**3)})())
-    monkeypatch.setattr(
-        loader.folder_paths,
-        "get_full_path_or_raise",
-        lambda _category, _name: str(checkpoint),
-        raising=False,
-    )
-    loader.comfy.model_management.text_encoder_device = lambda: "cuda:0"
-    loader.comfy.model_management.minimum_inference_memory = lambda: int(1.2 * 1024**3)
-
-    loader.comfy.model_management.get_total_memory = lambda _device: 22 * 1024**3
-    resident, policy = loader._resident_h3_text_encoder_policy(checkpoint.name)
-    assert resident is True
-    assert policy.startswith("resident-direct")
-
-    loader.comfy.model_management.get_total_memory = lambda _device: 16 * 1024**3
-    resident, policy = loader._resident_h3_text_encoder_policy(checkpoint.name)
-    assert resident is False
-    assert policy.startswith("native-dynamic")
-
-
-def test_l4_loads_h3_encoder_with_official_non_dynamic_patcher(monkeypatch, tmp_path: Path) -> None:
-    loader = _load_with_models(monkeypatch, ["qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"])
-    checkpoint = tmp_path / "encoder.safetensors"
-    checkpoint.write_bytes(b"x")
-    monkeypatch.setattr(loader.Path, "stat", lambda _self: type("Stat", (), {"st_size": int(14.61 * 1024**3)})())
-    monkeypatch.setattr(
-        loader.folder_paths,
-        "get_full_path_or_raise",
-        lambda _category, _name: str(checkpoint),
-        raising=False,
-    )
-    monkeypatch.setattr(loader.folder_paths, "get_folder_paths", lambda _category: [str(tmp_path)], raising=False)
-    monkeypatch.setattr(loader, "_stage_model_locally", lambda path: path)
-    loader.comfy.model_management.text_encoder_device = lambda: "cuda:0"
-    loader.comfy.model_management.minimum_inference_memory = lambda: int(1.2 * 1024**3)
-    loader.comfy.model_management.get_total_memory = lambda _device: 22 * 1024**3
-
     calls = []
     expected = object()
-    sd = ModuleType("comfy.sd")
-    sd.CLIPType = SimpleNamespace(MINIMAX="minimax")
-    sd.load_clip = lambda **kwargs: calls.append(kwargs) or expected
-    loader.comfy.sd = sd
-    monkeypatch.setitem(sys.modules, "comfy.sd", sd)
+    loader.nodes.CLIPLoader = lambda: SimpleNamespace(
+        load_clip=lambda name, clip_type: calls.append((name, clip_type)) or (expected,)
+    )
 
-    assert loader._load_clip(checkpoint.name) is expected
-    assert calls[0]["disable_dynamic"] is True
-    assert calls[0]["clip_type"] == "minimax"
-    assert calls[0]["model_options"] == {"initial_device": "cuda:0"}
+    assert loader._load_clip("encoder.safetensors") is expected
+    assert calls == [("encoder.safetensors", "minimax")]
 
 
 def test_text_encoder_handle_discards_and_reloads_completed_stage(monkeypatch) -> None:

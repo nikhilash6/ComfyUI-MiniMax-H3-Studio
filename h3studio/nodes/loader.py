@@ -6,18 +6,11 @@ FL2VA and REF2VA releases the previous model before loading the other path.
 
 from __future__ import annotations
 
-import contextlib
-import hashlib
 import logging
-import os
 import re
-import shutil
-import tempfile
 import threading
-import time
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
 import folder_paths
@@ -46,8 +39,6 @@ LEGACY_H3_INT8_TEXT_ENCODER = "qwen3vl_32b_minimax_h3_int8_convrot.safetensors"
 _WEIGHT_SUFFIXES = (".safetensors", ".gguf", ".ckpt", ".pt", ".pth", ".bin")
 _H3_TOKENS = ("minimax", "h3", "fl2va", "ref2va")
 LOGGER = logging.getLogger(__name__)
-GIB = 1024**3
-_LOCAL_CACHE_LOCK = threading.RLock()
 
 
 def _normalize(name: str) -> str:
@@ -248,150 +239,15 @@ def _load_unet(name: str):
     return result[0]
 
 
-def _local_cache_target(source: Path) -> Path:
-    stat = source.stat()
-    identity = hashlib.sha256(
-        f"{source.resolve()}|{stat.st_size}|{getattr(stat, 'st_mtime_ns', 0)}".encode()
-    ).hexdigest()[:16]
-    root = Path(os.environ.get("H3STUDIO_MODEL_CACHE", Path(tempfile.gettempdir()) / "h3studio-model-cache"))
-    return root / f"{identity}-{source.name}"
-
-
-def _stage_model_locally(source_path: str) -> str:
-    """Create a bounded local-disk read-through copy of one large model."""
-
-    source = Path(source_path).resolve()
-    if str(os.environ.get("H3STUDIO_DISABLE_LOCAL_MODEL_CACHE", "0")).lower() in {"1", "true", "yes", "on"}:
-        return str(source)
-    try:
-        target = _local_cache_target(source)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        source_device = getattr(source.stat(), "st_dev", None)
-        target_device = getattr(target.parent.stat(), "st_dev", None)
-        if source_device is not None and source_device == target_device:
-            return str(source)
-    except OSError:
-        return str(source)
-
-    with _LOCAL_CACHE_LOCK:
-        partial = target.with_suffix(f"{target.suffix}.partial")
-        try:
-            size = source.stat().st_size
-            if target.is_file() and target.stat().st_size == size:
-                LOGGER.info("[H3 Studio Cache] local encoder ready | path=%s | size=%.2fGiB", target, size / GIB)
-                return str(target)
-            free = shutil.disk_usage(target.parent).free
-            if free < size + GIB:
-                LOGGER.warning(
-                    "[H3 Studio Cache] skipped local encoder staging; need %.2fGiB, free %.2fGiB",
-                    (size + GIB) / GIB,
-                    free / GIB,
-                )
-                return str(source)
-            started = time.monotonic()
-            LOGGER.info("[H3 Studio Cache] staging encoder to local disk | %.2fGiB | %s", size / GIB, target)
-            with source.open("rb", buffering=0) as reader, partial.open("wb", buffering=0) as writer:
-                shutil.copyfileobj(reader, writer, length=16 * 1024 * 1024)
-            os.replace(partial, target)
-            elapsed = time.monotonic() - started
-            LOGGER.info("[H3 Studio Cache] encoder staged | %.2fs | %.2fGiB", elapsed, size / GIB)
-            return str(target)
-        except OSError as error:
-            with contextlib.suppress(OSError):
-                partial.unlink()
-            LOGGER.warning("[H3 Studio Cache] local staging unavailable (%s); using original model", error)
-            return str(source)
-
-
-def start_preferred_encoder_staging() -> None:
-    """Use server startup time to populate the ephemeral encoder cache."""
-
-    def worker():
-        try:
-            name = _preferred_nvfp4_encoder()
-            if not name:
-                return
-            source = folder_paths.get_full_path("text_encoders", name) or folder_paths.get_full_path("clip", name)
-            if source:
-                _stage_model_locally(source)
-        except Exception as error:
-            LOGGER.debug("[H3 Studio Cache] background staging unavailable: %s", error)
-
-    threading.Thread(target=worker, name="h3studio-encoder-cache", daemon=True).start()
-
-
-def _resident_h3_text_encoder_policy(name: str) -> tuple[bool, str]:
-    """Keep the 32B encoder non-dynamic only when it fits as one GPU stage."""
-
-    try:
-        manager = comfy.model_management
-        device = manager.text_encoder_device()
-        total_bytes = max(0, int(manager.get_total_memory(device)))
-        minimum_bytes = max(GIB, int(manager.minimum_inference_memory()))
-        path = folder_paths.get_full_path_or_raise("text_encoders", name)
-        model_bytes = max(0, int(Path(path).stat().st_size))
-    except Exception as error:
-        return False, f"native-dynamic; budget unavailable ({type(error).__name__})"
-
-    # File size is a reliable upper-bound proxy for the quantized H3 encoder's
-    # resident weights (the official NVFP4 artifact and staged model are both
-    # about 14.6 GiB). Keep an additional 1 GiB plus ComfyUI's own inference
-    # reserve and 5% allocator headroom. This selects 20+ GiB GPUs such as L4,
-    # while 16 GiB and smaller cards retain DynamicVRAM.
-    required_bytes = model_bytes + minimum_bytes + GIB
-    capacity_bytes = int(total_bytes * 0.95)
-    resident = model_bytes > 0 and required_bytes <= capacity_bytes
-    mode = "resident-direct" if resident else "native-dynamic"
-    return (
-        resident,
-        f"{mode}; checkpoint={model_bytes / GIB:.2f}GiB; "
-        f"required={required_bytes / GIB:.2f}GiB; gpu={total_bytes / GIB:.2f}GiB",
-    )
-
-
 def _load_clip(name: str):
-    resident, policy = _resident_h3_text_encoder_policy(name)
-    if resident:
-        try:
-            import comfy.sd
+    """Use ComfyUI's native dynamic CLIP loader.
 
-            source_path = folder_paths.get_full_path_or_raise("text_encoders", name)
-            clip_path = _stage_model_locally(source_path)
-            clip = comfy.sd.load_clip(
-                ckpt_paths=[clip_path],
-                embedding_directory=folder_paths.get_folder_paths("embeddings"),
-                clip_type=comfy.sd.CLIPType.MINIMAX,
-                # Construct the fitting quantized encoder on its execution
-                # device.  ComfyUI's legacy non-dynamic CPU path otherwise
-                # copies every module separately and synchronizes CUDA after
-                # each module, turning one 14.6 GiB stage into hundreds of
-                # serialized transfers on H3's 32B encoder.
-                model_options={"initial_device": comfy.model_management.text_encoder_device()},
-                disable_dynamic=True,
-            )
-            LOGGER.info("[H3 Studio] H3 text encoder policy=%s", policy)
-            return clip
-        except (AttributeError, TypeError) as error:
-            LOGGER.warning(
-                "[H3 Studio] Resident H3 text encoder unsupported by this ComfyUI (%s); using DynamicVRAM.",
-                type(error).__name__,
-            )
+    Current ComfyUI uses its threaded AIMDO/HostBuffer path here. Forcing a
+    non-dynamic patcher serializes hundreds of H3 module transfers and performs
+    repeated CUDA synchronizations, which is dramatically slower on the L4.
+    """
 
-    LOGGER.info("[H3 Studio] H3 text encoder policy=%s", policy)
-    source_path = folder_paths.get_full_path_or_raise("text_encoders", name)
-    clip_path = _stage_model_locally(source_path)
-    if clip_path != source_path:
-        try:
-            import comfy.sd
-
-            return comfy.sd.load_clip(
-                ckpt_paths=[clip_path],
-                embedding_directory=folder_paths.get_folder_paths("embeddings"),
-                clip_type=comfy.sd.CLIPType.MINIMAX,
-                disable_dynamic=False,
-            )
-        except (AttributeError, TypeError):
-            pass
+    LOGGER.info("[H3 Studio] H3 text encoder policy=native-dynamic")
     loader = nodes.CLIPLoader()
     try:
         return loader.load_clip(name, "minimax")[0]
