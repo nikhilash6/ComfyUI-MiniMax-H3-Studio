@@ -26,6 +26,7 @@ DEFAULT_TAEH3 = "taeh3.safetensors"
 _PATCHER_CACHE_LIMIT = 8
 _PATCHER_CACHE_LOCK = threading.RLock()
 _PATCHER_CACHE = OrderedDict()
+_PREVIEW_DRAIN_TIMEOUT_SECONDS = 8.0
 
 
 def _conv(torch, channels_in: int, channels_out: int, *, bias: bool = True):
@@ -199,6 +200,10 @@ class _PreviewWrapper:
     _jobs: Any = field(default=None, init=False, repr=False)
     _worker: Any = field(default=None, init=False, repr=False)
     _worker_lock: Any = field(default_factory=threading.RLock, init=False, repr=False)
+    _idle: Any = field(default_factory=threading.Event, init=False, repr=False)
+
+    def __post_init__(self):
+        self._idle.set()
 
     def settings_key(self) -> tuple[Any, ...]:
         return self.checkpoint_path, self.max_resolution, self.jpeg_quality, self.every
@@ -223,6 +228,8 @@ class _PreviewWrapper:
         decoder = self._load(torch)
         with torch.inference_mode():
             image = decoder(latent).clamp(0, 1)
+        if job.run_id != self.active_run_id:
+            return
         data_url, width, height = _jpeg_data_url(torch, image, self.jpeg_quality)
         from server import PromptServer
 
@@ -258,12 +265,14 @@ class _PreviewWrapper:
             try:
                 if job is None:
                     return
+                self._idle.clear()
                 self._send(job)
             except Exception as error:
                 LOGGER.warning("H3 Studio TAEH3 CPU preview skipped a frame: %s", error)
                 if isinstance(job, _PreviewJob):
                     self._report_error(error, job.run_id)
             finally:
+                self._idle.set()
                 self._jobs.task_done()
 
     def _ensure_worker(self):
@@ -306,6 +315,16 @@ class _PreviewWrapper:
         self._discard_pending()
         with suppress(queue.Full):
             self._jobs.put_nowait(None)
+
+    def _finish_run(self, run_id: str) -> None:
+        if self.active_run_id == run_id:
+            self.active_run_id = ""
+        self._discard_pending()
+        if not self._idle.wait(timeout=_PREVIEW_DRAIN_TIMEOUT_SECONDS):
+            LOGGER.warning(
+                "H3 Studio TAEH3 preview did not stop within %.1fs; final decode will continue.",
+                _PREVIEW_DRAIN_TIMEOUT_SECONDS,
+            )
 
     def _report_error(self, message: str, run_id: str) -> None:
         try:
@@ -375,7 +394,9 @@ class _PreviewWrapper:
             LOGGER.debug("H3 Studio preview reset event skipped: %s", error)
 
         def preview_callback(step, x0, x, total_steps):
-            if int(step) % self.every == 0:
+            # The final image is about to enter the full VAE, so a tiny preview
+            # for the last denoising step only creates CPU/RAM overlap.
+            if int(step) % self.every == 0 and int(step) + 1 < int(total_steps):
                 try:
                     elapsed_seconds = time.perf_counter() - sampling_started
                     completed_steps = max(1, int(step) + 1)
@@ -420,6 +441,8 @@ class _PreviewWrapper:
                 error=str(error),
             )
             raise
+        finally:
+            self._finish_run(run_id)
         trace(
             "sampling.end",
             state=True,

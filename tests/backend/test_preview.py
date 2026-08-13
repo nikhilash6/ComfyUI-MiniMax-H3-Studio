@@ -113,6 +113,56 @@ def test_preview_callback_reports_sampler_elapsed_and_average_step_time(monkeypa
     assert captured["copy"] == {"device": "cpu", "dtype": torch_module.float32, "copy": True}
 
 
+def test_preview_does_not_enqueue_final_step(monkeypatch) -> None:
+    torch_module = ModuleType("torch")
+    torch_module.float32 = "float32"
+    monkeypatch.setitem(sys.modules, "torch", torch_module)
+    captured = {}
+
+    class Executor:
+        def __call__(self, *args, **kwargs):
+            captured["callback"] = args[5]
+            return "sampled"
+
+    wrapper = _PreviewWrapper("taeh3.safetensors", "16", 768, 90, 1)
+    monkeypatch.setattr(wrapper, "_enqueue", lambda job: captured.update(enqueue=job))
+    monkeypatch.setattr(preview_module, "_first_h3_latent", lambda *_args: object())
+
+    wrapper(Executor(), "noise", "latent", "sampler", [1.0, 0.5, 0.0], None, None, False, 42, [])
+    captured["callback"](3, "x0", "x", 4)
+
+    assert "enqueue" not in captured
+
+
+def test_sampler_waits_for_active_cpu_preview_before_return(monkeypatch) -> None:
+    torch_module = ModuleType("torch")
+    monkeypatch.setitem(sys.modules, "torch", torch_module)
+    wrapper = _PreviewWrapper("taeh3.safetensors", "16", 512, 80, 1)
+    waited = []
+
+    class Idle:
+        def wait(self, timeout):
+            waited.append(timeout)
+            return True
+
+    wrapper._idle = Idle()
+    result = wrapper(
+        lambda *args, **kwargs: "sampled",
+        "noise",
+        "latent",
+        "sampler",
+        [1.0, 0.0],
+        None,
+        None,
+        False,
+        42,
+        [],
+    )
+
+    assert result == "sampled"
+    assert waited == [preview_module._PREVIEW_DRAIN_TIMEOUT_SECONDS]
+
+
 def test_preview_downscale_preserves_latent_aspect_ratio() -> None:
     captured = {}
 
