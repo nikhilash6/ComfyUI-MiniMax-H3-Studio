@@ -1,0 +1,45 @@
+name: Apply workflow polish
+
+on:
+  push:
+    branches:
+      - polish/release-workflow-layout
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: polish/release-workflow-layout
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Apply source polish
+        run: python tools/apply_release_workflow_polish.py
+
+      - name: Regenerate maintained workflows
+        run: python tools/generate_workflows.py
+
+      - name: Validate generated workflows
+        run: python tools/validate_workflows.py
+
+      - name: Remove one-shot polish scaffolding
+        run: |
+          rm tools/apply_release_workflow_polish.py
+          rm .github/workflows/apply-workflow-polish.yml
+
+      - name: Commit polished workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'chore(ui): polish release workflow layout'
+          git push origin HEAD:polish/release-workflow-layout
