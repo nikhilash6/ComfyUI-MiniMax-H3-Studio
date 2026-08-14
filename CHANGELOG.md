@@ -2,6 +2,25 @@
 
 All notable changes are recorded here. The format follows Keep a Changelog; versions use semantic versioning with prerelease identifiers while Lightning GPU validation is incomplete.
 
+## [0.1.0-alpha.15] - 2026-08-14
+
+### Added
+
+- Added first-class route-aware acceleration profiles for Kijai's pruned MiniMax H3 LightX adapters: FL2VA v1.0 4-step rank-31, FL2VA v1.0 8-step rank-24, and REF2VA v0.1 4-step rank-20, while keeping the existing FL2VA v0.1 rank-21 and official full v1.0 8-step profiles.
+- Added automatic restoration of the optional H3StudioComparisonView output node in maintained Unified Image workflows so Director output can switch between the generated image and reference comparison views.
+- Added clearer model-download documentation for core FL2VA/REF2VA models, recommended acceleration profiles, smaller pruned alternatives, preview/VAE extras, and PDD artifacts.
+
+### Fixed
+
+- Removed the permanent JoJo-specific example from the Qwen prompt-writer system instruction so generic anime prompts remain style-neutral unless the user explicitly requests JoJo.
+- Added backend and frontend route validation so FL2V LightX adapters cannot silently run on REF2VA and the REF2V adapter is only offered for valid REF2VA reference-generation requests.
+- Restored the Director's generated/comparison output tabs when comparison mode is enabled and preserved the PR #37 workflow migration, decode warning, group sizing, and curated TAEH3 controls.
+
+### Changed
+
+- Removed the obsolete H3_Studio_Native_Fast_T2I example workflow and its generator/release-check path so H3_Studio_Unified_Image is the single maintained user workflow.
+- Refined the maintained workflow UI and model-profile labels around FL2VA versus REF2VA, 4-step versus 8-step, v0.1 versus v1.0, and full versus pruned LightX artifacts.
+
 ## [0.1.0-alpha.14] - 2026-08-14
 
 ### Added
