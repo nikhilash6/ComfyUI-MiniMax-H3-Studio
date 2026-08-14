@@ -18,21 +18,27 @@ test("Director runtime UI exposes explainable Auto and the unchanged OG preset",
 
 test("Discord preset sharing includes runtime assets and exact LoRA strengths without prompts", () => {
   assert.match(share, /const PREFIX = "H3S1:"/);
+  assert.match(share, /const ZIP_PREFIX = "H3S1Z:"/);
+  assert.match(share, /CompressionStream/);
   assert.match(share, /Copy Discord/);
   assert.match(share, /Copy effective run config/);
   assert.match(share, /strength: Number\(item\?\.strength/);
   assert.match(share, /loaderAssets/);
+  assert.match(share, /widgetChoices/);
   assert.doesNotMatch(share, /prompt: state\.prompt/);
   assert.match(share, /Prompts and reference images are never included/);
 });
 
-test("Smart Benchmark replaces filename typing with installed asset and LoRA scenario controls", () => {
+test("Smart Benchmark replaces filename typing with searchable installed assets and exact LoRA strengths", () => {
   assert.match(benchmark, /Smart Benchmark Scenario Builder/);
   assert.match(benchmark, /Search .*installed LoRAs/);
+  assert.match(benchmark, /Search \$\{items\.length\} installed models/);
   assert.match(benchmark, /Exact LoRA strength used by this benchmark scenario/);
+  assert.match(benchmark, /LoRA not installed/);
   assert.match(benchmark, /\+ Current setup/);
   assert.match(benchmark, /Runtime A\/B/);
   assert.match(benchmark, /const SHARE_PREFIX = "H3B1:"/);
+  assert.match(benchmark, /const SHARE_ZIP_PREFIX = "H3B1Z:"/);
   assert.match(benchmark, /Copy benchmark for Discord/);
 });
 
