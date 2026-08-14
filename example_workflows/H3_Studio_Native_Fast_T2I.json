@@ -819,7 +819,7 @@
       ],
       "size": [
         820,
-        300
+        310
       ],
       "flags": {},
       "order": 14,
@@ -850,7 +850,7 @@
       },
       "widgets_values": [
         "quick start",
-        "1. Edit the prompt in **Text conditioning**.\n2. Keep the first test at **0.40 MP**, 5 frames, and the wired LightX ER-SDE four-step recipe.\n3. Queue once.\n4. Queue the identical prompt again to verify ComfyUI's node cache.\n\n> [!IMPORTANT]\n> This workflow intentionally has no Director, combined model bundle, Condition & Route node, runtime sampling subgraph, analyzer, benchmark branch, or live-video preview."
+        "# Native fast path\n\n> **First test:** keep `0.40 MP`, 5 frames, and the wired LightX ER-SDE four-step recipe.\n\n1. Edit the prompt in **Text conditioning**.\n2. Queue once.\n3. Queue the identical prompt again to verify ComfyUI's node cache.\n\n**This graph is intentionally minimal.** *No Director, benchmark branch, analyzer, or live-video preview is scheduled here.*"
       ],
       "color": "#22322f",
       "bgcolor": "#17211f"
@@ -864,7 +864,7 @@
       ],
       "size": [
         820,
-        240
+        250
       ],
       "flags": {},
       "order": 15,
@@ -895,7 +895,7 @@
       },
       "widgets_values": [
         "models",
-        "The required 32B NVFP4 encoder, proven 11.2 GiB W4A8 FL2VA transformer, LightX adapter, and video VAE are independent stages. Text conditioning does not depend on the VAE. The VAE is first needed after sampling. This restores the measured L4 architecture without hiding model loading or conditioning inside the legacy combined nodes."
+        "# Independent native stages\n\n> The encoder, FL2VA transformer, LightX adapter, and video VAE remain separate ComfyUI stages.\n\n**Text conditioning does not depend on the VAE.** The VAE is first needed after sampling, so ComfyUI can cache and release the heavyweight stages normally.\n\n*Nothing is hidden inside a combined model bundle.*"
       ],
       "color": "#22322f",
       "bgcolor": "#17211f"
@@ -1121,7 +1121,7 @@
     "frontendVersion": "1.30.0",
     "h3studio": {
       "schema_version": 1,
-      "template_version": "native-fast-t2i-1",
+      "template_version": "native-fast-t2i-2",
       "runtime_structure": "independent-native-comfy-stages",
       "required_encoder": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
       "hub_included": false

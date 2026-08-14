@@ -10,6 +10,12 @@ const TILE_SIZE_VALUES = [256, 320, 384, 512];
 const TILE_OVERLAP_VALUES = [64, 96, 128];
 const BATCH_VALUES = ["Auto", "1", "2", "4"];
 const PROMOTED_DEFAULTS = ["Auto", 256, 64, "Auto"];
+const CONTROL_LABELS = {
+    tiling_mode: "Tiling mode",
+    tile_size: "Tile size",
+    tile_overlap: "Tile overlap",
+    tile_batch: "Tile batch",
+};
 const EVENT = "h3studio.decode_status";
 
 function graphNodeById(value) {
@@ -47,6 +53,7 @@ function normalizeNumericChoice(value, allowed, fallback) {
 function constrainChoiceWidget(node, name, values, fallback, numeric = false) {
     const target = widget(node, name);
     if (!target) return;
+    target.label = CONTROL_LABELS[name] || target.label;
     const next = numeric
         ? normalizeNumericChoice(target.value, values, fallback)
         : normalizeStringChoice(target.value, values, fallback);
@@ -104,9 +111,24 @@ function wrapWidgetCallback(node, name) {
     target.__h3DecodeWrapped = true;
 }
 
+
+function ensureDecodeNodeSize(node) {
+    const kind = nodeClass(node);
+    const minimumWidth = kind === SUBGRAPH_CLASS ? 700 : 440;
+    const minimumHeight = kind === SUBGRAPH_CLASS ? 480 : 260;
+    const width = Math.max(Number(node?.size?.[0]) || 0, minimumWidth);
+    const height = Math.max(Number(node?.size?.[1]) || 0, minimumHeight);
+    if (!Array.isArray(node.size)) node.size = [width, height];
+    else {
+        node.size[0] = width;
+        node.size[1] = height;
+    }
+}
+
 function sanitizeRuntimeNode(node) {
     const kind = nodeClass(node);
     if (kind !== NODE_CLASS && kind !== SUBGRAPH_CLASS) return;
+    ensureDecodeNodeSize(node);
     sanitizeControlWidgets(node);
     for (const name of PROMOTED_WIDGETS) wrapWidgetCallback(node, name);
     refreshModeUI(node);
@@ -224,8 +246,8 @@ app.registerExtension({
                 this.__h3NativeDecodeStatus = status;
             }
             sanitizeRuntimeNode(this);
-            const minimumWidth = 390;
-            const minimumHeight = 220;
+            const minimumWidth = 440;
+            const minimumHeight = 260;
             if (Array.isArray(this.size)) {
                 this.size[0] = Math.max(Number(this.size[0]) || 0, minimumWidth);
                 this.size[1] = Math.max(Number(this.size[1]) || 0, minimumHeight);
