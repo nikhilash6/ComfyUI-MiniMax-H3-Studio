@@ -1,0 +1,21 @@
+{
+  "version": "0.1.0-alpha.14",
+  "date": "2026-08-14",
+  "sections": {
+    "added": [
+      "Added native MiniMax H3 VAE decode controls with Auto and Manual tiling, curated 256/320/384/512 tile-size presets, 64/96/128 overlap presets, adaptive tile batching, OOM backoff, and live decode progress.",
+      "Added low-RAM Lightning storage safeguards, swap-aware host-memory pressure telemetry, and recovery for broken text-encoder cache links without taking model residency away from ComfyUI DynamicVRAM.",
+      "Added exact H3 Studio PNG metadata restoration so generated images reopen with the generation state and seed that actually produced them."
+    ],
+    "fixed": [
+      "Fixed promoted decode controls on the outer sampling subgraph so stale serialized values such as seed 42 cannot be interpreted as the tiling mode.",
+      "Fixed H3 Studio seed restoration from workflow metadata and prompt metadata instead of falling back to stale 0/1/42 values.",
+      "Quarantined the legacy H3 Studio Hub frontend without disabling its backend node registrations, preventing browser resource exhaustion while preserving required H3 nodes.",
+      "Reduced unnecessary decoded-frame cloning and kept native H3 VAE state fully restored after every decode."
+    ],
+    "changed": [
+      "Kept H3's proven native 256/64 decode geometry as the Auto compatibility default while allowing bounded manual tuning for high-resolution testing.",
+      "Kept the validated FL2VA/REF2VA, Base Quality, LightX v0.1, Mamad8 PDD, preview, save, and workflow paths intact while hardening repeated L4 runs."
+    ]
+  }
+}

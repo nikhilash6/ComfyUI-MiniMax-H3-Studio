@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import importlib
 import sys
-from types import ModuleType
+from pathlib import Path
+from types import ModuleType, SimpleNamespace
 
 import pytest
 
@@ -77,3 +78,23 @@ def test_prompt_writer_supports_shared_4b_8b_and_mixed_choices(monkeypatch) -> N
         analyzer_clip=shared,
     )
     assert bundle.writer_for_enhancement() is shared
+
+
+def test_h3_encoder_uses_native_dynamic_clip_loader(monkeypatch, tmp_path: Path) -> None:
+    loader = _load_with_models(monkeypatch, ["qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"])
+    calls = []
+    expected = object()
+    loader.nodes.CLIPLoader = lambda: SimpleNamespace(
+        load_clip=lambda name, clip_type: calls.append((name, clip_type)) or (expected,)
+    )
+
+    assert loader._load_clip("encoder.safetensors") is expected
+    assert calls == [("encoder.safetensors", "minimax")]
+
+
+def test_loader_keeps_alpha12_eager_native_encoder_lifecycle(monkeypatch) -> None:
+    loader = _load_with_models(monkeypatch, ["qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"])
+    source = Path(loader.__file__).read_text(encoding="utf-8")
+    assert "class H3StudioTextEncoder" not in source
+    assert "text_encoder_for_conditioning" not in source
+    assert "clip = _load_clip(resolved_text_encoder)" in source

@@ -28,6 +28,7 @@ from ..prompting.compiler import PromptCompiler
 from ..prompting.vlm import compile_with_optional_vlm
 from ..references import ReferenceImage, stable_reference_id
 from ..routing import choose_route, validate_generation_contract
+from ..runtime_trace import emit as trace
 from ..state import StudioState
 from .loader import H3StudioBundle
 
@@ -39,6 +40,9 @@ _PDD_PATCH_CACHE_VALUE = None
 _LIGHTX_PATCH_CACHE_LOCK = threading.RLock()
 _LIGHTX_PATCH_CACHE_KEY = None
 _LIGHTX_PATCH_CACHE_VALUE = None
+_BASE_PATCH_CACHE_LOCK = threading.RLock()
+_BASE_PATCH_CACHE_KEY = None
+_BASE_PATCH_CACHE_VALUE = None
 
 LEGACY_MODE_IMAGE = "image"
 LEGACY_MODE_REFERENCE = "reference"
@@ -518,14 +522,28 @@ class H3StudioContextSamplingPreset:
         return {"required": {"model": ("MODEL",), "studio_context": ("H3_STUDIO_CONTEXT",)}}
 
     def build(self, model, studio_context):
+        global _BASE_PATCH_CACHE_KEY, _BASE_PATCH_CACHE_VALUE
         global _PDD_PATCH_CACHE_KEY, _PDD_PATCH_CACHE_VALUE
         global _LIGHTX_PATCH_CACHE_KEY, _LIGHTX_PATCH_CACHE_VALUE
-        from ..acceleration import build_lightx_backend, build_pdd_backend, is_pdd_profile
+        from ..acceleration import (
+            LIGHTX_PROFILES,
+            PDD_PROFILES,
+            build_lightx_backend,
+            build_pdd_backend,
+            is_pdd_profile,
+        )
+        from ..lora_stack import apply_custom_lora_stack, normalize_custom_loras
         from .image_runtime import H3StudioSamplingPreset
 
         if not isinstance(studio_context, H3StudioContext):
             raise ValueError("Connect H3 Studio Director's studio_context output.")
         profile = _sampling_profile(studio_context.state.generation.sampling_profile)
+        custom_specs = normalize_custom_loras(dict(studio_context.state.ui).get("custom_loras", ()))
+        reserved_artifacts = []
+        if profile in LIGHTX_PROFILES:
+            reserved_artifacts.append(LIGHTX_PROFILES[profile].lora_filename)
+        if profile in PDD_PROFILES:
+            reserved_artifacts.append(PDD_PROFILES[profile].lora_filename)
         if is_pdd_profile(profile):
             cache_key = (id(model), profile, studio_context.route.selected)
             with _PDD_PATCH_CACHE_LOCK:
@@ -555,7 +573,35 @@ class H3StudioContextSamplingPreset:
                     _LIGHTX_PATCH_CACHE_VALUE = result
         else:
             runtime_profile = SAMPLING_PROFILE_TO_RUNTIME[profile]
-            result = H3StudioSamplingPreset().build(model, runtime_profile)
+            base_model, custom_info = apply_custom_lora_stack(model, custom_specs)
+            cache_key = (id(base_model), profile)
+            with _BASE_PATCH_CACHE_LOCK:
+                if cache_key == _BASE_PATCH_CACHE_KEY and _BASE_PATCH_CACHE_VALUE is not None:
+                    result = _BASE_PATCH_CACHE_VALUE
+                    result = (*result[:3], f"{result[3]} | patch_cache=hit")
+                    LOGGER.info("[H3 Studio] Base sampling patch cache hit; reused shifted model")
+                else:
+                    result = H3StudioSamplingPreset().build(base_model, runtime_profile)
+                    _BASE_PATCH_CACHE_KEY = cache_key
+                    _BASE_PATCH_CACHE_VALUE = result
+            result = (*result[:3], f"{result[3]} | {custom_info}")
+        if custom_specs and (is_pdd_profile(profile) or profile.startswith("lightx_")):
+            patched_model, custom_info = apply_custom_lora_stack(
+                result[0],
+                custom_specs,
+                reserved_artifacts=reserved_artifacts,
+            )
+            result = (patched_model, *result[1:3], f"{result[3]} | {custom_info}")
+        elif not custom_specs and (is_pdd_profile(profile) or profile.startswith("lightx_")):
+            result = (*result[:3], f"{result[3]} | custom_loras=none")
+        trace(
+            "sampling.prepared",
+            state=True,
+            patcher=result[0],
+            profile=profile,
+            upstream_patcher_id=id(model),
+            sampling_patcher_id=id(result[0]),
+        )
         LOGGER.info("\n[H3 Studio] Sampling resolved\n  %s", result[3])
         return result
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Final
 
-VERSION: Final = "0.1.0-alpha.12"
+VERSION: Final = "0.1.0-alpha.13"
 STATE_SCHEMA_VERSION: Final = 10
 CONTEXT_SCHEMA_VERSION: Final = 1
 
@@ -100,6 +100,19 @@ SAMPLING_PROFILES: Final = {
         "shift_video": 12.0,
         "shift_audio": 3.0,
         "experimental": False,
+    },
+    "lightx_v1_fl2v_8": {
+        "label": "LightX v1.0 · FL2V 8-step · official ComfyUI",
+        "sampler": "euler",
+        "scheduler": "simple",
+        "steps": 8,
+        "cfg": 1.0,
+        "shift_video": 6.0,
+        "shift_audio": 3.0,
+        "lora_strength": 1.0,
+        "lora_artifact": "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
+        "recipe_source": "LightX2V v1.0 DMD family; official 8-step ComfyUI artifact",
+        "experimental": True,
     },
     "lightx_er_sde_4": {
         "label": "LightX v0.1 · ER-SDE 4 · empirical",

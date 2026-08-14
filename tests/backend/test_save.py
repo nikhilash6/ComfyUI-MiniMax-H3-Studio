@@ -45,19 +45,32 @@ def test_completed_png_metadata_restores_runtime_state_without_embedding_pixels(
     workflow = {
         "nodes": [{
             "type": "H3StudioDirector",
-            "inputs": [{"name": "studio_state"}],
-            "widgets_values": [initial],
+            "inputs": [
+                {"name": "seed", "widget": {"name": "seed"}},
+                {"name": "studio_state", "widget": {"name": "studio_state"}},
+            ],
+            "widgets_values": [42, initial],
             "properties": {"h3studio_state": initial},
         }],
     }
-    prompt = {"10": {"class_type": "H3StudioDirector", "inputs": {"studio_state": initial}}}
+    prompt = {
+        "10": {
+            "class_type": "H3StudioDirector",
+            "inputs": {"seed": 42, "studio_state": initial},
+        }
+    }
 
     saved_prompt, saved_extra = completed_png_metadata(prompt, {"workflow": workflow}, context)
-    restored = json.loads(saved_extra["workflow"]["nodes"][0]["properties"]["h3studio_state"])
+    saved_director = saved_extra["workflow"]["nodes"][0]
+    restored = json.loads(saved_director["properties"]["h3studio_state"])
 
     assert restored["references"][0]["description"].startswith("Detailed factual")
     assert restored["generation"]["seed"] == 987
+    assert saved_director["widgets_values"][0] == 987
+    assert json.loads(saved_director["widgets_values"][1]) == restored
     assert json.loads(saved_prompt["10"]["inputs"]["studio_state"]) == restored
+    assert saved_prompt["10"]["inputs"]["seed"] == 987
+    assert saved_extra["h3studio"]["seed"] == 987
     assert saved_extra["h3studio"]["reference_storage"] == ["h3studio/face.png"]
     assert saved_extra["h3studio"]["portability"] == "same_machine_storage_references"
     assert "images" not in saved_extra["h3studio"]

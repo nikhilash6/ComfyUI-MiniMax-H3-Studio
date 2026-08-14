@@ -1,9 +1,9 @@
 """Optional acceleration backends that remain owned by their upstream packages.
 
 The Mamad8 PDD implementation is GPL-3.0 and intentionally is not copied into
-H3 Studio.  This module is a small interoperability layer: it discovers the
-registered V3 nodes, resolves the matching local artifacts, and invokes their
-public node execution surface when a PDD profile is selected.
+H3 Studio. This module is a small interoperability layer: it discovers optional
+external acceleration artifacts, resolves them deterministically, and invokes
+the public ComfyUI execution surface without bundling upstream implementations.
 """
 
 from __future__ import annotations
@@ -15,6 +15,8 @@ from typing import Any
 
 LIGHTX_MODEL_REPOSITORY = "https://huggingface.co/Kijai/MiniMax-H3_comfy"
 LIGHTX_LORA_FILENAME = "minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_rank_21_bf16.safetensors"
+LIGHTX_V1_MODEL_REPOSITORY = "https://huggingface.co/lightx2v/Minimax-h3-Turbo"
+LIGHTX_V1_LORA_FILENAME = "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors"
 
 PDD_REPOSITORY = "https://github.com/mamad8c/ComfyUI-MiniMaxH3-PDD-Mamad8"
 PDD_MODEL_REPOSITORY = "https://huggingface.co/Mamad8/MiniMaxH3_R2V-PDD-Turbo-LoRA-Mamad8"
@@ -26,36 +28,66 @@ PDD_NODE_IDS = (
 
 
 class PDDBackendError(ValueError):
-    """Actionable configuration error for the optional Mamad8 backend."""
+    """Actionable configuration error for an optional acceleration backend."""
 
 
 @dataclass(frozen=True, slots=True)
 class LightXProfile:
-    """One exact Kijai adapter plus its empirical ComfyUI sampling recipe."""
+    """One exact LightX adapter plus the ComfyUI recipe paired with it."""
 
     key: str
-    runtime_profile: str
     sampler: str
-    lora_filename: str = LIGHTX_LORA_FILENAME
-    lora_strength: float = 0.75
+    lora_filename: str
+    repository: str
+    artifact_tokens: tuple[str, ...]
+    lora_strength: float
+    recipe_source: str
+    adapter_label: str
+    runtime_profile: str | None = None
+    scheduler: str = "simple"
+    steps: int = 4
+    shift_video: float = 12.0
+    shift_audio: float = 3.0
 
-    @property
-    def artifact_tokens(self) -> tuple[str, ...]:
-        # The repository also contains a much larger original conversion.  The
-        # two artifacts must not be substituted under the same profile.
-        return ("minimax", "h3", "lightx", "4step", "resized", "avg", "rank", "21", "bf16")
 
+_OLD_LIGHTX_TOKENS = ("minimax", "h3", "lightx", "4step", "resized", "avg", "rank", "21", "bf16")
 
 LIGHTX_PROFILES: Mapping[str, LightXProfile] = {
+    "lightx_v1_fl2v_8": LightXProfile(
+        key="lightx_v1_fl2v_8",
+        sampler="euler",
+        scheduler="simple",
+        steps=8,
+        shift_video=6.0,
+        shift_audio=3.0,
+        lora_filename=LIGHTX_V1_LORA_FILENAME,
+        repository=LIGHTX_V1_MODEL_REPOSITORY,
+        artifact_tokens=("minimax", "h3", "fl2v", "turbo", "8step", "v1.0", "comfyui", "bf16"),
+        lora_strength=1.0,
+        recipe_source="LightX2V v1.0 DMD family; official 8-step ComfyUI artifact",
+        adapter_label="LightX v1.0 FL2V 8-step",
+    ),
     "lightx_er_sde_4": LightXProfile(
         key="lightx_er_sde_4",
         runtime_profile="LightX v0.1 | ER-SDE 4 steps",
         sampler="er_sde",
+        lora_filename=LIGHTX_LORA_FILENAME,
+        repository=LIGHTX_MODEL_REPOSITORY,
+        artifact_tokens=_OLD_LIGHTX_TOKENS,
+        lora_strength=0.75,
+        recipe_source="Kijai empirical ComfyUI",
+        adapter_label="LightX v0.1 resized rank-21",
     ),
     "lightx_sa_solver_4": LightXProfile(
         key="lightx_sa_solver_4",
         runtime_profile="LightX v0.1 | SA-Solver 4 steps",
         sampler="sa_solver",
+        lora_filename=LIGHTX_LORA_FILENAME,
+        repository=LIGHTX_MODEL_REPOSITORY,
+        artifact_tokens=_OLD_LIGHTX_TOKENS,
+        lora_strength=0.75,
+        recipe_source="Kijai empirical ComfyUI",
+        adapter_label="LightX v0.1 resized rank-21",
     ),
 }
 
@@ -162,6 +194,43 @@ def _first_output(result: Any, *, node_name: str) -> Any:
     return values[0]
 
 
+def _existing_bypass_injections(model: Any) -> tuple[Any, ...]:
+    getter = getattr(model, "get_injections", None)
+    if not callable(getter):
+        return ()
+    try:
+        return tuple(getter("bypass_lora") or ())
+    except Exception:
+        return ()
+
+
+def _restore_stacked_bypass_injections(model: Any, previous: tuple[Any, ...]) -> int:
+    """Preserve previous bypass LoRAs when Comfy's loader replaces its shared key.
+
+    ComfyUI's public bypass loader stores every call under the fixed
+    ``bypass_lora`` injection key. ModelPatcher clones inherit previous
+    injections, but a second loader call replaces that key. Combining the old
+    and newly-created injection lists makes ordered LightX + custom LoRA stacks
+    additive without ever merging/requantizing the H3 base weights.
+    """
+
+    if not previous:
+        return 0
+    getter = getattr(model, "get_injections", None)
+    setter = getattr(model, "set_injections", None)
+    if not callable(getter) or not callable(setter):
+        return 0
+    try:
+        current = tuple(getter("bypass_lora") or ())
+        if not current:
+            return 0
+        combined = [*previous, *current]
+        setter("bypass_lora", combined)
+        return len(combined)
+    except Exception:
+        return 0
+
+
 def _load_model_lora(
     model: Any,
     lora_name: str,
@@ -171,9 +240,10 @@ def _load_model_lora(
     """Load an adapter without eagerly materializing quantized H3 weights.
 
     Current ComfyUI exposes a bypass adapter path which performs the LoRA
-    contribution during each layer's forward pass.  This avoids the very slow
-    merge -> requantize cycle seen with INT8/FP8 H3 checkpoints.  Older ComfyUI
-    builds retain the normal node-loader fallback for compatibility.
+    contribution during each layer's forward pass. This avoids the very slow
+    merge -> requantize cycle seen with INT8/FP8 H3 checkpoints. Existing bypass
+    injections are preserved so multiple user LoRAs can be stacked on LightX.
+    Older ComfyUI builds retain the normal node-loader fallback for compatibility.
     """
 
     try:
@@ -185,11 +255,14 @@ def _load_model_lora(
         if bypass_loader is not None:
             path = folder_paths.get_full_path_or_raise("loras", lora_name)
             weights = comfy.utils.load_torch_file(path, safe_load=True)
+            previous = _existing_bypass_injections(model)
             patched, _clip = bypass_loader(model, None, weights, float(strength), 0.0)
-            return patched, "bypass-forward"
+            combined = _restore_stacked_bypass_injections(patched, previous)
+            backend = "bypass-forward-stacked" if combined else "bypass-forward"
+            return patched, backend
     except Exception as exc:
         # Keep an actionable fallback on older ComfyUI rather than making every
-        # acceleration profile unavailable.  The caller prints the backend so
+        # acceleration profile unavailable. The caller prints the backend so
         # users can see whether the fast path was active.
         import logging
 
@@ -207,14 +280,14 @@ def _load_model_lora(
 
     loader_class = node_mappings.get("LoraLoader")
     if loader_class is None:
-        raise PDDBackendError("ComfyUI's LoRA Loader is unavailable; update ComfyUI before using Mamad8 PDD.")
+        raise PDDBackendError("ComfyUI's LoRA Loader is unavailable; update ComfyUI before using accelerated H3 profiles.")
     loader = loader_class()
     result = loader.load_lora(model, None, lora_name, float(strength), 0.0)
     return _first_output(result, node_name="ComfyUI LoRA Loader"), "legacy-weight-patch"
 
 
 def build_lightx_backend(model: Any, profile_key: str):
-    """Apply Kijai's resized LightX adapter and empirical ComfyUI recipe."""
+    """Apply the exact LightX adapter and the sampling recipe paired with it."""
 
     if profile_key not in LIGHTX_PROFILES:
         raise PDDBackendError(f"Unknown LightX profile: {profile_key}")
@@ -228,8 +301,8 @@ def build_lightx_backend(model: Any, profile_key: str):
         choices,
         expected=profile.lora_filename,
         tokens=profile.artifact_tokens,
-        kind="LightX v0.1 resized rank-21 LoRA",
-        repository=LIGHTX_MODEL_REPOSITORY,
+        kind=f"{profile.adapter_label} LoRA",
+        repository=profile.repository,
     )
     patched_model, patch_backend = _load_model_lora(
         model,
@@ -238,12 +311,35 @@ def build_lightx_backend(model: Any, profile_key: str):
         getattr(nodes, "NODE_CLASS_MAPPINGS", {}),
     )
 
-    from .nodes.image_runtime import H3StudioSamplingPreset
+    if profile.runtime_profile:
+        from .nodes.image_runtime import H3StudioSamplingPreset
 
-    built_model, sampler, sigmas, base_info = H3StudioSamplingPreset().build(patched_model, profile.runtime_profile)
+        built_model, sampler, sigmas, base_info = H3StudioSamplingPreset().build(
+            patched_model,
+            profile.runtime_profile,
+        )
+    else:
+        # LightX2V's v1.0 H3 DMD family uses guidance-free Euler updates with
+        # video/audio flow shifts 6/3. The official ComfyUI artifact names its
+        # required denoise count directly, so keep that count explicit here.
+        from .nodes.image_runtime import H3StudioSamplingSettings
+
+        built_model, sampler, sigmas, base_info = H3StudioSamplingSettings().build(
+            model=patched_model,
+            sampler_name=profile.sampler,
+            scheduler=profile.scheduler,
+            steps=profile.steps,
+            denoise=1.0,
+            shift_video=profile.shift_video,
+            shift_audio=profile.shift_audio,
+            beta_alpha=0.6,
+            beta_beta=0.6,
+        )
+
     info = (
-        f"{base_info} | adapter=LightX v0.1 resized rank-21 | lora={lora_name} @ {profile.lora_strength:g} | "
-        f"recipe=Kijai empirical ComfyUI | lora_backend={patch_backend}"
+        f"profile={profile.key} | {base_info} | adapter={profile.adapter_label} | "
+        f"lora={lora_name} @ {profile.lora_strength:g} | recipe={profile.recipe_source} | "
+        f"lora_backend={patch_backend}"
     )
     return built_model, sampler, sigmas, info
 

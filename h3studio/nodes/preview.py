@@ -11,13 +11,22 @@ import base64
 import io
 import logging
 import math
+import queue
+import threading
 import time
-from dataclasses import dataclass
+import weakref
+from collections import OrderedDict
+from contextlib import suppress
+from dataclasses import dataclass, field
 from typing import Any
 
 LOGGER = logging.getLogger(__name__)
 WRAPPER_KEY = "h3studio_taeh3_preview"
 DEFAULT_TAEH3 = "taeh3.safetensors"
+_PATCHER_CACHE_LIMIT = 8
+_PATCHER_CACHE_LOCK = threading.RLock()
+_PATCHER_CACHE = OrderedDict()
+_PREVIEW_DRAIN_TIMEOUT_SECONDS = 8.0
 
 
 def _conv(torch, channels_in: int, channels_out: int, *, bias: bool = True):
@@ -110,17 +119,28 @@ def _vae_choices() -> list[str]:
 
 
 def _resolve_packed_latent(torch, value, latent_shapes):
-    """Restore Comfy's packed multi-latent tensor when shape metadata is present."""
+    """Restore the first H3 latent from either supported Comfy packed layout."""
 
     if getattr(value, "ndim", 0) != 3 or not latent_shapes:
         return value
     shape = tuple(int(part) for part in latent_shapes[0])
-    required_per_channel = math.prod(shape[2:])
-    if value.shape[1] != shape[1] or value.shape[2] < required_per_channel:
+
+    # Older/channel-packed layouts keep the target channel axis and append
+    # following packed data on the final dimension. Slice every channel first
+    # so data from the next packed latent cannot leak into the H3 frame.
+    if value.shape[1] == shape[1]:
+        required_per_channel = math.prod(shape[2:])
+        if value.shape[2] < required_per_channel:
+            raise ValueError(f"Packed latent shape {tuple(value.shape)} cannot restore H3 shape {shape}.")
+        return value[:, :, :required_per_channel].reshape((value.shape[0], *shape[1:]))
+
+    # Current Comfy multi-latent sampling flattens nested latents into
+    # [batch, 1, total_values]. H3 video is first, followed by audio.
+    required = math.prod(shape[1:])
+    flat = value.reshape((value.shape[0], -1))
+    if flat.shape[1] < required:
         raise ValueError(f"Packed latent shape {tuple(value.shape)} cannot restore H3 shape {shape}.")
-    # Comfy packs nested latents along the final axis. Slice every channel
-    # before reshaping so a following packed item cannot corrupt this frame.
-    return value[:, :, :required_per_channel].reshape((value.shape[0], *shape[1:]))
+    return flat[:, :required].reshape((value.shape[0], *shape[1:]))
 
 
 def _first_h3_latent(torch, value, latent_shapes):
@@ -156,6 +176,16 @@ def _jpeg_data_url(torch, image, quality: int) -> tuple[str, int, int]:
     return f"data:image/jpeg;base64,{encoded}", pil_image.width, pil_image.height
 
 
+@dataclass(frozen=True)
+class _PreviewJob:
+    latent: Any
+    step: int
+    total_steps: int
+    run_id: str
+    elapsed_seconds: float
+    average_step_seconds: float
+
+
 @dataclass
 class _PreviewWrapper:
     checkpoint_path: str
@@ -166,23 +196,40 @@ class _PreviewWrapper:
     decoder: Any = None
     run_serial: int = 0
     first_frame_reported: bool = False
+    active_run_id: str = ""
+    _jobs: Any = field(default=None, init=False, repr=False)
+    _worker: Any = field(default=None, init=False, repr=False)
+    _worker_lock: Any = field(default_factory=threading.RLock, init=False, repr=False)
+    _idle: Any = field(default_factory=threading.Event, init=False, repr=False)
 
-    def _load(self, torch, device, dtype):
+    def __post_init__(self):
+        self._idle.set()
+
+    def settings_key(self) -> tuple[Any, ...]:
+        return self.checkpoint_path, self.max_resolution, self.jpeg_quality, self.every
+
+    def _load(self, torch):
         if self.decoder is None:
             import comfy.utils
 
             state = comfy.utils.load_torch_file(self.checkpoint_path, safe_load=True)
             decoder = _decoder(torch, state)
             decoder.load_state_dict(state, strict=True)
-            self.decoder = decoder.eval()
-        self.decoder.to(device=device, dtype=dtype)
+            self.decoder = decoder.eval().to(device="cpu", dtype=torch.float32)
         return self.decoder
 
-    def _send(self, torch, step, x0, total_steps, latent_shapes, run_id, elapsed_seconds, average_step_seconds):
-        latent = _limit_latent(torch, _first_h3_latent(torch, x0, latent_shapes), self.max_resolution)
-        decoder = self._load(torch, latent.device, latent.dtype)
+    def _send(self, job: _PreviewJob):
+        if job.run_id != self.active_run_id:
+            return
+        import torch
+
+        started = time.perf_counter()
+        latent = _limit_latent(torch, job.latent, self.max_resolution)
+        decoder = self._load(torch)
         with torch.inference_mode():
             image = decoder(latent).clamp(0, 1)
+        if job.run_id != self.active_run_id:
+            return
         data_url, width, height = _jpeg_data_url(torch, image, self.jpeg_quality)
         from server import PromptServer
 
@@ -192,37 +239,92 @@ class _PreviewWrapper:
             {
                 "node_id": self.node_id,
                 "image": data_url,
-                "step": int(step) + 1,
-                "total": int(total_steps),
+                "step": job.step + 1,
+                "total": job.total_steps,
                 "width": width,
                 "height": height,
-                "run_id": run_id,
-                "elapsed_seconds": float(elapsed_seconds),
-                "average_step_seconds": float(average_step_seconds),
-                "eta_seconds": max(0.0, float(average_step_seconds) * (int(total_steps) - int(step) - 1)),
+                "run_id": job.run_id,
+                "elapsed_seconds": job.elapsed_seconds,
+                "average_step_seconds": job.average_step_seconds,
+                "eta_seconds": max(0.0, job.average_step_seconds * (job.total_steps - job.step - 1)),
             },
             server.client_id,
         )
         if not self.first_frame_reported:
             self.first_frame_reported = True
-            LOGGER.info("[H3 Studio] TAEH3 live preview active | first frame %dx%d", width, height)
+            LOGGER.info(
+                "[H3 Studio] TAEH3 live preview active | first frame %dx%d | cpu %.3fs",
+                width,
+                height,
+                time.perf_counter() - started,
+            )
 
-    def _enqueue(self, torch, step, x0, total_steps, latent_shapes, run_id, elapsed_seconds, average_step_seconds):
-        if step % self.every != 0 and step + 1 < total_steps:
+    def _worker_main(self):
+        while True:
+            job = self._jobs.get()
+            try:
+                if job is None:
+                    return
+                self._idle.clear()
+                self._send(job)
+            except Exception as error:
+                LOGGER.warning("H3 Studio TAEH3 CPU preview skipped a frame: %s", error)
+                if isinstance(job, _PreviewJob):
+                    self._report_error(error, job.run_id)
+            finally:
+                self._idle.set()
+                self._jobs.task_done()
+
+    def _ensure_worker(self):
+        with self._worker_lock:
+            if self._worker is not None and self._worker.is_alive():
+                return
+            self._jobs = queue.Queue(maxsize=1)
+            self._worker = threading.Thread(
+                target=self._worker_main,
+                name=f"H3StudioTAEH3-{self.node_id or 'preview'}",
+                daemon=True,
+            )
+            self._worker.start()
+
+    def _discard_pending(self):
+        if self._jobs is None:
             return
-        # Decode while x0 and Comfy's sampler CUDA context are still alive.
-        # The old background decoder raced post-sampling cleanup/offload and
-        # could silently lose every frame on short four-step H3 runs.
-        self._send(
-            torch,
-            step,
-            x0.detach(),
-            total_steps,
-            latent_shapes,
-            run_id,
-            elapsed_seconds,
-            average_step_seconds,
-        )
+        while True:
+            try:
+                self._jobs.get_nowait()
+            except queue.Empty:
+                return
+            else:
+                self._jobs.task_done()
+
+    def _enqueue(self, job: _PreviewJob):
+        self._ensure_worker()
+        try:
+            self._jobs.put_nowait(job)
+        except queue.Full:
+            self._discard_pending()
+            try:
+                self._jobs.put_nowait(job)
+            except queue.Full:
+                LOGGER.debug("H3 Studio TAEH3 dropped a stale preview frame")
+
+    def stop(self):
+        if self._jobs is None:
+            return
+        self._discard_pending()
+        with suppress(queue.Full):
+            self._jobs.put_nowait(None)
+
+    def _finish_run(self, run_id: str) -> None:
+        if self.active_run_id == run_id:
+            self.active_run_id = ""
+        self._discard_pending()
+        if not self._idle.wait(timeout=_PREVIEW_DRAIN_TIMEOUT_SECONDS):
+            LOGGER.warning(
+                "H3 Studio TAEH3 preview did not stop within %.1fs; final decode will continue.",
+                _PREVIEW_DRAIN_TIMEOUT_SECONDS,
+            )
 
     def _report_error(self, message: str, run_id: str) -> None:
         try:
@@ -262,16 +364,29 @@ class _PreviewWrapper:
     ):
         import torch
 
+        from ..runtime_trace import emit as trace
+
         self.run_serial += 1
         self.first_frame_reported = False
         run_id = f"{self.node_id}:{self.run_serial}"
+        self.active_run_id = run_id
+        self._discard_pending()
         total_steps = max(0, len(sigmas) - 1) if sigmas is not None and hasattr(sigmas, "__len__") else 0
         sampling_started = time.perf_counter()
+        trace_started = time.monotonic()
         LOGGER.info(
-            "[H3 Studio] TAEH3 sampler wrapper entered | node=%s | steps=%d | latent_shapes=%s",
+            "[H3 Studio] TAEH3 sampler wrapper entered | node=%s | steps=%d | latent_shapes=%s | decoder=cpu",
             self.node_id,
             total_steps,
             latent_shapes,
+        )
+        trace(
+            "sampling.begin",
+            state=True,
+            seed=seed,
+            steps=total_steps,
+            preview="cpu",
+            preview_node=self.node_id,
         )
         try:
             self._reset_frontend(total_steps, run_id)
@@ -279,39 +394,63 @@ class _PreviewWrapper:
             LOGGER.debug("H3 Studio preview reset event skipped: %s", error)
 
         def preview_callback(step, x0, x, total_steps):
-            try:
-                elapsed_seconds = time.perf_counter() - sampling_started
-                completed_steps = max(1, int(step) + 1)
-                self._enqueue(
-                    torch,
-                    step,
-                    x0,
-                    total_steps,
-                    latent_shapes,
-                    run_id,
-                    elapsed_seconds,
-                    elapsed_seconds / completed_steps,
-                )
-            except Exception as error:
-                LOGGER.warning("H3 Studio TAEH3 preview enqueue skipped: %s", error)
-                self._report_error(error, run_id)
+            # The final image is about to enter the full VAE, so a tiny preview
+            # for the last denoising step only creates CPU/RAM overlap.
+            if int(step) % self.every == 0 and int(step) + 1 < int(total_steps):
+                try:
+                    elapsed_seconds = time.perf_counter() - sampling_started
+                    completed_steps = max(1, int(step) + 1)
+                    latent = _first_h3_latent(torch, x0, latent_shapes)
+                    snapshot = latent.detach().to(device="cpu", dtype=torch.float32, copy=True)
+                    self._enqueue(
+                        _PreviewJob(
+                            latent=snapshot,
+                            step=int(step),
+                            total_steps=int(total_steps),
+                            run_id=run_id,
+                            elapsed_seconds=elapsed_seconds,
+                            average_step_seconds=elapsed_seconds / completed_steps,
+                        )
+                    )
+                except Exception as error:
+                    LOGGER.warning("H3 Studio TAEH3 preview snapshot skipped: %s", error)
+                    self._report_error(error, run_id)
             if callback is not None:
                 callback(step, x0, x, total_steps)
 
-        # A Comfy wrapper must call the executor object so it advances to the
-        # next wrapper. Calling executor.execute() restarts the current index
-        # and recursively invokes this same wrapper until Python overflows.
-        return executor(
-            noise,
-            latent_image,
-            sampler,
-            sigmas,
-            denoise_mask,
-            preview_callback,
-            disable_pbar,
-            seed,
-            latent_shapes=latent_shapes,
+        try:
+            result = executor(
+                noise,
+                latent_image,
+                sampler,
+                sigmas,
+                denoise_mask,
+                preview_callback,
+                disable_pbar,
+                seed,
+                latent_shapes=latent_shapes,
+            )
+        except Exception as error:
+            trace(
+                "sampling.error",
+                state=True,
+                seed=seed,
+                steps=total_steps,
+                elapsed_s=time.monotonic() - trace_started,
+                error_type=type(error).__name__,
+                error=str(error),
+            )
+            raise
+        finally:
+            self._finish_run(run_id)
+        trace(
+            "sampling.end",
+            state=True,
+            seed=seed,
+            steps=total_steps,
+            elapsed_s=time.monotonic() - trace_started,
         )
+        return result
 
 
 class H3StudioTAEH3Preview:
@@ -321,7 +460,7 @@ class H3StudioTAEH3Preview:
     FUNCTION = "attach"
     RETURN_TYPES = ("MODEL",)
     RETURN_NAMES = ("model",)
-    DESCRIPTION = "Fast approximate live previews only. Final output still uses the connected full H3 VAE."
+    DESCRIPTION = "CPU-only approximate previews on a stable sampler clone. Final output still uses the full H3 VAE."
     EXPERIMENTAL = True
 
     @classmethod
@@ -351,24 +490,69 @@ class H3StudioTAEH3Preview:
             raise FileNotFoundError(
                 f"TAEH3 preview file '{tiny_vae}' was not found. Put it in ComfyUI/models/vae_approx/."
             )
-        patched = model.clone()
+        node_id = str(unique_id or "")
+        cache_key = (id(model), node_id)
+        settings = (checkpoint_path, int(max_resolution), int(jpeg_quality), max(1, int(preview_every_n_steps)))
+        with _PATCHER_CACHE_LOCK:
+            entry = _PATCHER_CACHE.get(cache_key)
+            if entry is not None and entry[0]() is model:
+                patched, wrapper = entry[1], entry[2]
+                identity = "reused"
+                _PATCHER_CACHE.move_to_end(cache_key)
+            else:
+                patched = model.clone()
+                wrapper = _PreviewWrapper(
+                    checkpoint_path=checkpoint_path,
+                    node_id=node_id,
+                    max_resolution=settings[1],
+                    jpeg_quality=settings[2],
+                    every=settings[3],
+                )
+                try:
+                    upstream_ref = weakref.ref(model)
+                except TypeError:
+                    def upstream_ref():
+                        return model
+                _PATCHER_CACHE[cache_key] = (upstream_ref, patched, wrapper)
+                identity = "new"
+                while len(_PATCHER_CACHE) > _PATCHER_CACHE_LIMIT:
+                    _old_key, old_entry = _PATCHER_CACHE.popitem(last=False)
+                    old_entry[2].stop()
+
+            if wrapper.settings_key() != settings:
+                wrapper.stop()
+                wrapper = _PreviewWrapper(
+                    checkpoint_path=checkpoint_path,
+                    node_id=node_id,
+                    max_resolution=settings[1],
+                    jpeg_quality=settings[2],
+                    every=settings[3],
+                )
+                _PATCHER_CACHE[cache_key] = (_PATCHER_CACHE[cache_key][0], patched, wrapper)
+
         patched.remove_wrappers_with_key(comfy.patcher_extension.WrappersMP.OUTER_SAMPLE, WRAPPER_KEY)
         patched.add_wrapper_with_key(
             comfy.patcher_extension.WrappersMP.OUTER_SAMPLE,
             WRAPPER_KEY,
-            _PreviewWrapper(
-                checkpoint_path=checkpoint_path,
-                node_id=str(unique_id or ""),
-                max_resolution=int(max_resolution),
-                jpeg_quality=int(jpeg_quality),
-                every=max(1, int(preview_every_n_steps)),
-            ),
+            wrapper,
         )
         LOGGER.info(
-            "[H3 Studio] TAEH3 wrapper attached | node=%s | decoder=%s | max=%d | every=%d",
-            str(unique_id or ""),
+            "[H3 Studio] TAEH3 wrapper attached | node=%s | patcher=%s | decoder=%s@cpu | max=%d | every=%d",
+            node_id,
+            identity,
             tiny_vae,
             int(max_resolution),
             max(1, int(preview_every_n_steps)),
+        )
+        from ..runtime_trace import emit as trace
+
+        trace(
+            "preview.attach",
+            patcher=patched,
+            node=node_id,
+            identity=identity,
+            upstream_patcher_id=id(model),
+            preview_patcher_id=id(patched),
+            decoder="cpu",
         )
         return (patched,)

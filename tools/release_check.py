@@ -39,6 +39,7 @@ def main():
         "CHANGELOG.md",
         "CONTRIBUTING.md",
         "example_workflows/H3_Studio_Unified_Image.json",
+        "example_workflows/H3_Studio_Native_Fast_T2I.json",
         "subgraphs/H3_Studio_Sampling_and_Decode.json",
         ".github/workflows/ci.yml",
         ".github/workflows/release.yml",

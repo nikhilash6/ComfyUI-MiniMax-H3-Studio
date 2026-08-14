@@ -131,6 +131,33 @@ def test_prompt_cache_invalidates_for_encoder_and_model(monkeypatch) -> None:
         assert "text_conditioning=MISS" in result.diagnostics
 
 
+def test_prompt_cache_key_tracks_the_eager_native_encoder_instance() -> None:
+    first = SimpleNamespace(clip_name="clip-a", clip=object())
+    second = SimpleNamespace(clip_name="clip-a", clip=object())
+    assert cache._clip_key(first)[0] == cache._clip_key(second)[0] == "clip-a"
+    assert cache._clip_key(first) != cache._clip_key(second)
+
+
+def test_prompt_cache_hit_does_not_materialize_lazy_encoder() -> None:
+    class LazyClip:
+        _clip = None
+
+        def __getattr__(self, name):
+            raise AssertionError(f"cache hit accessed lazy encoder attribute {name}")
+
+    bundle = SimpleNamespace(clip=LazyClip())
+    cache._PROMPT_CACHE.put(("warm",), {"conditioning": "cached"})
+
+    result, state, seconds, runtime = cache._encode_prompt(
+        bundle,
+        ("warm",),
+        lambda: (_ for _ in ()).throw(AssertionError("cache hit tokenized again")),
+    )
+
+    assert result == {"conditioning": "cached"}
+    assert (state, seconds, runtime) == ("HIT", 0.0, "warm-cache")
+
+
 def test_reference_vae_cache_invalidates_only_changed_image(monkeypatch) -> None:
     _runtime_stubs(monkeypatch)
     monkeypatch.setattr(cache, "_reference_target_size", lambda *args: (512, 512))
@@ -154,5 +181,9 @@ def test_image_key_uses_fingerprint_or_live_tensor_identity() -> None:
 
 
 def test_production_cache_has_no_manual_dynamic_vram_eviction() -> None:
+    source = __import__("inspect").getsource(cache)
     assert not hasattr(cache, "release_dynamic_device_residency")
-    assert "partially_unload" not in __import__("inspect").getsource(cache)
+    assert "partially_unload" not in source
+    assert "unload_model_and_clones" not in source
+    assert "release_stage_model" not in source
+    assert "soft_empty_cache" not in source

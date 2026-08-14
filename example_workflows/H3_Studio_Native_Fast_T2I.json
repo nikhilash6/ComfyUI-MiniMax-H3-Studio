@@ -1,0 +1,1131 @@
+{
+  "id": "8cd71a62-633f-4a50-bc6c-6ba5189de832",
+  "revision": 0,
+  "last_node_id": 101,
+  "last_link_id": 17,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "UNETLoader",
+      "pos": [
+        60,
+        180
+      ],
+      "size": [
+        360,
+        92
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "unet_name",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "unet_name"
+          }
+        },
+        {
+          "name": "weight_dtype",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "weight_dtype"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            4
+          ]
+        }
+      ],
+      "title": "FL2VA transformer · native loader",
+      "properties": {
+        "Node name for S&R": "UNETLoader"
+      },
+      "widgets_values": [
+        "minimax_h3_fl2va_pruned_w4a8_mixed.safetensors",
+        "default"
+      ],
+      "color": "#243b36",
+      "bgcolor": "#182724"
+    },
+    {
+      "id": 2,
+      "type": "CLIPLoader",
+      "pos": [
+        60,
+        420
+      ],
+      "size": [
+        360,
+        126
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip_name",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "clip_name"
+          }
+        },
+        {
+          "name": "type",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "type"
+          }
+        },
+        {
+          "name": "device",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "device"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            1
+          ]
+        }
+      ],
+      "title": "Qwen3-VL 32B · native CLIP loader",
+      "properties": {
+        "Node name for S&R": "CLIPLoader"
+      },
+      "widgets_values": [
+        "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+        "minimax",
+        "default"
+      ],
+      "color": "#243b36",
+      "bgcolor": "#182724"
+    },
+    {
+      "id": 3,
+      "type": "VAELoader",
+      "pos": [
+        60,
+        680
+      ],
+      "size": [
+        360,
+        72
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vae_name",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "vae_name"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            14
+          ]
+        }
+      ],
+      "title": "Video VAE · decode only",
+      "properties": {
+        "Node name for S&R": "VAELoader"
+      },
+      "widgets_values": [
+        "minimax_h3_video_vae_fp16.safetensors"
+      ],
+      "color": "#243b36",
+      "bgcolor": "#182724"
+    },
+    {
+      "id": 4,
+      "type": "H3StudioResolutionPreset",
+      "pos": [
+        500,
+        520
+      ],
+      "size": [
+        380,
+        170
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source_image",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "aspect_ratio",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "aspect_ratio"
+          }
+        },
+        {
+          "name": "resolution_profile",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "resolution_profile"
+          }
+        },
+        {
+          "name": "custom_megapixels",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "custom_megapixels"
+          }
+        },
+        {
+          "name": "limit_to_native_area",
+          "type": "BOOLEAN",
+          "link": null,
+          "widget": {
+            "name": "limit_to_native_area"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "width",
+          "type": "INT",
+          "links": [
+            2
+          ]
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "links": [
+            3
+          ]
+        },
+        {
+          "name": "resolution_info",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "H3-native canvas",
+      "properties": {
+        "Node name for S&R": "H3StudioResolutionPreset"
+      },
+      "widgets_values": [
+        "1:1 square",
+        "fast preview | 0.40 MP",
+        1.0,
+        true
+      ],
+      "color": "#39402b",
+      "bgcolor": "#262b1d"
+    },
+    {
+      "id": 5,
+      "type": "H3StudioTextToImagePrepare",
+      "pos": [
+        960,
+        350
+      ],
+      "size": [
+        500,
+        350
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 1
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "prompt"
+          }
+        },
+        {
+          "name": "width",
+          "type": "INT",
+          "link": 2,
+          "widget": {
+            "name": "width"
+          }
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "link": 3,
+          "widget": {
+            "name": "height"
+          }
+        },
+        {
+          "name": "quality_profile",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "quality_profile"
+          }
+        },
+        {
+          "name": "optimize_for_still",
+          "type": "BOOLEAN",
+          "link": null,
+          "widget": {
+            "name": "optimize_for_still"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "links": [
+            7
+          ]
+        },
+        {
+          "name": "h3_latent",
+          "type": "LATENT",
+          "links": [
+            12
+          ]
+        },
+        {
+          "name": "requested_frames",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "name": "image_prompt",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "run_info",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "Text conditioning · independently cacheable",
+      "properties": {
+        "Node name for S&R": "H3StudioTextToImagePrepare"
+      },
+      "widgets_values": [
+        "A finished cinematic still image with a clear subject, deliberate composition, precise detail, natural texture, controlled lighting, and a coherent background.",
+        1024,
+        1024,
+        "recommended | 5 frames",
+        true
+      ],
+      "color": "#4a3e24",
+      "bgcolor": "#302918"
+    },
+    {
+      "id": 6,
+      "type": "LoraLoaderModelOnly",
+      "pos": [
+        540,
+        170
+      ],
+      "size": [
+        360,
+        110
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 4
+        },
+        {
+          "name": "lora_name",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "lora_name"
+          }
+        },
+        {
+          "name": "strength_model",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "strength_model"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            5
+          ]
+        }
+      ],
+      "title": "LightX v0.1 adapter · proven L4",
+      "properties": {
+        "Node name for S&R": "LoraLoaderModelOnly"
+      },
+      "widgets_values": [
+        "minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_rank_21_bf16.safetensors",
+        0.75
+      ],
+      "color": "#30405a",
+      "bgcolor": "#202b3d"
+    },
+    {
+      "id": 7,
+      "type": "H3StudioSamplingPreset",
+      "pos": [
+        540,
+        330
+      ],
+      "size": [
+        360,
+        112
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 5
+        },
+        {
+          "name": "sampling_profile",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "sampling_profile"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "links": [
+            6
+          ]
+        },
+        {
+          "name": "sampler",
+          "type": "SAMPLER",
+          "links": [
+            8
+          ]
+        },
+        {
+          "name": "sigmas",
+          "type": "SIGMAS",
+          "links": [
+            9
+          ]
+        },
+        {
+          "name": "sampling_info",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "LightX ER-SDE · proven four-step recipe",
+      "properties": {
+        "Node name for S&R": "H3StudioSamplingPreset"
+      },
+      "widgets_values": [
+        "LightX v0.1 | ER-SDE 4 steps"
+      ],
+      "color": "#30405a",
+      "bgcolor": "#202b3d"
+    },
+    {
+      "id": 8,
+      "type": "BasicGuider",
+      "pos": [
+        1530,
+        230
+      ],
+      "size": [
+        310,
+        90
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 6
+        },
+        {
+          "name": "conditioning",
+          "type": "CONDITIONING",
+          "link": 7
+        }
+      ],
+      "outputs": [
+        {
+          "name": "GUIDER",
+          "type": "GUIDER",
+          "links": [
+            11
+          ]
+        }
+      ],
+      "title": "Native positive guider",
+      "properties": {
+        "Node name for S&R": "BasicGuider"
+      },
+      "widgets_values": [],
+      "color": "#30405a",
+      "bgcolor": "#202b3d"
+    },
+    {
+      "id": 9,
+      "type": "RandomNoise",
+      "pos": [
+        1530,
+        400
+      ],
+      "size": [
+        310,
+        82
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "noise_seed",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "noise_seed"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "NOISE",
+          "type": "NOISE",
+          "links": [
+            10
+          ]
+        }
+      ],
+      "title": "Seed",
+      "properties": {
+        "Node name for S&R": "RandomNoise"
+      },
+      "widgets_values": [
+        42,
+        "randomize"
+      ],
+      "color": "#30405a",
+      "bgcolor": "#202b3d"
+    },
+    {
+      "id": 10,
+      "type": "SamplerCustomAdvanced",
+      "pos": [
+        1930,
+        260
+      ],
+      "size": [
+        350,
+        156
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "noise",
+          "type": "NOISE",
+          "link": 10
+        },
+        {
+          "name": "guider",
+          "type": "GUIDER",
+          "link": 11
+        },
+        {
+          "name": "sampler",
+          "type": "SAMPLER",
+          "link": 8
+        },
+        {
+          "name": "sigmas",
+          "type": "SIGMAS",
+          "link": 9
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 12
+        }
+      ],
+      "outputs": [
+        {
+          "name": "output",
+          "type": "LATENT",
+          "links": [
+            13
+          ]
+        },
+        {
+          "name": "denoised_output",
+          "type": "LATENT",
+          "links": null
+        }
+      ],
+      "title": "Native sampling",
+      "properties": {
+        "Node name for S&R": "SamplerCustomAdvanced"
+      },
+      "widgets_values": [],
+      "color": "#30405a",
+      "bgcolor": "#202b3d"
+    },
+    {
+      "id": 11,
+      "type": "VAEDecode",
+      "pos": [
+        2370,
+        280
+      ],
+      "size": [
+        300,
+        90
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 13
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 14
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            15
+          ]
+        }
+      ],
+      "title": "Native VAE decode",
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "color": "#47314f",
+      "bgcolor": "#302136"
+    },
+    {
+      "id": 12,
+      "type": "ImageFromBatch",
+      "pos": [
+        2750,
+        250
+      ],
+      "size": [
+        320,
+        110
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 15
+        },
+        {
+          "name": "batch_index",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "batch_index"
+          }
+        },
+        {
+          "name": "length",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "length"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            16,
+            17
+          ]
+        }
+      ],
+      "title": "Select first finished still",
+      "properties": {
+        "Node name for S&R": "ImageFromBatch"
+      },
+      "widgets_values": [
+        0,
+        1
+      ],
+      "color": "#47314f",
+      "bgcolor": "#302136"
+    },
+    {
+      "id": 13,
+      "type": "PreviewImage",
+      "pos": [
+        3160,
+        120
+      ],
+      "size": [
+        410,
+        360
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 16
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": null
+        }
+      ],
+      "title": "Final still · preview",
+      "properties": {
+        "Node name for S&R": "PreviewImage"
+      },
+      "widgets_values": [],
+      "color": "#47314f",
+      "bgcolor": "#302136"
+    },
+    {
+      "id": 14,
+      "type": "SaveImage",
+      "pos": [
+        3160,
+        560
+      ],
+      "size": [
+        410,
+        110
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 17
+        },
+        {
+          "name": "filename_prefix",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "filename_prefix"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "links": null
+        }
+      ],
+      "title": "Final still · native PNG save",
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "H3StudioNative/%date:yyyy-MM-dd%/H3"
+      ],
+      "color": "#47314f",
+      "bgcolor": "#302136"
+    },
+    {
+      "id": 100,
+      "type": "H3StudioWorkflowNote",
+      "pos": [
+        60,
+        850
+      ],
+      "size": [
+        820,
+        300
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "section",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "section"
+          }
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "text"
+          }
+        }
+      ],
+      "outputs": [],
+      "title": "START HERE · native fast path",
+      "properties": {
+        "Node name for S&R": "H3StudioWorkflowNote",
+        "purpose": "Documentation only; never enters the generation graph."
+      },
+      "widgets_values": [
+        "quick start",
+        "1. Edit the prompt in **Text conditioning**.\n2. Keep the first test at **0.40 MP**, 5 frames, and the wired LightX ER-SDE four-step recipe.\n3. Queue once.\n4. Queue the identical prompt again to verify ComfyUI's node cache.\n\n> [!IMPORTANT]\n> This workflow intentionally has no Director, combined model bundle, Condition & Route node, runtime sampling subgraph, analyzer, benchmark branch, or live-video preview."
+      ],
+      "color": "#22322f",
+      "bgcolor": "#17211f"
+    },
+    {
+      "id": 101,
+      "type": "H3StudioWorkflowNote",
+      "pos": [
+        960,
+        820
+      ],
+      "size": [
+        820,
+        240
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "section",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "section"
+          }
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "text"
+          }
+        }
+      ],
+      "outputs": [],
+      "title": "Why this graph is different",
+      "properties": {
+        "Node name for S&R": "H3StudioWorkflowNote",
+        "purpose": "Documentation only; never enters the generation graph."
+      },
+      "widgets_values": [
+        "models",
+        "The required 32B NVFP4 encoder, proven 11.2 GiB W4A8 FL2VA transformer, LightX adapter, and video VAE are independent stages. Text conditioning does not depend on the VAE. The VAE is first needed after sampling. This restores the measured L4 architecture without hiding model loading or conditioning inside the legacy combined nodes."
+      ],
+      "color": "#22322f",
+      "bgcolor": "#17211f"
+    }
+  ],
+  "links": [
+    [
+      1,
+      2,
+      0,
+      5,
+      0,
+      "CLIP"
+    ],
+    [
+      2,
+      4,
+      0,
+      5,
+      2,
+      "INT"
+    ],
+    [
+      3,
+      4,
+      1,
+      5,
+      3,
+      "INT"
+    ],
+    [
+      4,
+      1,
+      0,
+      6,
+      0,
+      "MODEL"
+    ],
+    [
+      5,
+      6,
+      0,
+      7,
+      0,
+      "MODEL"
+    ],
+    [
+      6,
+      7,
+      0,
+      8,
+      0,
+      "MODEL"
+    ],
+    [
+      7,
+      5,
+      0,
+      8,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      8,
+      7,
+      1,
+      10,
+      2,
+      "SAMPLER"
+    ],
+    [
+      9,
+      7,
+      2,
+      10,
+      3,
+      "SIGMAS"
+    ],
+    [
+      10,
+      9,
+      0,
+      10,
+      0,
+      "NOISE"
+    ],
+    [
+      11,
+      8,
+      0,
+      10,
+      1,
+      "GUIDER"
+    ],
+    [
+      12,
+      5,
+      1,
+      10,
+      4,
+      "LATENT"
+    ],
+    [
+      13,
+      10,
+      0,
+      11,
+      0,
+      "LATENT"
+    ],
+    [
+      14,
+      3,
+      0,
+      11,
+      1,
+      "VAE"
+    ],
+    [
+      15,
+      11,
+      0,
+      12,
+      0,
+      "IMAGE"
+    ],
+    [
+      16,
+      12,
+      0,
+      13,
+      0,
+      "IMAGE"
+    ],
+    [
+      17,
+      12,
+      0,
+      14,
+      0,
+      "IMAGE"
+    ]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "01 · INDEPENDENT MODEL LOADERS",
+      "bounding": [
+        20,
+        100,
+        440,
+        700
+      ],
+      "color": "#355b54",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "02 · NATIVE SCHEDULE",
+      "bounding": [
+        480,
+        100,
+        440,
+        350
+      ],
+      "color": "#3f536b",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "03 · CONDITIONING ONLY",
+      "bounding": [
+        920,
+        280,
+        590,
+        470
+      ],
+      "color": "#66553d",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 4,
+      "title": "04 · NATIVE SAMPLE",
+      "bounding": [
+        1490,
+        150,
+        840,
+        390
+      ],
+      "color": "#3f536b",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 5,
+      "title": "05 · DECODE AND SAVE",
+      "bounding": [
+        2330,
+        80,
+        1290,
+        650
+      ],
+      "color": "#59405f",
+      "font_size": 24,
+      "flags": {}
+    }
+  ],
+  "definitions": {
+    "subgraphs": []
+  },
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.72,
+      "offset": [
+        420,
+        240
+      ]
+    },
+    "frontendVersion": "1.30.0",
+    "h3studio": {
+      "schema_version": 1,
+      "template_version": "native-fast-t2i-1",
+      "runtime_structure": "independent-native-comfy-stages",
+      "required_encoder": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "hub_included": false
+    }
+  },
+  "version": 0.4
+}
