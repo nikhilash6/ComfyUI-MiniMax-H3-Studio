@@ -1,14 +1,14 @@
 """Latency and contract fixes for H3 Studio's modern prompt-preparation stack.
 
 The optional Qwen3.5 analyzer/writer is small enough to fit fully on common
-22-24 GB GPUs.  ComfyUI's default dynamic text-encoder patcher is excellent for
+22-24 GB GPUs. ComfyUI's default dynamic text-encoder patcher is excellent for
 huge encoders but can make autoregressive 2B/4B generation needlessly stream
-weights every token.  H3 Studio therefore uses ComfyUI's supported non-dynamic
+weights every token. H3 Studio therefore uses ComfyUI's supported non-dynamic
 CLIP path for Qwen3.5 prompt preparation, while still allowing ComfyUI to unload
 the model before MiniMax H3 conditioning when VRAM is needed.
 
 This module also keeps factual analysis compact and makes prompt-writer retries
-about machine-checkable contract failures only.  Subjective style-token checks
+about machine-checkable contract failures only. Subjective style-token checks
 must never throw away a useful 30-40 second generation.
 """
 
@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 import time
 from collections.abc import Sequence
 from typing import Any
@@ -59,8 +58,6 @@ def _validate_records(payload: dict[str, Any], expected_ordinals: set[int]) -> d
             continue
         description = " ".join(str(item.get("description") or "").split())
         words = len(description.split())
-        # 35-60 is the normal target.  Keep modest headroom for dense OCR or
-        # material-heavy scenes without accepting essay captions.
         if words < 30 or words > 90:
             raise ValueError(
                 f"Analyzer reference {ordinal} description has {words} words; target 35-60, hard range 30-90."
@@ -74,9 +71,6 @@ def _validate_records(payload: dict[str, Any], expected_ordinals: set[int]) -> d
 
 def _compact_generate(self, tokens, *args, **kwargs):
     image_count = max(1, int(getattr(self, "_image_count", 1)))
-    # Enough for ~35-60 factual words/image + JSON, rather than the historical
-    # 1.5K/2K-token ceilings.  A second attempt remains available for malformed
-    # structured output, not for stylistic preferences.
     ceiling = min(704, 88 + image_count * 80)
     requested = int(kwargs.get("max_length") or ceiling)
     kwargs["max_length"] = min(requested, ceiling)
@@ -89,17 +83,11 @@ def _minicpm_decode(generated, *_args, **_kwargs) -> str:
 
 
 def _load_native_qwen35_resident(name: str):
-    """Load Qwen3.5 through ComfyUI's native non-dynamic CLIP path.
+    """Load Qwen3.5 through ComfyUI's native non-dynamic CLIP path."""
 
-    This is not a private loader or Transformers side pipeline.  It uses the
-    same current ComfyUI Qwen3.5 model detection/vision/generation classes, but
-    requests ``disable_dynamic=True`` so a 2B/4B autoregressive model that fits
-    in VRAM is not streamed layer-by-layer on every generated token.
-    """
-
-    import folder_paths
     import comfy.sd
     import comfy.utils
+    import folder_paths
 
     path = folder_paths.get_full_path_or_raise("text_encoders", name)
     state_dict = comfy.utils.load_torch_file(path, safe_load=True)
@@ -147,7 +135,7 @@ def _mention_clause(prompt: str, ordinal: int) -> str:
     left = max(text.rfind(".", 0, pos), text.rfind(";", 0, pos), text.rfind("\n", 0, pos))
     right_candidates = [value for value in (text.find(".", pos), text.find(";", pos)) if value >= 0]
     right = min(right_candidates) + 1 if right_candidates else min(len(text), pos + 220)
-    clause = text[left + 1:right].strip()
+    clause = text[left + 1 : right].strip()
     if len(clause) > 240:
         clause = clause[:237].rstrip() + "…"
     return clause or f"Preserve the user's assignment for {token}."
@@ -172,9 +160,6 @@ def _compact_fallback_prompt(prompt: str, references: Sequence[Any], additional_
     if len(source_words) <= 150:
         source = " ".join(source_words)
     else:
-        # Keep both the opening request and tail, where negative constraints and
-        # output/style instructions commonly live.  The generative writer is the
-        # normal path; this is only the last-resort fail-soft path.
         source = " ".join(source_words[:118] + ["[…]"] + source_words[-36:])
 
     assignments = []
@@ -215,10 +200,7 @@ def _run_prompt_writer_fast(
 
     from .prompting import comfy_analyzer
 
-    facts = tuple(
-        (item.ordinal, item.effective_role, item.retention, item.description)
-        for item in references
-    )
+    facts = tuple((item.ordinal, item.effective_role, item.retention, item.description) for item in references)
     identity = writer_name or (type(clip).__name__ if clip is not None else "default")
     additional_instruction = str(additional_instruction or "").strip()[:4000]
     key = (str(identity), str(prompt), facts, additional_instruction)
@@ -248,8 +230,6 @@ def _run_prompt_writer_fast(
 
     started = time.perf_counter()
     last_error = ""
-    # Attempt two exists only for malformed JSON.  A valid model answer is never
-    # discarded because it failed a hand-written aesthetic keyword checklist.
     for attempt, ceiling in enumerate((224, 160), start=1):
         repair = ""
         if attempt == 2:
@@ -291,12 +271,8 @@ def _run_prompt_writer_fast(
 
         candidate, repaired_mentions = _repair_missing_mentions(candidate, prompt)
         failures = _hard_writer_failures(candidate, prompt)
-        # Missing mentions have already been restored from the exact local user
-        # clauses.  Do not spend another full autoregressive pass for that.
         failures = [item for item in failures if not item.startswith("missing reference assignment")]
         if failures:
-            # A parseable instruction is still more useful than throwing away a
-            # full generation.  Clamp only extreme verbosity; log the soft issue.
             LOGGER.warning("[H3 Studio - Prompt Director] Soft contract note | %s", "; ".join(failures))
             words = candidate.split()
             if len(words) > 240:
