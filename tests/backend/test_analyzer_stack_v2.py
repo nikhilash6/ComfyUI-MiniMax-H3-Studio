@@ -34,6 +34,12 @@ def test_minicpm_spec_requires_separate_projector() -> None:
     assert spec.can_write is False
 
 
+def test_compact_analysis_contract_keeps_references_schema() -> None:
+    assert '"references"' in analyzer_runtime_fixes.SYSTEM_INSTRUCTION
+    assert '"images"' not in analyzer_runtime_fixes.SYSTEM_INSTRUCTION
+    assert "35-70" in analyzer_runtime_fixes.SYSTEM_INSTRUCTION
+
+
 def test_compact_analysis_validator_accepts_dense_records_and_rejects_essays() -> None:
     words = " ".join(["visible"] * 45)
     result = analyzer_runtime_fixes._validate_records(
@@ -66,3 +72,7 @@ def test_compact_generate_forces_deterministic_ceiling() -> None:
     )
     assert result["do_sample"] is False
     assert result["max_length"] == 296
+
+
+def test_minicpm_decode_accepts_comfy_decode_kwargs() -> None:
+    assert analyzer_runtime_fixes._minicpm_decode('{"references":[]}', skip_special_tokens=True) == '{"references":[]}'
