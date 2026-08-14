@@ -1,28 +1,28 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 import { applyState, stateFromNode } from "./js/studio_extension.js";
+import { selectControl } from "./js/core/dom.js";
 
 const TARGET = "H3StudioDirector";
-const STYLE_ID = "h3studio-runtime-style";
 const CAPABILITIES_URL = "/h3studio/runtime/capabilities";
+const STYLE_ID = "h3studio-runtime-v4-style";
 
 const PRESETS = [
-  ["auto", "Auto · recommended"],
-  ["og_current", "OG / Current · unchanged runtime"],
-  ["quality", "Quality · conservative PyTorch"],
-  ["fast", "Fast · accelerated attention"],
-  ["low_vram", "Low VRAM · lower attention peaks"],
-  ["extreme_low_vram", "Extreme Low VRAM · survival first"],
+  ["auto", "Auto", "Best default", "Chooses the fastest safe path from the real H3 workload."],
+  ["fast", "Fast", "Max speed", "Prefer accelerated kernels and no chunking when memory allows."],
+  ["quality", "Quality", "Conservative", "Prefer the conservative PyTorch attention path."],
+  ["low_vram", "Low VRAM", "Memory saver", "Reduce transient attention peaks with exact head chunking."],
+  ["og_current", "OG", "No override", "Leave H3's inherited runtime behavior unchanged."],
+  ["extreme_low_vram", "Extreme", "Last resort", "Strongest memory-saving path for constrained GPUs."],
 ];
 const ATTENTION = [
   ["auto", "Auto / preset"],
-  ["og", "OG / inherited"],
-  ["pytorch", "PyTorch"],
+  ["og", "Inherited / OG"],
   ["comfy_kitchen", "Comfy Kitchen"],
-  ["sage_mem_eff", "Sage · H3 memory-efficient"],
+  ["sage_mem_eff", "Sage · memory-efficient"],
+  ["pytorch", "PyTorch"],
 ];
-const HEAD_CHUNKS = [[0, "Auto / preset"], [1, "Off"], [2, "2"], [4, "4"], [8, "8"], [16, "16"]];
-const FFN_CHUNKS = [[0, "Off · recommended"], [2, "2"], [4, "4"], [8, "8"], [16, "16"], [32, "32"]];
+const HEAD_CHUNKS = [[0, "Auto / preset"], [1, "Off"], [2, "2 groups"], [4, "4 groups"], [8, "8 groups"], [16, "16 groups"]];
 
 let capabilities = null;
 let capabilitiesPromise = null;
@@ -32,28 +32,29 @@ function installStyles() {
   const style = document.createElement("style");
   style.id = STYLE_ID;
   style.textContent = `
-    .h3s-runtime { display:flex; flex-direction:column; gap:9px; }
-    .h3s-runtime-top { display:grid; grid-template-columns:minmax(180px,1fr) auto; gap:8px; align-items:center; }
-    .h3s-runtime-select,.h3s-runtime-advanced select,.h3s-runtime-advanced input { width:100%; box-sizing:border-box; }
-    .h3s-runtime-detected { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
-    .h3s-runtime-chip { border:1px solid var(--h3s-border,#35414a); background:var(--h3s-panel-2,#172127); border-radius:8px; padding:7px 8px; min-width:0; }
-    .h3s-runtime-chip strong { display:block; font-size:11px; opacity:.68; font-weight:600; margin-bottom:2px; }
-    .h3s-runtime-chip span { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:12px; }
-    .h3s-runtime-result { border:1px solid color-mix(in srgb,var(--h3s-accent,#00cfa6) 45%,var(--h3s-border,#35414a)); border-radius:10px; padding:10px; background:color-mix(in srgb,var(--h3s-accent,#00cfa6) 7%,var(--h3s-panel,#11191e)); }
-    .h3s-runtime-result-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; }
-    .h3s-runtime-result-title { font-weight:700; }
-    .h3s-runtime-reason { font-size:11px; line-height:1.45; opacity:.82; margin-top:7px; }
-    .h3s-runtime-config { display:grid; grid-template-columns:110px minmax(0,1fr); gap:3px 8px; font-size:11px; }
-    .h3s-runtime-config span:nth-child(odd) { opacity:.62; }
-    .h3s-runtime-warning { color:#f3b66b; font-size:11px; line-height:1.4; margin-top:5px; }
-    .h3s-runtime-advanced { border-top:1px solid var(--h3s-border,#35414a); padding-top:8px; }
-    .h3s-runtime-advanced summary { cursor:pointer; font-size:11px; opacity:.78; user-select:none; }
-    .h3s-runtime-advanced-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
-    .h3s-runtime-field label { display:block; font-size:10px; opacity:.68; margin-bottom:3px; }
-    .h3s-runtime-note { font-size:10px; opacity:.62; line-height:1.4; grid-column:1/-1; }
-    .h3s-runtime-button { border:1px solid var(--h3s-border,#35414a); background:var(--h3s-panel-2,#172127); color:inherit; border-radius:7px; padding:6px 8px; cursor:pointer; font:inherit; }
-    .h3s-runtime-button:hover { border-color:var(--h3s-accent,#00cfa6); }
-    @media (max-width:600px) { .h3s-runtime-detected,.h3s-runtime-advanced-grid { grid-template-columns:1fr; } }
+    .h3s-runtime-section{overflow:visible!important}
+    .h3rt{display:flex;flex-direction:column;gap:10px}
+    .h3rt-copy{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+    .h3rt-copy p{margin:0;color:var(--h3s-muted);font-size:10px;line-height:1.45;max-width:610px}
+    .h3rt-detect{flex:none;border:1px solid var(--h3s-border);border-radius:8px;background:var(--h3s-bg);color:var(--h3s-text);padding:6px 9px;cursor:pointer;font:650 9px/1.2 inherit}
+    .h3rt-detect:hover{border-color:color-mix(in srgb,var(--h3s-accent) 55%,var(--h3s-border))}
+    .h3rt-presets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+    .h3rt-preset{position:relative;min-width:0;min-height:58px;padding:8px 9px;text-align:left;border:1px solid var(--h3s-border);border-radius:10px;background:color-mix(in srgb,var(--h3s-bg) 88%,white 2%);color:var(--h3s-text);cursor:pointer;transition:120ms ease}
+    .h3rt-preset:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--h3s-accent) 50%,var(--h3s-border));background:color-mix(in srgb,var(--h3s-accent) 5%,var(--h3s-bg))}
+    .h3rt-preset.is-active{border-color:color-mix(in srgb,var(--h3s-accent) 72%,var(--h3s-border));background:linear-gradient(145deg,color-mix(in srgb,var(--h3s-accent) 14%,var(--h3s-bg)),color-mix(in srgb,var(--h3s-accent) 5%,var(--h3s-bg)));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--h3s-accent) 13%,transparent)}
+    .h3rt-preset-name{display:block;font-size:11px;font-weight:760;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.h3rt-preset-sub{display:block;margin-top:2px;color:var(--h3s-muted);font-size:8.5px}.h3rt-preset.is-active .h3rt-preset-sub{color:color-mix(in srgb,var(--h3s-accent) 72%,var(--h3s-text))}
+    .h3rt-more{display:grid;grid-template-columns:1fr 1fr;gap:6px;grid-column:1/-1}
+    .h3rt-status{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+    .h3rt-chip{min-width:0;padding:7px 8px;border:1px solid color-mix(in srgb,var(--h3s-border) 88%,transparent);border-radius:9px;background:color-mix(in srgb,var(--h3s-bg) 93%,white 2%)}
+    .h3rt-chip b{display:block;color:var(--h3s-muted);font-size:8px;font-weight:650;text-transform:uppercase;letter-spacing:.07em}.h3rt-chip span{display:block;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10px}
+    .h3rt-result{padding:9px 10px;border:1px solid color-mix(in srgb,var(--h3s-accent) 38%,var(--h3s-border));border-radius:10px;background:color-mix(in srgb,var(--h3s-accent) 6%,var(--h3s-bg))}
+    .h3rt-result-head{display:flex;justify-content:space-between;gap:8px;align-items:center}.h3rt-result-head strong{font-size:11px}.h3rt-result-tag{font-size:8px;color:var(--h3s-accent);text-transform:uppercase;letter-spacing:.08em}
+    .h3rt-result-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px 10px;margin-top:7px}.h3rt-kv{min-width:0}.h3rt-kv small{display:block;color:var(--h3s-muted);font-size:8px}.h3rt-kv span{display:block;font-size:9.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .h3rt-reason{margin-top:7px;color:var(--h3s-muted);font-size:9px;line-height:1.4}.h3rt-warning{margin-top:5px;color:#f4bf77;font-size:9px;line-height:1.4}
+    .h3rt-expert{border-top:1px solid color-mix(in srgb,var(--h3s-border) 70%,transparent);padding-top:7px}.h3rt-expert>summary{cursor:pointer;color:var(--h3s-muted);font-size:9px;user-select:none;list-style:none}.h3rt-expert>summary::-webkit-details-marker{display:none}.h3rt-expert>summary::before{content:'›';display:inline-block;margin-right:6px;transition:transform .12s}.h3rt-expert[open]>summary::before{transform:rotate(90deg)}
+    .h3rt-expert-grid{display:grid;grid-template-columns:1fr 1fr auto;gap:7px;align-items:end;margin-top:8px}.h3rt-field>span{display:block;margin:0 0 3px 1px;color:var(--h3s-muted);font-size:8.5px}.h3rt-reset{height:31px;border:1px solid var(--h3s-border);border-radius:8px;background:transparent;color:var(--h3s-muted);padding:0 9px;cursor:pointer;font-size:9px}.h3rt-reset:hover{color:var(--h3s-text)}
+    .h3rt-expert-note{grid-column:1/-1;color:var(--h3s-muted);font-size:8.5px;line-height:1.4}.h3rt-expert-note strong{color:#f4bf77;font-weight:650}
+    @media(max-width:720px){.h3rt-presets{grid-template-columns:1fr 1fr}.h3rt-status,.h3rt-result-grid{grid-template-columns:1fr 1fr}.h3rt-expert-grid{grid-template-columns:1fr}}
   `;
   document.head.append(style);
 }
@@ -62,68 +63,27 @@ async function loadCapabilities(force = false) {
   if (!force && capabilities) return capabilities;
   if (!force && capabilitiesPromise) return capabilitiesPromise;
   capabilitiesPromise = (async () => {
-    const response = typeof api.fetchApi === "function"
-      ? await api.fetchApi(CAPABILITIES_URL)
-      : await fetch(CAPABILITIES_URL, { credentials: "same-origin", cache: "no-store" });
+    const response = await api.fetchApi(CAPABILITIES_URL, { cache: "no-store" });
     if (!response.ok) throw new Error(`Runtime capability request failed (${response.status})`);
-    const payload = await response.json();
-    capabilities = payload?.capabilities || null;
+    capabilities = (await response.json())?.capabilities || null;
     return capabilities;
   })();
   try { return await capabilitiesPromise; } finally { capabilitiesPromise = null; }
 }
 
-function button(text, title, click) {
-  const el = document.createElement("button");
-  el.type = "button";
-  el.className = "h3s-runtime-button";
-  el.textContent = text;
-  el.title = title;
-  el.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    click();
-  });
-  return el;
-}
-
-function select(value, options, onChange, className = "") {
-  const el = document.createElement("select");
-  el.className = className;
-  for (const [key, label] of options) {
-    const option = document.createElement("option");
-    option.value = String(key);
-    option.textContent = label;
-    el.append(option);
-  }
-  el.value = String(value);
-  el.addEventListener("change", () => onChange(el.value));
-  return el;
-}
-
-function chip(label, value) {
-  const root = document.createElement("div");
-  root.className = "h3s-runtime-chip";
-  const title = document.createElement("strong");
-  title.textContent = label;
-  const text = document.createElement("span");
-  text.textContent = value;
-  text.title = value;
-  root.append(title, text);
-  return root;
-}
-
-function bool(value) { return value ? "available" : "unavailable"; }
-function formatVram(value) { return Number(value) > 0 ? `${Number(value).toFixed(1)} GB` : "unknown"; }
-
 function runtimeState(node) {
   const state = stateFromNode(node);
   const ui = { ...(state.ui || {}) };
-  const advanced = { attention_backend: "auto", head_chunks: 0, ffn_chunks: 0, ffn_sequence_threshold: 4096, ...(ui.runtime_advanced || {}) };
   return {
     state,
     preset: String(ui.runtime_optimization || "auto"),
-    advanced,
+    advanced: {
+      attention_backend: "auto",
+      head_chunks: 0,
+      ffn_chunks: 0,
+      ffn_sequence_threshold: 4096,
+      ...(ui.runtime_advanced || {}),
+    },
   };
 }
 
@@ -137,158 +97,144 @@ function saveRuntime(node, state, preset, advanced, dirty = true) {
   applyState(node, state, dirty);
 }
 
-function field(label, control) {
-  const root = document.createElement("div");
-  root.className = "h3s-runtime-field";
-  const name = document.createElement("label");
-  name.textContent = label;
-  root.append(name, control);
+function el(tag, className = "", text = "") {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text) node.textContent = text;
+  return node;
+}
+
+function chip(label, value, title = "") {
+  const root = el("div", "h3rt-chip");
+  const key = el("b", "", label);
+  const val = el("span", "", value);
+  val.title = title || value;
+  root.append(key, val);
   return root;
+}
+
+function bool(value) { return value ? "ready" : "not available"; }
+function vram(value) { return Number(value) > 0 ? `${Number(value).toFixed(1)} GB` : "unknown"; }
+
+function presetButton(node, key, name, sub, description, active, compact = false) {
+  const button = el("button", "h3rt-preset" + (active ? " is-active" : ""));
+  button.type = "button";
+  button.title = description;
+  button.dataset.runtimePreset = key;
+  button.append(el("span", "h3rt-preset-name", name), el("span", "h3rt-preset-sub", sub));
+  if (compact) button.style.minHeight = "42px";
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const current = runtimeState(node);
+    if (current.preset === key) return;
+    saveRuntime(node, current.state, key, current.advanced);
+    installRuntimeSection(node, true);
+  });
+  return button;
 }
 
 function actualResult(node, requested) {
   const data = node.__h3studioRuntimeResolved;
-  const root = document.createElement("div");
-  root.className = "h3s-runtime-result";
-  const head = document.createElement("div");
-  head.className = "h3s-runtime-result-head";
-  const title = document.createElement("span");
-  title.className = "h3s-runtime-result-title";
-  title.textContent = data ? `${data.requested_label} → ${data.resolved_label}` : `${PRESETS.find(([key]) => key === requested)?.[1] || requested}`;
-  const status = document.createElement("span");
-  status.className = "h3s-status-pill";
-  status.textContent = data ? "RESOLVED" : "NEXT RUN";
-  head.append(title, status);
+  const root = el("div", "h3rt-result");
+  const head = el("div", "h3rt-result-head");
+  const title = el("strong", "", data ? `${data.requested_label} → ${data.resolved_label}` : (PRESETS.find(([key]) => key === requested)?.[1] || requested));
+  head.append(title, el("span", "h3rt-result-tag", data ? "resolved last run" : "resolves on next run"));
   root.append(head);
-
   if (!data) {
-    const note = document.createElement("div");
-    note.className = "h3s-runtime-reason";
-    note.textContent = requested === "auto"
-      ? "Auto resolves after H3 conditioning so it can use the real packed sequence length, route, references, frame packet, GPU and available kernels."
-      : "The exact effective backend will be printed and shown here on the next generation.";
-    root.append(note);
+    root.append(el("div", "h3rt-reason", requested === "auto"
+      ? "Auto waits for real packed tokens, route, references and frame count before choosing the backend."
+      : "The exact backend and chunking will appear here after the next generation."));
     return root;
   }
-
-  const config = document.createElement("div");
-  config.className = "h3s-runtime-config";
   const work = data.workload || {};
+  const grid = el("div", "h3rt-result-grid");
   const pairs = [
-    ["Attention", data.attention_label || data.attention_backend],
+    ["Attention", data.attention_label || data.attention_backend || "inherited"],
     ["Head chunks", Number(data.head_chunks) > 1 ? String(data.head_chunks) : "off"],
     ["Packed tokens", Number(work.sequence_length || 0).toLocaleString()],
-    ["Workload", `${String(work.route || "").toUpperCase()} · ${work.frames || "?"}f · ${Number(work.megapixels || 0).toFixed(2)} MP · ${work.reference_count || 0} refs`],
-    ["VAE", data.vae_mode || "native"],
+    ["Workload", `${String(work.route || "").toUpperCase()} · ${work.frames || "?"}f · ${Number(work.megapixels || 0).toFixed(2)} MP`],
+    ["VAE", data.vae_mode || "native H3"],
     ["Sampling", `${data.sampling_profile || ""} · unchanged`],
   ];
   for (const [key, value] of pairs) {
-    const k = document.createElement("span"); k.textContent = key;
-    const v = document.createElement("span"); v.textContent = value;
-    config.append(k, v);
+    const item = el("div", "h3rt-kv");
+    item.append(el("small", "", key), el("span", "", String(value)));
+    grid.append(item);
   }
-  root.append(config);
-  const reason = document.createElement("div");
-  reason.className = "h3s-runtime-reason";
-  reason.textContent = `Why: ${data.reason || "No reason reported."}`;
-  root.append(reason);
+  root.append(grid, el("div", "h3rt-reason", `Why: ${data.reason || "No reason reported."}`));
   for (const warning of [...(data.warnings || []), ...(data.fallbacks || []), ...(data.patch_notes || [])]) {
     if (!warning || String(warning).includes("runtime_patch_cache=hit")) continue;
-    const line = document.createElement("div");
-    line.className = "h3s-runtime-warning";
-    line.textContent = warning;
-    root.append(line);
+    root.append(el("div", "h3rt-warning", String(warning)));
   }
+  return root;
+}
+
+function expert(node, state, preset, advanced) {
+  const root = el("details", "h3rt-expert");
+  const summary = el("summary", "", "Expert overrides");
+  const grid = el("div", "h3rt-expert-grid");
+  const patch = (next) => {
+    const current = runtimeState(node);
+    saveRuntime(node, current.state, current.preset, { ...current.advanced, ...next });
+    installRuntimeSection(node, true);
+  };
+  const attention = selectControl(advanced.attention_backend, ATTENTION, "Attention backend", (value) => patch({ attention_backend: value }));
+  const heads = selectControl(advanced.head_chunks, HEAD_CHUNKS, "Attention head chunks", (value) => patch({ head_chunks: Number(value) }));
+  const attentionField = el("div", "h3rt-field"); attentionField.append(el("span", "", "Attention backend"), attention);
+  const headField = el("div", "h3rt-field"); headField.append(el("span", "", "Head chunking"), heads);
+  const reset = el("button", "h3rt-reset", "Reset overrides"); reset.type = "button";
+  reset.addEventListener("click", () => patch({ attention_backend: "auto", head_chunks: 0, ffn_chunks: 0, ffn_sequence_threshold: 4096 }));
+  const note = el("div", "h3rt-expert-note");
+  note.innerHTML = "Use these only to reproduce a backend or memory test. <strong>FFN chunking is no longer exposed here:</strong> Auto never selects it and attention is the useful H3 memory target.";
+  grid.append(attentionField, headField, reset, note);
+  root.append(summary, grid);
+  if (advanced.attention_backend !== "auto" || Number(advanced.head_chunks) !== 0 || Number(advanced.ffn_chunks) !== 0) root.open = true;
   return root;
 }
 
 function buildSection(node) {
   const { state, preset, advanced } = runtimeState(node);
-  if (String(state.ui?.director_node_id || "") !== String(node.id)) {
-    saveRuntime(node, state, preset, advanced, false);
-  }
-  const section = document.createElement("section");
-  section.className = "h3s-section h3s-runtime-section";
-  const header = document.createElement("div");
-  header.className = "h3s-section-header";
-  const title = document.createElement("span");
-  title.className = "h3s-section-title";
-  title.textContent = "Runtime Optimization";
-  const pill = document.createElement("span");
-  pill.className = "h3s-status-pill";
-  pill.textContent = preset === "auto" ? "AUTO" : "MANUAL";
-  header.append(title, pill);
+  if (String(state.ui?.director_node_id || "") !== String(node.id)) saveRuntime(node, state, preset, advanced, false);
+  const section = el("section", "h3s-section h3s-runtime-section");
+  const header = el("div", "h3s-section-header");
+  header.append(el("span", "h3s-section-title", "Runtime"), el("span", "h3s-status-pill", preset === "auto" ? "AUTO" : "MANUAL"));
+  const body = el("div", "h3s-section-stack h3rt");
 
-  const body = document.createElement("div");
-  body.className = "h3s-section-stack h3s-runtime";
-  const help = document.createElement("p");
-  help.className = "h3s-context-help";
-  help.textContent = "Runtime changes kernels and memory behavior only. It never switches Base, LightX, PDD, steps or your LoRA stack.";
-
-  const top = document.createElement("div");
-  top.className = "h3s-runtime-top";
-  const presetSelect = select(preset, PRESETS, (value) => {
-    const current = runtimeState(node);
-    saveRuntime(node, current.state, value, current.advanced);
-    installRuntimeSection(node, true);
-  }, "h3s-runtime-select");
-  const refresh = button("Detect", "Refresh GPU and backend detection", async () => {
-    refresh.disabled = true;
+  const intro = el("div", "h3rt-copy");
+  const copy = el("p", "", "Changes kernels and memory behavior only. Sampling Profile, steps, LightX/PDD and LoRAs stay exactly as selected.");
+  const detect = el("button", "h3rt-detect", "Detect hardware"); detect.type = "button";
+  detect.addEventListener("click", async () => {
+    detect.disabled = true;
+    detect.textContent = "Detecting…";
     try { await loadCapabilities(true); node.__h3studioRuntimeCapabilityError = ""; }
     catch (error) { node.__h3studioRuntimeCapabilityError = String(error?.message || error); }
-    finally { installRuntimeSection(node, true); }
+    installRuntimeSection(node, true);
   });
-  top.append(presetSelect, refresh);
+  intro.append(copy, detect);
 
-  const detected = document.createElement("div");
-  detected.className = "h3s-runtime-detected";
+  const presets = el("div", "h3rt-presets");
+  for (const item of PRESETS.slice(0, 4)) presets.append(presetButton(node, ...item, preset === item[0]));
+  const more = el("div", "h3rt-more");
+  for (const item of PRESETS.slice(4)) more.append(presetButton(node, ...item, preset === item[0], true));
+  presets.append(more);
+
+  const status = el("div", "h3rt-status");
   if (capabilities) {
-    detected.append(
-      chip("GPU", `${capabilities.gpu_name} · ${formatVram(capabilities.total_vram_gb)} · ${capabilities.compute_capability || ""}`),
-      chip("Backends", `CK ${bool(capabilities.ck_attention)} · Sage ${bool(capabilities.sage_mem_eff)} · head chunks ${bool(capabilities.low_vram_attention)}`),
-      chip("Native H3", `masked latent ${bool(capabilities.native_h3_masks)} · AddGuide ${bool(capabilities.native_h3_add_guide)}`),
-      chip("Optional", `FaceRefine ${bool(capabilities.face_refine)} · FFN chunks ${bool(capabilities.ffn_chunking)}`),
+    status.append(
+      chip("GPU", `${capabilities.gpu_name} · ${vram(capabilities.total_vram_gb)}`, capabilities.compute_capability || ""),
+      chip("Fast path", `Comfy Kitchen ${bool(capabilities.ck_attention)}`),
+      chip("Memory path", `Head chunks ${bool(capabilities.low_vram_attention)} · Sage ${bool(capabilities.sage_mem_eff)}`),
     );
   } else {
-    detected.append(chip("Detection", node.__h3studioRuntimeCapabilityError || "Loading GPU/backend capabilities…"));
+    status.append(chip("Hardware", node.__h3studioRuntimeCapabilityError || "Detecting GPU and installed attention backends…"));
     loadCapabilities().then(() => installRuntimeSection(node, true)).catch((error) => {
       node.__h3studioRuntimeCapabilityError = String(error?.message || error);
       installRuntimeSection(node, true);
     });
   }
 
-  const advancedRoot = document.createElement("details");
-  advancedRoot.className = "h3s-runtime-advanced";
-  const summary = document.createElement("summary");
-  summary.textContent = "Advanced overrides · usually leave on Auto";
-  const grid = document.createElement("div");
-  grid.className = "h3s-runtime-advanced-grid";
-  const patchAdvanced = (patch) => {
-    const current = runtimeState(node);
-    const next = { ...current.advanced, ...patch };
-    saveRuntime(node, current.state, current.preset, next);
-    installRuntimeSection(node, true);
-  };
-  grid.append(
-    field("Attention backend", select(advanced.attention_backend, ATTENTION, (value) => patchAdvanced({ attention_backend: value }))),
-    field("Attention head chunks", select(advanced.head_chunks, HEAD_CHUNKS, (value) => patchAdvanced({ head_chunks: Number(value) }))),
-    field("FFN chunks · experimental", select(advanced.ffn_chunks, FFN_CHUNKS, (value) => patchAdvanced({ ffn_chunks: Number(value) }))),
-  );
-  const threshold = document.createElement("input");
-  threshold.type = "number";
-  threshold.min = "256";
-  threshold.max = "262144";
-  threshold.step = "256";
-  threshold.value = String(advanced.ffn_sequence_threshold || 4096);
-  threshold.addEventListener("change", () => patchAdvanced({ ffn_sequence_threshold: Math.max(256, Number(threshold.value) || 4096) }));
-  grid.append(field("FFN sequence threshold", threshold));
-  const note = document.createElement("div");
-  note.className = "h3s-runtime-note";
-  note.textContent = "Head chunking is mathematically exact for independent H3 attention heads. FFN chunking is kept here only for experiments; Auto never selects it because H3 attention is the useful memory target.";
-  grid.append(note);
-  advancedRoot.append(summary, grid);
-
-  body.append(help, top, detected, actualResult(node, preset), advancedRoot);
+  body.append(intro, presets, status, actualResult(node, preset), expert(node, state, preset, advanced));
   section.append(header, body);
   return section;
 }
@@ -302,19 +248,16 @@ function installRuntimeSection(node, replace = false) {
   if (existing) existing.replaceWith(section);
   else {
     const loras = panel.querySelector(":scope > .h3s-custom-loras");
-    const advanced = [...panel.children].find((child) => child.querySelector?.(".h3s-advanced-toggle"));
-    panel.insertBefore(section, loras || advanced || null);
+    const fallback = [...panel.children].find((child) => child.querySelector?.(".h3s-advanced-toggle"));
+    panel.insertBefore(section, loras || fallback || null);
   }
 }
 
 function watchDirector(node) {
   const wait = () => {
     if (!node.graph) return;
-    if (node.__h3studioPanel?.isConnected) {
-      installRuntimeSection(node);
-      return;
-    }
-    setTimeout(wait, 60);
+    if (node.__h3studioPanel?.isConnected) { installRuntimeSection(node); return; }
+    setTimeout(wait, 50);
   };
   setTimeout(wait, 0);
 }
@@ -330,22 +273,18 @@ api.addEventListener("h3studio-runtime-resolved", ({ detail }) => {
 });
 
 app.registerExtension({
-  name: "H3Studio.RuntimeOptimization",
+  name: "H3Studio.RuntimeOptimizationV4",
   beforeRegisterNodeDef(nodeType, nodeData) {
     if (nodeData.name !== TARGET) return;
-    const originalCreated = nodeType.prototype.onNodeCreated;
-    nodeType.prototype.onNodeCreated = function h3studioRuntimeCreated() {
-      const result = originalCreated?.apply(this, arguments);
-      installStyles();
-      watchDirector(this);
-      return result;
+    const created = nodeType.prototype.onNodeCreated;
+    nodeType.prototype.onNodeCreated = function h3rtCreated() {
+      const result = created?.apply(this, arguments);
+      installStyles(); watchDirector(this); return result;
     };
-    const originalConfigured = nodeType.prototype.onConfigure;
-    nodeType.prototype.onConfigure = function h3studioRuntimeConfigured() {
-      const result = originalConfigured?.apply(this, arguments);
-      installStyles();
-      watchDirector(this);
-      return result;
+    const configured = nodeType.prototype.onConfigure;
+    nodeType.prototype.onConfigure = function h3rtConfigured() {
+      const result = configured?.apply(this, arguments);
+      installStyles(); watchDirector(this); return result;
     };
   },
 });

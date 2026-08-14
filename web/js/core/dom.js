@@ -14,18 +14,146 @@ export function element(tag, options = {}, children = []) {
   return node;
 }
 
-export function selectControl(value, options, label, onChange) {
-  const select = element("select", {
-    className: "h3s-control h3s-select",
-    attrs: { "aria-label": label },
-    on: { change: (event) => onChange(event.target.value) },
-  });
-  for (const option of options) {
+function normalizedOptions(options) {
+  return (options || []).map((option) => {
     const [key, text] = Array.isArray(option) ? option : [option, option];
-    select.append(element("option", { value: key, text }));
-  }
-  select.value = value;
-  return select;
+    return [String(key), String(text)];
+  });
+}
+
+function closeFloatingChooser(root) {
+  const panel = root.__h3ChoicePanel;
+  if (!panel) return;
+  panel.remove();
+  root.__h3ChoicePanel = null;
+  root.classList.remove("is-open");
+  root.querySelector(".h3s-choice-trigger")?.setAttribute("aria-expanded", "false");
+  root.__h3ChoiceCleanup?.();
+  root.__h3ChoiceCleanup = null;
+}
+
+export function selectControl(value, options, label, onChange) {
+  const items = normalizedOptions(options);
+  let current = String(value ?? items[0]?.[0] ?? "");
+  const root = element("div", { className: "h3s-choice" });
+  const currentText = () => items.find(([key]) => key === current)?.[1] || current || "Select";
+  const trigger = element("button", {
+    className: "h3s-choice-trigger",
+    type: "button",
+    attrs: { "aria-label": label, "aria-haspopup": "listbox", "aria-expanded": "false" },
+  }, [
+    element("span", { className: "h3s-choice-value", text: currentText() }),
+    element("span", { className: "h3s-choice-chevron", text: "⌄", attrs: { "aria-hidden": "true" } }),
+  ]);
+
+  const updateLabel = () => {
+    const valueNode = trigger.querySelector(".h3s-choice-value");
+    if (valueNode) valueNode.textContent = currentText();
+  };
+
+  const open = () => {
+    if (trigger.disabled) return;
+    if (root.__h3ChoicePanel) { closeFloatingChooser(root); return; }
+    document.querySelectorAll(".h3s-choice.is-open").forEach((other) => {
+      if (other !== root) closeFloatingChooser(other);
+    });
+    const panel = element("div", {
+      className: "h3s-choice-menu",
+      attrs: { role: "listbox", "aria-label": label },
+    });
+    for (const [key, text] of items) {
+      const option = element("button", {
+        className: `h3s-choice-option${key === current ? " is-active" : ""}`,
+        type: "button",
+        text,
+        attrs: { role: "option", "aria-selected": String(key === current) },
+        on: {
+          click: (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (key !== current) {
+              current = key;
+              updateLabel();
+              onChange(key);
+            }
+            closeFloatingChooser(root);
+            trigger.focus({ preventScroll: true });
+          },
+        },
+      });
+      panel.append(option);
+    }
+    document.body.append(panel);
+    root.__h3ChoicePanel = panel;
+    root.classList.add("is-open");
+    trigger.setAttribute("aria-expanded", "true");
+
+    const place = () => {
+      if (!panel.isConnected) return;
+      const rect = trigger.getBoundingClientRect();
+      const width = Math.max(rect.width, Math.min(420, window.innerWidth - 24));
+      const below = window.innerHeight - rect.bottom;
+      const estimated = Math.min(320, Math.max(44, panel.scrollHeight));
+      const top = below >= estimated || rect.top < below ? rect.bottom + 5 : Math.max(8, rect.top - estimated - 5);
+      panel.style.left = `${Math.max(8, Math.min(window.innerWidth - width - 8, rect.left))}px`;
+      panel.style.top = `${top}px`;
+      panel.style.width = `${width}px`;
+      panel.style.maxHeight = `${Math.max(120, Math.min(320, Math.max(rect.top - 16, below - 16)))}px`;
+    };
+    place();
+    requestAnimationFrame(place);
+
+    const outside = (event) => {
+      if (root.contains(event.target) || panel.contains(event.target)) return;
+      closeFloatingChooser(root);
+    };
+    const escape = (event) => {
+      if (event.key === "Escape") closeFloatingChooser(root);
+    };
+    const reposition = () => place();
+    document.addEventListener("pointerdown", outside, true);
+    document.addEventListener("keydown", escape, true);
+    window.addEventListener("resize", reposition, { passive: true });
+    window.addEventListener("scroll", reposition, { passive: true, capture: true });
+    root.__h3ChoiceCleanup = () => {
+      document.removeEventListener("pointerdown", outside, true);
+      document.removeEventListener("keydown", escape, true);
+      window.removeEventListener("resize", reposition);
+      window.removeEventListener("scroll", reposition, true);
+    };
+    panel.querySelector(".is-active")?.scrollIntoView?.({ block: "nearest" });
+  };
+
+  trigger.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    open();
+  });
+  trigger.addEventListener("keydown", (event) => {
+    if (["ArrowDown", "Enter", " "].includes(event.key)) {
+      event.preventDefault();
+      open();
+      requestAnimationFrame(() => root.__h3ChoicePanel?.querySelector(".is-active,button")?.focus());
+    }
+  });
+  root.append(trigger);
+
+  Object.defineProperty(root, "disabled", {
+    get: () => trigger.disabled,
+    set: (next) => {
+      trigger.disabled = Boolean(next);
+      root.classList.toggle("is-disabled", Boolean(next));
+      if (next) closeFloatingChooser(root);
+    },
+    configurable: true,
+  });
+  Object.defineProperty(root, "value", {
+    get: () => current,
+    set: (next) => { current = String(next ?? ""); updateLabel(); },
+    configurable: true,
+  });
+  root.__h3ChoiceClose = () => closeFloatingChooser(root);
+  return root;
 }
 
 export function numberControl(value, options, label, onChange) {
@@ -118,5 +246,5 @@ export function iconButton(label, glyph, handler, className = "") {
 export function field(label, control, hint = "") {
   const children = [element("span", { className: "h3s-field-label", text: label }), control];
   if (hint) children.push(element("span", { className: "h3s-field-hint", text: hint }));
-  return element("label", { className: "h3s-field" }, children);
+  return element("div", { className: "h3s-field" }, children);
 }
