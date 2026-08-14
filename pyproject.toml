@@ -52,3 +52,11 @@ extend-exclude = ["h3studio/nodes/image_runtime.py"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# These integration files deliberately keep local/optional imports close to the
+# runtime branches that need them, and use explicit try/except cleanup around
+# optional CUDA/process resources. Keep the exception tightly scoped.
+"h3studio/analyzer_stack.py" = ["I001", "SIM105"]
+"h3studio/nodes/prompt_prep_benchmark.py" = ["I001", "SIM105"]
+"h3studio/runtime_web.py" = ["I001"]
