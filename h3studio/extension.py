@@ -27,6 +27,7 @@ from .nodes.save import NODE_CLASS_MAPPINGS as SAVE_NODE_CLASS_MAPPINGS
 from .nodes.save import NODE_DISPLAY_NAME_MAPPINGS as SAVE_NODE_DISPLAY_NAME_MAPPINGS
 from .nodes.smart_benchmark import NODE_CLASS_MAPPINGS as SMART_BENCHMARK_NODE_CLASS_MAPPINGS
 from .nodes.smart_benchmark import NODE_DISPLAY_NAME_MAPPINGS as SMART_BENCHMARK_NODE_DISPLAY_NAME_MAPPINGS
+from .prompt_prep_hotfix_v2 import install as install_prompt_prep_hotfix_v2
 from .runtime_guards import install_runtime_guards
 from .runtime_web import register_runtime_routes
 from .web_routes import register_routes
@@ -37,6 +38,10 @@ from .web_routes import register_routes
 install_analyzer_stack()
 install_analyzer_runtime_fixes()
 install_runtime_guards()
+# Final prompt-prep guard installs after the existing runtime wrapper so real
+# cache misses can establish a clean helper residency boundary without changing
+# H3 generation semantics.
+install_prompt_prep_hotfix_v2()
 register_routes()
 register_runtime_routes()
 register_dependency_routes()
