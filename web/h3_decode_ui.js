@@ -1,0 +1,162 @@
+import { app } from "../../scripts/app.js";
+import { api } from "../../scripts/api.js";
+
+const NODE_CLASS = "H3StudioDecode";
+const SUBGRAPH_CLASS = "5930b00d-9f8e-4b87-9cb5-ff5f7cf3b30a";
+const DECODE_NODE_ID = 105;
+const PROMOTED_WIDGETS = ["tiling_mode", "tile_size", "tile_overlap", "tile_batch"];
+const EVENT = "h3studio.decode_status";
+
+function graphNodeById(value) {
+    if (value == null) return null;
+    const numeric = Number(value);
+    const id = Number.isFinite(numeric) ? numeric : value;
+    return app.graph?.getNodeById?.(id) || app.graph?._nodes_by_id?.[id] || null;
+}
+
+function widget(node, name) {
+    return (node?.widgets || []).find((candidate) => candidate?.name === name) || null;
+}
+
+function setStatus(node, text) {
+    const status = node?.__h3NativeDecodeStatus;
+    if (!status) return;
+    status.value = text;
+    node.setDirtyCanvas?.(true, true);
+}
+
+function idleText(node) {
+    const mode = String(widget(node, "tiling_mode")?.value || "Auto");
+    const tile = Number(widget(node, "tile_size")?.value || 256);
+    const overlap = Number(widget(node, "tile_overlap")?.value || 64);
+    const batch = String(widget(node, "tile_batch")?.value || "Auto");
+    if (mode === "Auto") {
+        return `Native H3 VAE · Auto · compatibility 256/64 · batch ${batch}`;
+    }
+    return `Native H3 VAE · Manual · tile ${tile} · overlap ${overlap} · batch ${batch}`;
+}
+
+function refreshModeUI(node) {
+    const mode = String(widget(node, "tiling_mode")?.value || "Auto");
+    const manual = mode === "Manual";
+    for (const name of ["tile_size", "tile_overlap"]) {
+        const target = widget(node, name);
+        if (!target) continue;
+        target.disabled = !manual;
+        target.options ||= {};
+        target.options.disabled = !manual;
+    }
+    setStatus(node, idleText(node));
+}
+
+function wrapWidgetCallback(node, name) {
+    const target = widget(node, name);
+    if (!target || target.__h3DecodeWrapped) return;
+    const original = target.callback;
+    target.callback = function (...args) {
+        const result = original?.apply(this, args);
+        refreshModeUI(node);
+        return result;
+    };
+    target.__h3DecodeWrapped = true;
+}
+
+function mergeProxyWidgets(node) {
+    if (!node || String(node.type || "") !== SUBGRAPH_CLASS) return;
+    node.properties ||= {};
+    const current = Array.isArray(node.properties.proxyWidgets) ? node.properties.proxyWidgets : [];
+    for (const name of PROMOTED_WIDGETS) {
+        const exists = current.some((entry) => Array.isArray(entry)
+            && String(entry[0]) === String(DECODE_NODE_ID)
+            && String(entry[1]) === name);
+        if (!exists) current.push([String(DECODE_NODE_ID), name]);
+    }
+    node.properties.proxyWidgets = current;
+}
+
+function promoteDecodeControls(graphData) {
+    const definitions = graphData?.definitions?.subgraphs;
+    if (!Array.isArray(definitions)) return;
+
+    const target = definitions.find((definition) => String(definition?.id || "") === SUBGRAPH_CLASS);
+    if (target) {
+        const current = Array.isArray(target.widgets) ? target.widgets : [];
+        for (const name of PROMOTED_WIDGETS) {
+            const exists = current.some((entry) => Number(entry?.id) === DECODE_NODE_ID && String(entry?.name) === name);
+            if (!exists) current.push({ id: DECODE_NODE_ID, name });
+        }
+        target.widgets = current;
+    }
+
+    const patchNodes = (nodes) => {
+        if (!Array.isArray(nodes)) return;
+        for (const node of nodes) mergeProxyWidgets(node);
+    };
+
+    patchNodes(graphData.nodes);
+    for (const definition of definitions) patchNodes(definition?.nodes);
+}
+
+function formatProgress(data) {
+    const status = String(data.status || "decoding");
+    const completed = Number(data.completed || 0);
+    const total = Math.max(1, Number(data.total || 1));
+    const percent = Number.isFinite(Number(data.percent)) ? Number(data.percent).toFixed(1) : ((completed / total) * 100).toFixed(1);
+    const grid = String(data.grid || "?");
+    const tile = Number(data.tile_size || 256);
+    const overlap = Number(data.overlap || 64);
+    const batch = Number(data.batch || 1);
+    const elapsed = Number(data.elapsed || 0).toFixed(1);
+    if (status === "error") {
+        return `VAE Decode · ERROR · ${String(data.error || "decode failed")}`;
+    }
+    if (status === "done") {
+        return `VAE Decode · ${total} / ${total} tiles · 100% · grid ${grid} · tile ${tile}/${overlap} · batch ${batch} · ${elapsed}s`;
+    }
+    return `VAE Decode · ${completed} / ${total} tiles · ${percent}% · grid ${grid} · tile ${tile}/${overlap} · batch ${batch} · ${elapsed}s`;
+}
+
+api.addEventListener(EVENT, (event) => {
+    const data = event?.detail || event;
+    const node = graphNodeById(data?.node);
+    const nodeClass = String(node?.comfyClass || node?.type || "");
+    if (!node || nodeClass !== NODE_CLASS) return;
+    setStatus(node, formatProgress(data));
+});
+
+app.registerExtension({
+    name: "H3Studio.NativeH3VAEDecodeUI",
+
+    beforeConfigureGraph(graphData) {
+        promoteDecodeControls(graphData);
+    },
+
+    async beforeRegisterNodeDef(nodeType, nodeData) {
+        if (nodeData?.name !== NODE_CLASS) return;
+
+        const originalCreated = nodeType.prototype.onNodeCreated;
+        nodeType.prototype.onNodeCreated = function (...args) {
+            const result = originalCreated?.apply(this, args);
+            const status = this.addWidget?.("text", "native_decode_status", "Native H3 VAE · ready", () => {}, {
+                serialize: false,
+            });
+            if (status) {
+                status.disabled = true;
+                status.options ||= {};
+                status.options.serialize = false;
+                this.__h3NativeDecodeStatus = status;
+            }
+            for (const name of PROMOTED_WIDGETS) {
+                wrapWidgetCallback(this, name);
+            }
+            refreshModeUI(this);
+            const minimumWidth = 390;
+            const minimumHeight = 220;
+            if (Array.isArray(this.size)) {
+                this.size[0] = Math.max(Number(this.size[0]) || 0, minimumWidth);
+                this.size[1] = Math.max(Number(this.size[1]) || 0, minimumHeight);
+            }
+            return result;
+        };
+    },
+});

@@ -6,6 +6,7 @@ from .nodes.benchmark import NODE_CLASS_MAPPINGS as BENCHMARK_NODE_CLASS_MAPPING
 from .nodes.benchmark import NODE_DISPLAY_NAME_MAPPINGS as BENCHMARK_NODE_DISPLAY_NAME_MAPPINGS
 from .nodes.comparison import NODE_CLASS_MAPPINGS as COMPARISON_NODE_CLASS_MAPPINGS
 from .nodes.comparison import NODE_DISPLAY_NAME_MAPPINGS as COMPARISON_NODE_DISPLAY_NAME_MAPPINGS
+from .nodes.decode import H3StudioDecode
 from .nodes.director import (
     H3StudioCondition,
     H3StudioContextInspector,
@@ -36,6 +37,7 @@ NODE_CLASS_MAPPINGS = {
     **BENCHMARK_NODE_CLASS_MAPPINGS,
     **COMPARISON_NODE_CLASS_MAPPINGS,
     **IMAGE_NODE_CLASS_MAPPINGS,
+    "H3StudioDecode": H3StudioDecode,
     **SAVE_NODE_CLASS_MAPPINGS,
 }
 
@@ -50,5 +52,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     **BENCHMARK_NODE_DISPLAY_NAME_MAPPINGS,
     **COMPARISON_NODE_DISPLAY_NAME_MAPPINGS,
     **IMAGE_NODE_DISPLAY_NAME_MAPPINGS,
+    "H3StudioDecode": "H3 Studio · Native H3 VAE Decode",
     **SAVE_NODE_DISPLAY_NAME_MAPPINGS,
 }
