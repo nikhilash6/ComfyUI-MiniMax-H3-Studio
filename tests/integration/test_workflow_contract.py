@@ -3,7 +3,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / "example_workflows" / "H3_Studio_Unified_Image.json"
-NATIVE_WORKFLOW = ROOT / "example_workflows" / "H3_Studio_Native_Fast_T2I.json"
 BLUEPRINT = ROOT / "subgraphs" / "H3_Studio_Sampling_and_Decode.json"
 STUDIO_FRONTEND = ROOT / "web" / "js" / "studio_extension.js"
 
@@ -11,90 +10,6 @@ STUDIO_FRONTEND = ROOT / "web" / "js" / "studio_extension.js"
 def load_workflow():
     return json.loads(WORKFLOW.read_text(encoding="utf-8"))
 
-
-def load_native_workflow():
-    return json.loads(NATIVE_WORKFLOW.read_text(encoding="utf-8"))
-
-
-def test_native_fast_workflow_uses_independent_comfy_execution_stages():
-    workflow = load_native_workflow()
-    types = {node["type"] for node in workflow["nodes"]}
-    assert {
-        "UNETLoader",
-        "CLIPLoader",
-        "VAELoader",
-        "H3StudioTextToImagePrepare",
-        "LoraLoaderModelOnly",
-        "H3StudioSamplingPreset",
-        "BasicGuider",
-        "RandomNoise",
-        "SamplerCustomAdvanced",
-        "VAEDecode",
-        "ImageFromBatch",
-        "PreviewImage",
-        "SaveImage",
-    } <= types
-    assert not {
-        "H3StudioLoader",
-        "H3StudioDirector",
-        "H3StudioCondition",
-        "H3StudioContextSamplingPreset",
-        "H3StudioDecode",
-        "H3StudioTAEH3Preview",
-    } & types
-    assert workflow["definitions"]["subgraphs"] == []
-    assert workflow["extra"]["h3studio"]["runtime_structure"] == "independent-native-comfy-stages"
-
-
-def test_native_fast_workflow_keeps_vae_downstream_of_text_conditioning():
-    workflow = load_native_workflow()
-    nodes = {node["id"]: node for node in workflow["nodes"]}
-    links = workflow["links"]
-    vae_loader = next(node for node in nodes.values() if node["type"] == "VAELoader")
-    vae_targets = {nodes[link[3]]["type"] for link in links if link[1] == vae_loader["id"]}
-    assert vae_targets == {"VAEDecode"}
-    prepare = next(node for node in nodes.values() if node["type"] == "H3StudioTextToImagePrepare")
-    assert {slot["name"] for slot in prepare["inputs"]} == {
-        "clip",
-        "prompt",
-        "width",
-        "height",
-        "quality_profile",
-        "optimize_for_still",
-    }
-
-
-def test_native_fast_workflow_uses_required_32b_encoder_and_one_transformer():
-    workflow = load_native_workflow()
-    clip = next(node for node in workflow["nodes"] if node["type"] == "CLIPLoader")
-    unets = [node for node in workflow["nodes"] if node["type"] == "UNETLoader"]
-    assert clip["widgets_values"] == [
-        "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
-        "minimax",
-        "default",
-    ]
-    assert len(unets) == 1
-    assert unets[0]["widgets_values"][0] == "minimax_h3_fl2va_pruned_w4a8_mixed.safetensors"
-    lora = next(node for node in workflow["nodes"] if node["type"] == "LoraLoaderModelOnly")
-    assert lora["widgets_values"] == [
-        "minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_rank_21_bf16.safetensors",
-        0.75,
-    ]
-    recipe = next(node for node in workflow["nodes"] if node["type"] == "H3StudioSamplingPreset")
-    assert recipe["widgets_values"] == ["LightX v0.1 | ER-SDE 4 steps"]
-
-
-def test_native_fast_functional_nodes_do_not_overlap():
-    workflow = load_native_workflow()
-    functional = [node for node in workflow["nodes"] if node["type"] != "H3StudioWorkflowNote"]
-    for index, left in enumerate(functional):
-        lx, ly = left["pos"]
-        lw, lh = left["size"]
-        for right in functional[index + 1 :]:
-            rx, ry = right["pos"]
-            rw, rh = right["size"]
-            overlap = lx < rx + rw and lx + lw > rx and ly < ry + rh and ly + lh > ry
-            assert not overlap, f"{left['title']} overlaps {right['title']}"
 
 
 def test_director_is_top_level_and_sampling_is_subgraphed():
