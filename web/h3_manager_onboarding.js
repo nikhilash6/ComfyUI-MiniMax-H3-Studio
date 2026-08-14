@@ -32,11 +32,55 @@ async function uadReady() {
   }
 }
 
+function controlLabel(element) {
+  return [
+    element?.textContent,
+    element?.getAttribute?.("aria-label"),
+    element?.getAttribute?.("title"),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function findExtensionsButton() {
+  if (typeof document === "undefined") return null;
+  const controls = document.querySelectorAll('button,[role="button"]');
+  for (const control of controls) {
+    if (control.closest?.(".h3ms")) continue;
+    const label = controlLabel(control);
+    if (label === "extensions" || label.startsWith("extensions ")) return control;
+  }
+  return null;
+}
+
+function extensionsUiAvailable() {
+  return Boolean(findExtensionsButton());
+}
+
+function openExtensions() {
+  const button = findExtensionsButton();
+  if (button) {
+    button.click();
+    return true;
+  }
+  toast(
+    "Open Extensions",
+    "Use the Extensions button in the ComfyUI toolbar to install Universal Asset Downloader.",
+    "info",
+  );
+  return false;
+}
+
 async function managerSnapshot() {
   try {
     const installed = await fetchJson("/customnode/installed");
     return {
       available: true,
+      apiAvailable: true,
+      source: "installed-api",
       installed,
       hasUad: JSON.stringify(installed || {}).toLowerCase().includes(UAD_SLUG),
     };
@@ -44,10 +88,23 @@ async function managerSnapshot() {
 
   try {
     await fetchJson("/manager/queue/status");
-    return { available: true, installed: null, hasUad: false };
-  } catch {
-    return { available: false, installed: null, hasUad: false };
-  }
+    return {
+      available: true,
+      apiAvailable: true,
+      source: "queue-api",
+      installed: null,
+      hasUad: false,
+    };
+  } catch {}
+
+  const uiAvailable = extensionsUiAvailable();
+  return {
+    available: uiAvailable,
+    apiAvailable: false,
+    source: uiAvailable ? "extensions-ui" : "unavailable",
+    installed: null,
+    hasUad: false,
+  };
 }
 
 async function nativeConfirm() {
@@ -156,6 +213,13 @@ function setPanelStatus(node, text) {
   if (log) log.textContent = text;
 }
 
+function managerNote(snapshot) {
+  if (snapshot.apiAvailable) {
+    return "ComfyUI-Manager detected. In current ComfyUI builds, Manager is opened from the Extensions button.";
+  }
+  return "ComfyUI Extensions is available. This Manager build does not expose its install queue API to H3 Studio, so install Universal Asset Downloader from Extensions.";
+}
+
 function enhanceMissingPanel(node, snapshot) {
   const setup = node?.__h3ModelSetup;
   const root = setup?.root;
@@ -164,14 +228,19 @@ function enhanceMissingPanel(node, snapshot) {
   if (setup.state) {
     setup.state.manager = true;
     setup.state.managerHasUad = Boolean(snapshot.hasUad);
+    setup.state.managerApiAvailable = Boolean(snapshot.apiAvailable);
   }
 
   const card = root.querySelector(".h3ms-card.h3ms-missing");
   if (!card) return;
 
   for (const note of card.querySelectorAll(".h3ms-note")) {
-    if (note.textContent?.includes("ComfyUI-Manager was not detected")) {
-      note.textContent = "ComfyUI-Manager detected. In current ComfyUI builds, Manager is opened from the Extensions button.";
+    if (
+      note.textContent?.includes("ComfyUI-Manager was not detected") ||
+      note.textContent?.includes("ComfyUI Extensions is available") ||
+      note.textContent?.includes("ComfyUI-Manager detected")
+    ) {
+      note.textContent = managerNote(snapshot);
     }
   }
 
@@ -179,17 +248,29 @@ function enhanceMissingPanel(node, snapshot) {
   if (!actions || snapshot.hasUad) return;
 
   actions.querySelectorAll('[data-action="install-uad"]').forEach((button) => button.remove());
-  if (actions.querySelector(".h3ms-smart-install-uad")) return;
+  actions.querySelectorAll(".h3ms-smart-install-uad,.h3ms-open-extensions").forEach((button) => button.remove());
 
   const button = document.createElement("button");
   button.type = "button";
-  button.className = "h3ms-btn h3ms-primary h3ms-smart-install-uad";
-  button.textContent = "Install UAD now";
-  button.title = "Install Universal Asset Downloader through ComfyUI-Manager's registry queue";
-  button.addEventListener("click", async (event) => {
-    event.stopPropagation();
-    await runInstall(node, false);
-  });
+
+  if (snapshot.apiAvailable) {
+    button.className = "h3ms-btn h3ms-primary h3ms-smart-install-uad";
+    button.textContent = "Install UAD now";
+    button.title = "Install Universal Asset Downloader through ComfyUI-Manager's registry queue";
+    button.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      await runInstall(node, false);
+    });
+  } else {
+    button.className = "h3ms-btn h3ms-primary h3ms-open-extensions";
+    button.textContent = "Open Extensions";
+    button.title = "Open the current ComfyUI Extensions manager";
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      openExtensions();
+    });
+  }
+
   actions.prepend(button);
 }
 
@@ -240,7 +321,7 @@ async function onboardNode(node) {
     const snapshot = await managerSnapshot();
     if (snapshot.available) {
       enhanceMissingPanel(node, snapshot);
-      if (!snapshot.hasUad && !node.__h3UadPrompted) {
+      if (snapshot.apiAvailable && !snapshot.hasUad && !node.__h3UadPrompted) {
         node.__h3UadPrompted = true;
         await sleep(250);
         await runInstall(node, true);
