@@ -4,8 +4,6 @@ import { api } from "../../scripts/api.js";
 const TARGET = "H3StudioModelSetup";
 const STATUS_URL = "/h3studio/dependencies/status";
 const INSTALL_URL = "/h3studio/dependencies/pdd/install";
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const className = (node) => String(node?.comfyClass || node?.type || "");
 
 async function jsonFetch(path, options = {}) {
@@ -35,7 +33,7 @@ function badge(node, installed) {
   const root = node?.__h3ModelSetup?.root;
   const target = root?.querySelector?.(".h3ms-pdd-links .h3ms-pdd-badge");
   if (!target || /PDD node loaded/i.test(target.textContent || "")) return;
-  target.textContent = installed ? "PDD node installed · restart" : "PDD node missing";
+  target.textContent = installed ? "PDD node installed · restart after downloads" : "PDD node missing";
   target.classList.toggle("ok", installed);
   target.classList.toggle("warn", !installed);
 }
@@ -44,27 +42,42 @@ async function installDependency(node) {
   if (node.__h3PddDependencyReady || await dependencyInstalled()) {
     node.__h3PddDependencyReady = true;
     badge(node, true);
-    return;
+    return { action: "already installed" };
   }
-  if (node.__h3PddDependencyInstalling) {
-    while (node.__h3PddDependencyInstalling) await sleep(100);
-    if (!node.__h3PddDependencyReady) throw new Error("PDD dependency install did not complete.");
-    return;
-  }
-  node.__h3PddDependencyInstalling = true;
-  log(node, "Installing the Mamad8 PDD custom node first…");
-  try {
-    const result = await jsonFetch(INSTALL_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: "{}",
-    });
+  if (node.__h3PddDependencyPromise) return node.__h3PddDependencyPromise;
+
+  log(node, "Installing/updating the Mamad8 PDD custom node in a background worker…");
+  node.__h3PddDependencyPromise = jsonFetch(INSTALL_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+  }).then((result) => {
     node.__h3PddDependencyReady = true;
     badge(node, true);
-    log(node, `PDD custom node ${result.action || "installed"}. Installing the selected LoRA + heads pair now…`);
-  } finally {
-    node.__h3PddDependencyInstalling = false;
-  }
+    log(node, `PDD custom node ${result.action || "installed"}. Continuing with the selected LoRA + heads pair…`);
+    return result;
+  }).finally(() => {
+    node.__h3PddDependencyPromise = null;
+  });
+  return node.__h3PddDependencyPromise;
+}
+
+function selectorFor(button) {
+  if (button?.dataset?.pddInstall) return `[data-pdd-install="${CSS.escape(button.dataset.pddInstall)}"]`;
+  if (button?.dataset?.pddRepair) return `[data-pdd-repair="${CSS.escape(button.dataset.pddRepair)}"]`;
+  return "";
+}
+
+function resumeOriginalAction(node, selector) {
+  const root = node?.__h3ModelSetup?.root;
+  const fresh = selector ? root?.querySelector?.(selector) : null;
+  if (!fresh) throw new Error("PDD panel was refreshed while installing the dependency. Press the pair button once more.");
+  fresh.disabled = false;
+  fresh.dataset.h3DependencyBypass = "1";
+  // Replay on the freshly rendered button, never on the stale element that
+  // initiated the async install. Capture handler consumes the bypass marker and
+  // the Smart PDD panel receives the click normally exactly once.
+  fresh.click();
 }
 
 function attach(node) {
@@ -76,43 +89,46 @@ function attach(node) {
 
     dependencyInstalled().then((installed) => {
       node.__h3PddDependencyReady = installed;
-      if (installed) badge(node, true);
+      badge(node, installed);
     });
 
-    // Model Setup and the Smart PDD panel both rerender their own markup. Keep
-    // the dependency badge truthful even after those remounts.
+    let badgeQueued = false;
     const observer = new MutationObserver(() => {
-      if (node.__h3PddDependencyReady) queueMicrotask(() => badge(node, true));
+      if (!node.__h3PddDependencyReady || badgeQueued) return;
+      badgeQueued = true;
+      requestAnimationFrame(() => {
+        badgeQueued = false;
+        badge(node, true);
+      });
     });
-    observer.observe(root, { childList: true, subtree: true });
+    observer.observe(root, { childList: true, subtree: false });
     node.__h3PddDependencyObserver = observer;
 
     root.addEventListener("click", async (event) => {
       const button = event.target?.closest?.("[data-pdd-install],[data-pdd-repair]");
-      if (!button || button.dataset.h3DependencyResume === "1") {
-        if (button) delete button.dataset.h3DependencyResume;
+      if (!button) return;
+      if (button.dataset.h3DependencyBypass === "1") {
+        delete button.dataset.h3DependencyBypass;
         return;
       }
       if (node.__h3PddDependencyReady) return;
 
-      // Capture the original click before the weight installer handles it. Once
-      // the fixed PDD repo is present, replay the exact button click so the
-      // existing UAD pair installer continues unchanged.
+      const selector = selectorFor(button);
       event.preventDefault();
       event.stopImmediatePropagation();
       button.disabled = true;
       try {
         await installDependency(node);
-        button.disabled = false;
-        button.dataset.h3DependencyResume = "1";
-        button.click();
+        resumeOriginalAction(node, selector);
       } catch (error) {
-        button.disabled = false;
-        log(node, `PDD custom-node install failed: ${error.message}`);
+        const fresh = selector ? root.querySelector(selector) : button;
+        if (fresh) fresh.disabled = false;
+        const detail = String(error?.message || error);
+        log(node, `PDD custom-node install failed: ${detail}`);
         app.extensionManager?.toast?.add?.({
           severity: "error",
           summary: "PDD dependency install failed",
-          detail: String(error?.message || error),
+          detail,
           life: 7000,
         });
       }
