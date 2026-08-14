@@ -1,9 +1,9 @@
-"""Runtime memory guards for optional Qwen helper models.
+"""Runtime guards for helper models and host-memory stage handoffs.
 
-Prompt enhancement must honor the Director toggle and selected Loader model.
-When it runs, release the optional analyzer/writer objects immediately after the
-analysis/writer pass so H3's 32B conditioning encoder does not compete with a
-resident helper model on memory-constrained hosts.
+The Studio does not become a second model manager. Optional helper objects are
+released as before, and after H3 text conditioning we ask ComfyUI's own
+ensure_pin_budget() policy to shed stale/inactive pins only when real host RAM
+or swap pressure warrants it.
 """
 
 from __future__ import annotations
@@ -11,12 +11,15 @@ from __future__ import annotations
 import gc
 import logging
 
+from . import conditioning_cache
+from .host_memory import relieve_host_memory_pressure
 from .prompting import comfy_analyzer
 from .runtime_lifecycle import release_stage_model
 
 LOGGER = logging.getLogger(__name__)
 
 _ORIGINAL_ANALYZE_REFERENCES = comfy_analyzer.analyze_references
+_ORIGINAL_ENCODE_PROMPT = conditioning_cache._encode_prompt
 
 
 def _helper_bundle(*loaders):
@@ -56,11 +59,24 @@ def _memory_safe_analyze_references(clip, prompt, references, images, **kwargs):
         _release_optional_helpers(bundle)
 
 
+def _pressure_safe_encode_prompt(*args, **kwargs):
+    """Preserve conditioning semantics, then let Comfy relieve stale pins if needed."""
+
+    try:
+        return _ORIGINAL_ENCODE_PROMPT(*args, **kwargs)
+    finally:
+        relieve_host_memory_pressure("conditioning.text.done", logger=LOGGER)
+
+
 def install_runtime_guards() -> None:
-    """Install the idempotent helper-release guard before ComfyUI executes nodes."""
+    """Install idempotent helper-release and host-pressure guards."""
 
     current = comfy_analyzer.analyze_references
-    if bool(getattr(current, "__h3studio_helper_release_guard__", False)):
-        return
-    _memory_safe_analyze_references.__h3studio_helper_release_guard__ = True
-    comfy_analyzer.analyze_references = _memory_safe_analyze_references
+    if not bool(getattr(current, "__h3studio_helper_release_guard__", False)):
+        _memory_safe_analyze_references.__h3studio_helper_release_guard__ = True
+        comfy_analyzer.analyze_references = _memory_safe_analyze_references
+
+    current_encode = conditioning_cache._encode_prompt
+    if not bool(getattr(current_encode, "__h3studio_host_pressure_guard__", False)):
+        _pressure_safe_encode_prompt.__h3studio_host_pressure_guard__ = True
+        conditioning_cache._encode_prompt = _pressure_safe_encode_prompt
