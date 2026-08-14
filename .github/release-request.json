@@ -5,8 +5,8 @@
     "added": [
       "Added a workload-aware Runtime Optimization layer with Auto, OG / Current, Quality, Fast, Low VRAM, and Extreme Low VRAM presets while keeping Base, LightX, PDD, steps, and LoRA sampling profiles independent.",
       "Added explainable runtime detection and console reporting for GPU/VRAM, actual packed H3 sequence length, route/reference pressure, selected attention backend, head chunking, VAE path, model assets, fallbacks, and the reason Auto chose its effective configuration.",
-      "Added one-click H3S1 Discord preset sharing for runtime settings, sampling profile, resolution, connected logical model choices, and ordered custom LoRAs with exact strengths without including prompts, reference images, absolute paths, or secrets.",
-      "Added H3 Studio Smart Benchmark Lab with installed transformer and LoRA discovery, per-LoRA strengths, route-aware sampling profiles, runtime A/B helpers, scenario duplication and validation, same-seed execution, labeled comparison grids, and shareable H3B1 benchmark configurations."
+      "Added one-click H3S1/H3S1Z Discord preset sharing for runtime settings, sampling profile, resolution, connected logical model choices, and ordered custom LoRAs with exact strengths without including prompts, reference images, absolute paths, or secrets.",
+      "Added H3 Studio Smart Benchmark Lab with searchable installed transformer and LoRA discovery, per-LoRA strengths, route-aware sampling profiles, runtime A/B helpers, scenario duplication and validation, same-seed execution, labeled comparison grids, and shareable H3B1/H3B1Z benchmark configurations."
     ],
     "fixed": [
       "Replaced fragile manual benchmark filename entry with installed-asset discovery and exact per-scenario LoRA configuration.",
@@ -15,6 +15,7 @@
     ],
     "changed": [
       "Made Auto the recommended runtime default and made its policy workload-aware: short FL2VA still packets avoid excessive chunking, constrained REF2VA workloads escalate memory protection, and larger cards prefer Comfy Kitchen when it is actually available.",
+      "Compressed Discord preset and benchmark codes automatically when that produces a shorter payload while preserving backward-compatible uncompressed imports and safe missing-asset warnings.",
       "Kept newer native H3 denoise-mask and optional FaceRefine capabilities visible to detection without silently injecting experimental editing/refinement behavior into normal Studio generation."
     ]
   }
