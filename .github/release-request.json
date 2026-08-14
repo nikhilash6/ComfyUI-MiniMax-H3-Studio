@@ -1,21 +1,20 @@
 {
-  "version": "0.1.0-alpha.14",
+  "version": "0.1.0-alpha.15",
   "date": "2026-08-14",
   "sections": {
     "added": [
-      "Added native MiniMax H3 VAE decode controls with Auto and Manual tiling, curated 256/320/384/512 tile-size presets, 64/96/128 overlap presets, adaptive tile batching, OOM backoff, and live decode progress.",
-      "Added low-RAM Lightning storage safeguards, swap-aware host-memory pressure telemetry, and recovery for broken text-encoder cache links without taking model residency away from ComfyUI DynamicVRAM.",
-      "Added exact H3 Studio PNG metadata restoration so generated images reopen with the generation state and seed that actually produced them."
+      "Added first-class route-aware acceleration profiles for Kijai's pruned MiniMax H3 LightX adapters: FL2VA v1.0 4-step rank-31, FL2VA v1.0 8-step rank-24, and REF2VA v0.1 4-step rank-20, while keeping the existing FL2VA v0.1 rank-21 and official full v1.0 8-step profiles.",
+      "Added automatic restoration of the optional H3StudioComparisonView output node in maintained Unified Image workflows so Director output can switch between the generated image and reference comparison views.",
+      "Added clearer model-download documentation for core FL2VA/REF2VA models, recommended acceleration profiles, smaller pruned alternatives, preview/VAE extras, and PDD artifacts."
     ],
     "fixed": [
-      "Fixed promoted decode controls on the outer sampling subgraph so stale serialized values such as seed 42 cannot be interpreted as the tiling mode.",
-      "Fixed H3 Studio seed restoration from workflow metadata and prompt metadata instead of falling back to stale 0/1/42 values.",
-      "Quarantined the legacy H3 Studio Hub frontend without disabling its backend node registrations, preventing browser resource exhaustion while preserving required H3 nodes.",
-      "Reduced unnecessary decoded-frame cloning and kept native H3 VAE state fully restored after every decode."
+      "Removed the permanent JoJo-specific example from the Qwen prompt-writer system instruction so generic anime prompts remain style-neutral unless the user explicitly requests JoJo.",
+      "Added backend and frontend route validation so FL2V LightX adapters cannot silently run on REF2VA and the REF2V adapter is only offered for valid REF2VA reference-generation requests.",
+      "Restored the Director's generated/comparison output tabs when comparison mode is enabled and preserved the PR #37 workflow migration, decode warning, group sizing, and curated TAEH3 controls."
     ],
     "changed": [
-      "Kept H3's proven native 256/64 decode geometry as the Auto compatibility default while allowing bounded manual tuning for high-resolution testing.",
-      "Kept the validated FL2VA/REF2VA, Base Quality, LightX v0.1, Mamad8 PDD, preview, save, and workflow paths intact while hardening repeated L4 runs."
+      "Removed the obsolete H3_Studio_Native_Fast_T2I example workflow and its generator/release-check path so H3_Studio_Unified_Image is the single maintained user workflow.",
+      "Refined the maintained workflow UI and model-profile labels around FL2VA versus REF2VA, 4-step versus 8-step, v0.1 versus v1.0, and full versus pruned LightX artifacts."
     ]
   }
 }
