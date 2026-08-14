@@ -19,6 +19,20 @@ test("auto decode UI keeps compatibility geometry visible", () => {
     assert.ok(source.includes("target.disabled = !manual"));
 });
 
+test("manual tile controls are curated safe choices rather than free-form extremes", () => {
+    assert.ok(source.includes("const TILE_SIZE_VALUES = [256, 320, 384, 512]"));
+    assert.ok(source.includes("const TILE_OVERLAP_VALUES = [64, 96, 128]"));
+    assert.ok(source.includes('target.type = "combo"'));
+    assert.ok(source.includes("target.options.values = [...values]"));
+});
+
+test("stale promoted values such as seed 42 are repaired before graph configuration", () => {
+    assert.ok(source.includes("sanitizeSerializedDecodeValues(node)"));
+    assert.ok(source.includes('values[0] = normalizeStringChoice(values[0], MODE_VALUES, "Auto")'));
+    assert.ok(source.includes("afterConfigureGraph()"));
+    assert.ok(source.includes("loadedGraphNode(node)"));
+});
+
 test("decode status widget is transient and not serialized", () => {
     assert.ok(source.includes('"native_decode_status"'));
     assert.ok(source.includes("serialize: false"));
