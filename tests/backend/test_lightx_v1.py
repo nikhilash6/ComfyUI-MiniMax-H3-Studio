@@ -50,7 +50,8 @@ def test_lightx_v1_build_uses_eight_step_6_3_euler_recipe(monkeypatch) -> None:
     assert sampling["denoise"] == 1.0
     assert sampling["shift_video"] == 6.0
     assert sampling["shift_audio"] == 3.0
-    assert "LightX v1.0 FL2V 8-step" in info
+    assert "LightX v1.0 FL2VA 8-step" in info
+    assert "route=FL2VA" in info
 
 
 def test_lightx_fl2v_rejects_reference_mix_before_model_work() -> None:
