@@ -8,6 +8,7 @@ const LOADER = "H3StudioLoader";
 const ASSET_URL = "/h3studio/assets";
 const STYLE_ID = "h3studio-smart-benchmark-style";
 const SHARE_PREFIX = "H3B1:";
+const SHARE_ZIP_PREFIX = "H3B1Z:";
 
 let catalog = null;
 let catalogPromise = null;
@@ -172,6 +173,30 @@ function optionSelect(value, items, keyFn, labelFn, change) {
   return select;
 }
 
+function searchableInput(value, items, keyFn, labelFn, listId, change) {
+  const wrap = document.createElement("div");
+  const input = document.createElement("input");
+  input.type = "search";
+  input.value = String(value || "");
+  input.placeholder = `Search ${items.length} installed models…`;
+  input.setAttribute("list", listId);
+  input.autocomplete = "off";
+  const datalist = document.createElement("datalist");
+  datalist.id = listId;
+  for (const item of items) {
+    const option = document.createElement("option");
+    option.value = String(keyFn(item));
+    option.label = labelFn(item);
+    datalist.append(option);
+  }
+  input.addEventListener("change", () => change(input.value.trim()));
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") { event.preventDefault(); input.blur(); }
+  });
+  wrap.append(input, datalist);
+  return wrap;
+}
+
 function field(label, control) {
   const root = document.createElement("div"); root.className = "h3b-field";
   const title = document.createElement("label"); title.textContent = label;
@@ -186,7 +211,10 @@ function icon(text, title, click) {
 
 function normalButton(text, click, primary = false) {
   const button = document.createElement("button"); button.type = "button"; button.className = `h3b-button${primary ? " primary" : ""}`; button.textContent = text;
-  button.addEventListener("click", async (event) => { event.preventDefault(); event.stopPropagation(); await click(); });
+  button.addEventListener("click", async (event) => {
+    event.preventDefault(); event.stopPropagation();
+    try { await click(); } catch (error) { toast("H3 Studio benchmark", String(error?.message || error), "error"); }
+  });
   return button;
 }
 
@@ -200,6 +228,7 @@ function patchScenario(node, index, patch) {
 function scenarioWarnings(scenario, route) {
   const warnings = [];
   const model = catalog?.models?.find((item) => item.name === scenario.model_name);
+  if (scenario.model_name && !model) warnings.push("Transformer is not in the installed H3 model catalog; this scenario will fail until that exact model is installed or replaced.");
   if (model?.route && model.route !== "unknown" && model.route !== route) warnings.push(`Model is ${model.route.toUpperCase()} but connected Director resolves ${route.toUpperCase()}.`);
   const profile = profileByKey(scenario.sampling_profile);
   if (profile?.route && profile.route !== route) warnings.push(`Sampling Profile requires ${profile.route.toUpperCase()}.`);
@@ -220,9 +249,10 @@ function buildLoras(node, scenario, index) {
   const add = normalButton("Add LoRA", async () => {
     const name = search.value.trim(); if (!name) return;
     const info = loraByName(name);
+    if (!info) { toast("LoRA not installed", "Choose an exact LoRA from the installed catalog so the benchmark cannot silently test a typo.", "warn"); return; }
     const current = [...(scenario.custom_loras || [])];
     if (current.some((item) => item.name === name)) return;
-    current.push({ name, strength: Number(info?.recommended_strength ?? 1), enabled: true });
+    current.push({ name, strength: Number(info.recommended_strength ?? 1), enabled: true });
     patchScenario(node, index, { custom_loras: current });
   });
   search.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); add.click(); } });
@@ -261,25 +291,49 @@ function buildScenario(node, scenario, index, route) {
 
   const grid = document.createElement("div"); grid.className = "h3b-grid";
   const models = modelOptions(route);
-  const modelSelect = optionSelect(scenario.model_name || currentModel(node, route), models, (item) => item.name, (item) => `${item.name.split("/").pop()}${item.quantization ? ` · ${item.quantization}` : ""}`, (value) => patchScenario(node, index, { model_name: value }));
+  const modelSearch = searchableInput(
+    scenario.model_name || currentModel(node, route),
+    models,
+    (item) => item.name,
+    (item) => `${item.name.split("/").pop()}${item.quantization ? ` · ${item.quantization}` : ""}`,
+    `h3b-models-${node.id}-${index}`,
+    (value) => patchScenario(node, index, { model_name: value }),
+  );
   const profiles = samplingOptions(route);
   const sampling = optionSelect(scenario.sampling_profile, profiles, (item) => item.key, (item) => `${item.label}${item.steps ? ` · ${item.steps} steps` : ""}`, (value) => patchScenario(node, index, { sampling_profile: value }));
   const runtimes = catalog?.runtime_presets || [];
   const runtime = optionSelect(scenario.runtime_preset || "auto", runtimes, (item) => item.key, (item) => item.label, (value) => patchScenario(node, index, { runtime_preset: value }));
   const mp = document.createElement("input"); mp.type = "number"; mp.min = "0.20"; mp.max = "8.50"; mp.step = "0.05"; mp.value = String(Number(scenario.megapixels || 1));
   mp.addEventListener("change", () => patchScenario(node, index, { megapixels: Math.max(0.2, Math.min(8.5, Number(mp.value || 1))) }));
-  grid.append(field("Transformer", modelSelect), field("Sampling Profile", sampling), field("Runtime", runtime), field("Megapixels", mp));
+  grid.append(field("Transformer · searchable", modelSearch), field("Sampling Profile", sampling), field("Runtime", runtime), field("Megapixels", mp));
   card.append(head, grid, buildLoras(node, scenario, index));
   for (const warning of scenarioWarnings(scenario, route)) { const line = document.createElement("div"); line.className = "h3b-warning"; line.textContent = warning; card.append(line); }
   return card;
 }
 
-function utf8ToB64(text) {
-  const bytes = new TextEncoder().encode(text); let binary = "";
+function bytesToB64(bytes) {
+  let binary = "";
   for (let index = 0; index < bytes.length; index += 0x8000) binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
   return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/g, "");
 }
-function b64ToUtf8(text) { const normalized = text.replaceAll("-", "+").replaceAll("_", "/"); const binary = atob(normalized + "=".repeat((4 - normalized.length % 4) % 4)); return new TextDecoder().decode(Uint8Array.from(binary, (char) => char.charCodeAt(0))); }
+
+function b64ToBytes(text) {
+  const normalized = text.replaceAll("-", "+").replaceAll("_", "/");
+  const binary = atob(normalized + "=".repeat((4 - normalized.length % 4) % 4));
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+}
+
+async function gzipBytes(bytes) {
+  if (typeof CompressionStream !== "function") return null;
+  const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream("gzip"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+async function gunzipBytes(bytes) {
+  if (typeof DecompressionStream !== "function") throw new Error("This browser cannot unpack compressed H3 benchmark presets. Update the ComfyUI browser/frontend.");
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
 
 async function copyText(text) {
   if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(text); return; }
@@ -287,10 +341,36 @@ async function copyText(text) {
 }
 function toast(summary, detail, severity = "success") { app.extensionManager?.toast?.add?.({ severity, summary, detail, life: 4200 }); }
 
-function exportCode(node) { return `${SHARE_PREFIX}${utf8ToB64(JSON.stringify({ v: 1, scenarios: parseScenarios(node) }))}`; }
-function importCode(raw) {
-  const text = String(raw || "").trim(); const start = text.indexOf(SHARE_PREFIX); const code = start >= 0 ? text.slice(start).split(/\s/)[0] : text;
-  const payload = code.startsWith(SHARE_PREFIX) ? JSON.parse(b64ToUtf8(code.slice(SHARE_PREFIX.length))) : JSON.parse(text);
+async function exportCode(node) {
+  const raw = new TextEncoder().encode(JSON.stringify({ v: 1, scenarios: parseScenarios(node) }));
+  const normal = `${SHARE_PREFIX}${bytesToB64(raw)}`;
+  const zipped = await gzipBytes(raw);
+  if (!zipped) return normal;
+  const compact = `${SHARE_ZIP_PREFIX}${bytesToB64(zipped)}`;
+  return compact.length < normal.length ? compact : normal;
+}
+
+function extractBenchmarkCode(text) {
+  const matches = [SHARE_ZIP_PREFIX, SHARE_PREFIX]
+    .map((prefix) => ({ prefix, index: text.indexOf(prefix) }))
+    .filter((item) => item.index >= 0)
+    .sort((a, b) => a.index - b.index);
+  if (!matches.length) return "";
+  return text.slice(matches[0].index).split(/\s/)[0];
+}
+
+async function importCode(raw) {
+  const text = String(raw || "").trim();
+  const code = extractBenchmarkCode(text);
+  let payload;
+  if (code.startsWith(SHARE_ZIP_PREFIX)) {
+    const bytes = await gunzipBytes(b64ToBytes(code.slice(SHARE_ZIP_PREFIX.length)));
+    payload = JSON.parse(new TextDecoder().decode(bytes));
+  } else if (code.startsWith(SHARE_PREFIX)) {
+    payload = JSON.parse(new TextDecoder().decode(b64ToBytes(code.slice(SHARE_PREFIX.length))));
+  } else {
+    payload = JSON.parse(text);
+  }
   if (Number(payload?.v) !== 1 || !Array.isArray(payload.scenarios)) throw new Error("Unsupported H3 benchmark preset.");
   return payload.scenarios;
 }
@@ -300,7 +380,7 @@ function buildRoot(node) {
   const director = directorFor(node); const route = routeForDirector(director); const scenarios = parseScenarios(node);
   const head = document.createElement("div"); head.className = "h3b-head";
   const copy = document.createElement("div"); const title = document.createElement("strong"); title.textContent = "Smart Benchmark Scenario Builder";
-  const help = document.createElement("div"); help.className = "h3b-help"; help.textContent = "Pick installed transformers and LoRAs visually. Every LoRA keeps its exact strength; every scenario prints its resolved runtime config."; copy.append(title, help);
+  const help = document.createElement("div"); help.className = "h3b-help"; help.textContent = "Search installed transformers and LoRAs instead of typing filenames. Every LoRA keeps its exact strength; every scenario prints its resolved runtime config."; copy.append(title, help);
   const status = document.createElement("div"); status.className = "h3b-status"; status.textContent = catalog ? `${catalog.models?.length || 0} H3 models · ${catalog.loras?.length || 0} LoRAs` : "loading assets…"; head.append(copy, status);
 
   const toolbar = document.createElement("div"); toolbar.className = "h3b-toolbar";
@@ -318,8 +398,16 @@ function buildRoot(node) {
 
   const share = document.createElement("div"); share.className = "h3b-share";
   share.append(
-    normalButton("Copy benchmark for Discord", async () => { const code = exportCode(node); await copyText(`H3 Studio benchmark · ${scenarios.length} scenarios\n${code}`); toast("Benchmark copied", `${code.length} character H3B1 code`); }),
-    normalButton("Paste benchmark", async () => { const raw = globalThis.prompt?.("Paste H3B1 benchmark code or JSON:", ""); if (!raw) return; saveScenarios(node, importCode(raw)); render(node); toast("Benchmark imported", "Scenarios restored with models, LoRAs and strengths."); }),
+    normalButton("Copy benchmark for Discord", async () => {
+      const code = await exportCode(node);
+      await copyText(`H3 Studio benchmark · ${scenarios.length} scenarios\n${code}`);
+      toast("Benchmark copied", `${code.length} character ${code.startsWith(SHARE_ZIP_PREFIX) ? "compressed " : ""}benchmark code`);
+    }),
+    normalButton("Paste benchmark", async () => {
+      const raw = globalThis.prompt?.("Paste H3B1/H3B1Z benchmark code or JSON:", "");
+      if (!raw) return;
+      saveScenarios(node, await importCode(raw)); render(node); toast("Benchmark imported", "Scenarios restored with models, LoRAs and exact strengths.");
+    }),
   );
 
   const summary = document.createElement("div"); summary.className = "h3b-summary";
