@@ -86,6 +86,20 @@ def install() -> None:
         return
     gguf.__h3studio_text_fallback_installed__ = True
     original_generate = gguf.Qwen35GGUFClipProxy.generate
+    original_status = gguf.status
+
+    def status():
+        result = dict(original_status())
+        cli = _llama_cli()
+        result["llama_cli_available"] = bool(cli)
+        result["llama_cli"] = cli or ""
+        # Vision may use server OR mtmd-cli. Text generation intentionally uses
+        # server OR llama-cli because mtmd-cli's single-turn path requires media.
+        result["vision_ready"] = bool(result.get("ready"))
+        result["text_ready"] = bool(
+            result.get("model_present") and (result.get("server_available") or cli)
+        )
+        return result
 
     def generate(self, tokens, *args, **kwargs):
         images = list(tokens.get("images") or [])
@@ -131,6 +145,44 @@ def install() -> None:
 
     gguf.Qwen35GGUFClipProxy.generate = generate
     gguf._llama_cli = _llama_cli
+    gguf.status = status
+
+    # The GGUF resolver was installed just before this module. Tighten only the
+    # writer side: mtmd-only installations may still use GGUF vision, but Auto
+    # prompt writing falls back to native Qwen3.5 instead of selecting a backend
+    # that cannot perform a text-only single turn.
+    from . import analyzer_stack
+    from .nodes import loader
+
+    original_resolve_writer = loader._resolve_prompt_writer
+
+    def resolve_writer(value: str | None, analyzer_name: str | None) -> str | None:
+        normalized = gguf._normalize(value)
+        writer_status = status()
+        same_as = normalized == "Same as image analyzer"
+        explicit_gguf = normalized == gguf.FASTEST_QWEN35_4B_GGUF_WRITER
+        auto_values = {
+            getattr(analyzer_stack, "AUTO_WRITER_QWEN35_4B", "Auto · Qwen3.5 4B writer"),
+            getattr(analyzer_stack, "OLD_AUTO_WRITER_4B", "Auto · Qwen3-VL 4B writer"),
+            getattr(analyzer_stack, "OLD_AUTO_WRITER_8B", "Auto · Qwen3-VL 8B writer"),
+        }
+        would_use_gguf = explicit_gguf or normalized in auto_values or (
+            same_as and gguf._is_gguf_choice(analyzer_name)
+        )
+        if would_use_gguf and not writer_status.get("text_ready"):
+            fallback = analyzer_stack.preferred_qwen35("4b")
+            if fallback:
+                LOGGER.warning(
+                    "[H3 Studio - GGUF] Vision backend is ready but text runtime is not; prompt writer falls back to native %s",
+                    fallback,
+                )
+                return fallback
+            if same_as:
+                return None
+        return original_resolve_writer(value, analyzer_name)
+
+    loader._resolve_prompt_writer = resolve_writer
+    analyzer_stack.qwen35_gguf_status = status
 
 
 __all__ = ["_complete_text_cli", "_llama_cli", "install"]
