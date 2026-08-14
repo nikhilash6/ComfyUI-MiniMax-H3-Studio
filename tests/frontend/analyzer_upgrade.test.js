@@ -4,7 +4,7 @@ import test from "node:test";
 
 const setup = readFileSync(new URL("../../web/h3studio_prompt_models_setup.js", import.meta.url), "utf8");
 const notes = readFileSync(new URL("../../web/h3studio_analyzer_notes_migration.js", import.meta.url), "utf8");
-const benchmark = readFileSync(new URL("../../web/h3studio_smart_benchmark_v3.js", import.meta.url), "utf8");
+const benchmark = readFileSync(new URL("../../web/h3studio_smart_benchmark.js", import.meta.url), "utf8");
 const runtimeWeb = readFileSync(new URL("../../h3studio/runtime_web.py", import.meta.url), "utf8");
 const promptBenchmark = readFileSync(new URL("../../h3studio/nodes/prompt_prep_benchmark.py", import.meta.url), "utf8");
 
@@ -60,8 +60,9 @@ test("prompt prep benchmark measures end-to-end latency instead of only tokens p
   assert.match(promptBenchmark, /text \/ OCR/);
 });
 
-test("smart benchmark no longer clips scenarios and provides understandable presets", () => {
-  assert.match(benchmark, /overflow-y:auto!important/);
+test("smart benchmark is one bounded scroll surface with understandable presets", () => {
+  assert.match(benchmark, /max-height:700px;overflow:auto/);
+  assert.match(benchmark, /dedupeDomWidgets/);
   assert.match(benchmark, /Current only/);
   assert.match(benchmark, /Auto vs OG/);
   assert.match(benchmark, /Runtime sweep/);
