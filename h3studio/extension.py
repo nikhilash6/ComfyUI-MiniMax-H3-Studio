@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .analyzer_stack import install as install_analyzer_stack
 from .dependency_web import register_dependency_routes
 from .nodes.benchmark import NODE_CLASS_MAPPINGS as BENCHMARK_NODE_CLASS_MAPPINGS
 from .nodes.benchmark import NODE_DISPLAY_NAME_MAPPINGS as BENCHMARK_NODE_DISPLAY_NAME_MAPPINGS
@@ -27,6 +28,10 @@ from .runtime_guards import install_runtime_guards
 from .runtime_web import register_runtime_routes
 from .web_routes import register_routes
 
+# Patch only the optional analyzer/prompt-director surface. MiniMax H3's own
+# conditioning encoder, transformer, sampling, VAE and runtime paths remain the
+# registrations from nodes.loader/runtime below.
+install_analyzer_stack()
 install_runtime_guards()
 register_routes()
 register_runtime_routes()
