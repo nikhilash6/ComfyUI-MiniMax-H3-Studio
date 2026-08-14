@@ -1,5 +1,5 @@
 export const STUDIO_PANEL_HEIGHT = 530;
-export const STUDIO_NODE_WIDTH = 520;
+export const STUDIO_NODE_WIDTH = 680;
 export const STUDIO_NODE_HEIGHT = 780;
 
 export function studioPanelSize(width) {

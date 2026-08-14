@@ -1,7 +1,7 @@
 {
   "id": "51ffc0bb-1b7a-4a1c-a183-1ce99edb4e5e",
   "revision": 0,
-  "last_node_id": 30,
+  "last_node_id": 31,
   "last_link_id": 19,
   "nodes": [
     {
@@ -12,8 +12,8 @@
         220
       ],
       "size": [
-        700,
-        780
+        720,
+        820
       ],
       "flags": {},
       "order": 0,
@@ -343,12 +343,12 @@
       "id": 11,
       "type": "H3StudioLoader",
       "pos": [
-        -520,
+        -560,
         260
       ],
       "size": [
-        560,
-        220
+        600,
+        240
       ],
       "flags": {},
       "order": 1,
@@ -457,12 +457,12 @@
       "id": 12,
       "type": "H3StudioCondition",
       "pos": [
-        -520,
-        560
+        -560,
+        580
       ],
       "size": [
-        560,
-        150
+        600,
+        170
       ],
       "flags": {},
       "order": 2,
@@ -536,11 +536,11 @@
       "id": 16,
       "type": "H3StudioTAEH3Preview",
       "pos": [
-        220,
+        180,
         260
       ],
       "size": [
-        620,
+        700,
         620
       ],
       "flags": {},
@@ -620,12 +620,12 @@
       "id": 13,
       "type": "5930b00d-9f8e-4b87-9cb5-ff5f7cf3b30a",
       "pos": [
-        220,
-        920
+        180,
+        940
       ],
       "size": [
-        620,
-        420
+        700,
+        480
       ],
       "flags": {},
       "order": 4,
@@ -695,11 +695,11 @@
       "id": 14,
       "type": "PreviewImage",
       "pos": [
-        1030,
+        1060,
         260
       ],
       "size": [
-        440,
+        460,
         420
       ],
       "flags": {},
@@ -725,11 +725,11 @@
       "id": 15,
       "type": "H3StudioSaveImage",
       "pos": [
-        1030,
+        1060,
         750
       ],
       "size": [
-        440,
+        460,
         190
       ],
       "flags": {},
@@ -770,11 +770,11 @@
       "id": 30,
       "type": "H3StudioComparisonView",
       "pos": [
-        1030,
+        1060,
         1010
       ],
       "size": [
-        440,
+        460,
         420
       ],
       "flags": {},
@@ -805,12 +805,12 @@
       "id": 17,
       "type": "H3StudioABComparison",
       "pos": [
-        -520,
-        1700
+        -560,
+        1960
       ],
       "size": [
-        780,
-        520
+        820,
+        540
       ],
       "flags": {},
       "order": 6,
@@ -963,11 +963,11 @@
       "type": "H3StudioLazyImageSwitch",
       "pos": [
         340,
-        1700
+        1960
       ],
       "size": [
-        420,
-        180
+        440,
+        190
       ],
       "flags": {},
       "order": 7,
@@ -1023,11 +1023,11 @@
       "type": "H3StudioWorkflowNote",
       "pos": [
         -1450,
-        -180
+        -190
       ],
       "size": [
         500,
-        320
+        350
       ],
       "flags": {},
       "order": 10,
@@ -1051,14 +1051,14 @@
         }
       ],
       "outputs": [],
-      "title": "START HERE · three-minute setup",
+      "title": "START HERE · quick setup",
       "properties": {
         "Node name for S&R": "H3StudioWorkflowNote",
         "purpose": "Documentation only; never enters the generation graph."
       },
       "widgets_values": [
         "quick start",
-        "## Make an image\n\n1. Write naturally in the **Director**.\n2. Add references only when needed; they become ordered `@Image1`, `@Image2`, … cards.\n3. Choose the image role, retention, aspect, resolution, and seed.\n4. Queue the workflow.\n\n> [!TIP]\n> With no references, Auto uses FL2VA text-to-image immediately. Multi-reference work uses REF2VA."
+        "# Start here\n\n> **Fast path:** describe the final image, add only references that have a specific job, then queue.\n\n## Make an image\n\n1. Write naturally in the **Director**.\n2. Add references only when needed. They become ordered `@Image1`, `@Image2`, and so on.\n3. Choose role, retention, aspect ratio, resolution, and seed.\n4. Queue the workflow.\n\n*No references* uses FL2VA text-to-image. **Multiple references** use REF2VA."
       ],
       "color": "#22322f",
       "bgcolor": "#17211f"
@@ -1068,11 +1068,11 @@
       "type": "H3StudioWorkflowNote",
       "pos": [
         -910,
-        -180
+        -190
       ],
       "size": [
         520,
-        320
+        350
       ],
       "flags": {},
       "order": 11,
@@ -1096,14 +1096,14 @@
         }
       ],
       "outputs": [],
-      "title": "Prompt enhancement · what actually happens",
+      "title": "Prompt enhancement",
       "properties": {
         "Node name for S&R": "H3StudioWorkflowNote",
         "purpose": "Documentation only; never enters the generation graph."
       },
       "widgets_values": [
         "settings",
-        "## Two deliberate Qwen stages\n\n- **Analyze image pixels**: Qwen3-VL creates factual source descriptions and repairs automatic roles.\n- **Prompt enhancement**: a compact text-only Qwen pass turns the request and facts into a production direction.\n\nThe default writer is **Same as image analyzer**, so Auto 4B does both jobs with one loaded checkpoint. Select Auto 8B or an explicit file only when you accept staging a second model. Fingerprints and both stage caches survive normal reruns."
+        "# Prompt enhancement\n\n> *Two separate Qwen stages are used only when you enable them.*\n\n## Image analysis\n\n- **Analyze image pixels:** Qwen3-VL creates factual source descriptions and can repair automatic roles.\n\n## Prompt writing\n\n- **Prompt enhancement:** a compact text-only pass turns the request plus reference facts into a production prompt.\n\n**Same as image analyzer** lets one loaded checkpoint perform both jobs. Choose a separate writer only when you intentionally want to stage another model."
       ],
       "color": "#22322f",
       "bgcolor": "#17211f"
@@ -1113,11 +1113,11 @@
       "type": "H3StudioWorkflowNote",
       "pos": [
         -370,
-        -180
+        -190
       ],
       "size": [
         520,
-        320
+        350
       ],
       "flags": {},
       "order": 12,
@@ -1141,14 +1141,14 @@
         }
       ],
       "outputs": [],
-      "title": "Routing · deliberate defaults",
+      "title": "Routing",
       "properties": {
         "Node name for S&R": "H3StudioWorkflowNote",
         "purpose": "Documentation only; never enters the generation graph."
       },
       "widgets_values": [
         "settings",
-        "## Auto is the safe default\n\n- **0 references:** FL2VA text-to-image\n- **1 anchor:** FL2VA image-to-image when requested\n- **Multiple references:** REF2VA\n\n> [!WARNING]\n> Forced routes are diagnostic controls. Invalid reference/route combinations are rejected before model work starts."
+        "# Routing\n\n> **Auto is the recommended default.**\n\n- **0 references:** FL2VA text-to-image\n- **1 anchor:** FL2VA image editing when requested\n- **Multiple references:** REF2VA\n\n*Forced routes are diagnostic controls.* Invalid reference and route combinations are rejected before model work starts."
       ],
       "color": "#22322f",
       "bgcolor": "#17211f"
@@ -1158,11 +1158,11 @@
       "type": "H3StudioWorkflowNote",
       "pos": [
         170,
-        -180
+        -190
       ],
       "size": [
         520,
-        320
+        350
       ],
       "flags": {},
       "order": 13,
@@ -1186,14 +1186,14 @@
         }
       ],
       "outputs": [],
-      "title": "Why the Director is not hidden in the subgraph",
+      "title": "Why the Director stays visible",
       "properties": {
         "Node name for S&R": "H3StudioWorkflowNote",
         "purpose": "Documentation only; never enters the generation graph."
       },
       "widgets_values": [
         "optional / experimental",
-        "## Why this layout is intentional\n\nThe visible **Director** owns rich Studio state, reference cards, and `@Image` editing. The reusable subgraph owns ordinary typed sampling and exact-frame decode sockets.\n\nKeeping that boundary avoids invisible promoted widgets and makes the main path readable."
+        "# Why the Director stays visible\n\n> The **Director** owns rich Studio state, reference cards, and `@Image` editing.\n\nThe reusable sampling graph only owns ordinary typed sampling and decode sockets. Keeping that boundary visible avoids fragile promoted DOM widgets and keeps the main path readable.\n\n**UI state stays here.** *Sampling stays reusable.*"
       ],
       "color": "#22322f",
       "bgcolor": "#17211f"
@@ -1202,12 +1202,12 @@
       "id": 25,
       "type": "H3StudioWorkflowNote",
       "pos": [
-        1560,
+        1700,
         260
       ],
       "size": [
-        430,
-        390
+        500,
+        430
       ],
       "flags": {},
       "order": 15,
@@ -1231,14 +1231,14 @@
         }
       ],
       "outputs": [],
-      "title": "Image reference semantics",
+      "title": "Reference semantics",
       "properties": {
         "Node name for S&R": "H3StudioWorkflowNote",
         "purpose": "Documentation only; never enters the generation graph."
       },
       "widgets_values": [
         "settings",
-        "## Choose what each image contributes\n\n- `identity` / `character` + `fully_preserved`: keep the exact person or design.\n- `style` + `attribute_transfer`: borrow rendering language, not content.\n- `composition` / `layout`: borrow placement and hierarchy.\n- `outfit`, `pose`, `typography`, `lighting`, `texture`, `object`, and `environment`: narrow transfers.\n\n**Explicit card metadata always wins** over inference."
+        "# Reference semantics\n\n> **Explicit card metadata always wins** over automatic inference.\n\n## Common roles\n\n- **identity / character** + `fully_preserved`: keep the person or design\n- **style** + `attribute_transfer`: borrow rendering language, not content\n- **composition / layout:** borrow placement and hierarchy\n- **outfit, pose, typography, lighting, texture, object, environment:** narrow transfers\n\n*Give each reference one clear visual job whenever possible.*"
       ],
       "color": "#22322f",
       "bgcolor": "#17211f"
@@ -1247,12 +1247,12 @@
       "id": 26,
       "type": "H3StudioWorkflowNote",
       "pos": [
-        1560,
-        700
+        1700,
+        750
       ],
       "size": [
-        430,
-        310
+        500,
+        380
       ],
       "flags": {},
       "order": 16,
@@ -1276,14 +1276,14 @@
         }
       ],
       "outputs": [],
-      "title": "Sampling and frame extraction",
+      "title": "Sampling profiles",
       "properties": {
         "Node name for S&R": "H3StudioWorkflowNote",
         "purpose": "Documentation only; never enters the generation graph."
       },
       "widgets_values": [
         "models",
-        "## Profiles and decode\n\n- **Base Quality / Balanced:** native H3; no acceleration files.\n- **LightX v0.1:** Kijai's empirical four-step ComfyUI recipe.\n- **PDD 600 / 900:** four-step REF2VA students; requires references and Mamad8's node package.\n\nThe Director's **Decoder** control chooses the original H3 Video VAE or the fastest experimental T=1 Image VAE. Temporal quality controls 5/9/13/20-frame video packets. Current ComfyUI chunked H3 VAE I/O reduces memory with identical pixels; it is not advertised as a speed boost."
+        "# Sampling profiles\n\n> Choose the profile in the **Director**. The sampling graph follows it automatically.\n\n- **Base Quality / Balanced:** native H3 with no acceleration file\n- **LightX v0.1:** four-step accelerated recipe\n- **PDD 600 / 900:** four-step REF2VA students and requires the PDD node package\n\n## Frame extraction\n\nThe temporal quality setting controls the H3 frame packet. The selector then returns the recommended still.\n\n*Decode tuning is documented beside the decode controls.*"
       ],
       "color": "#22322f",
       "bgcolor": "#17211f"
@@ -1292,12 +1292,12 @@
       "id": 27,
       "type": "H3StudioWorkflowNote",
       "pos": [
-        820,
-        1660
+        840,
+        1920
       ],
       "size": [
-        480,
-        400
+        500,
+        420
       ],
       "flags": {},
       "order": 17,
@@ -1321,14 +1321,14 @@
         }
       ],
       "outputs": [],
-      "title": "Benchmark Lab - quality and speed diagnosis",
+      "title": "Benchmark Lab",
       "properties": {
         "Node name for S&R": "H3StudioWorkflowNote",
         "purpose": "Documentation only; never enters the generation graph."
       },
       "widgets_values": [
         "optional / experimental",
-        "## Compare two or many setups\n\n1. Enter Base, LightX, or PDD profiles and resolution targets.\n2. Check the exact generation count shown on the node.\n3. Turn **Benchmark ON** in the purple Run mode switch.\n\nNormal sampling stays lazy and is not scheduled. Same seed is the fairest comparison; new seeds are for diversity sweeps. Disable live cells for maximum throughput."
+        "# Benchmark Lab\n\n> **Optional:** use this only when comparing quality or speed.\n\n1. Enter sampling profiles and resolution targets.\n2. Check the exact generation count on the node.\n3. Turn **Benchmark ON** in the purple Run mode switch.\n\n**Same seed** is the fairest comparison. *New seeds* are better for diversity sweeps. Disable live cells when you only care about throughput."
       ],
       "color": "#22322f",
       "bgcolor": "#17211f"
@@ -1337,12 +1337,12 @@
       "id": 28,
       "type": "H3StudioWorkflowNote",
       "pos": [
-        1560,
-        1080
+        1700,
+        1190
       ],
       "size": [
-        430,
-        720
+        500,
+        760
       ],
       "flags": {},
       "order": 18,
@@ -1366,14 +1366,14 @@
         }
       ],
       "outputs": [],
-      "title": "Model downloads · RECOMMENDED core",
+      "title": "Model downloads",
       "properties": {
         "Node name for S&R": "H3StudioWorkflowNote",
         "purpose": "Documentation only; never enters the generation graph."
       },
       "widgets_values": [
         "models",
-        "## RECOMMENDED · proven L4 core · ~50.4 GB / 47.0 GiB\n\nDownload each file directly into the shown `ComfyUI/models/` folder:\n\n- [Kijai FL2VA pruned W4A8 · 12.54 GB / 11.68 GiB](https://huggingface.co/Kijai/MiniMax-H3-experimental/resolve/main/minimax_h3_fl2va_pruned_w4a8_mixed.safetensors?download=true) → `diffusion_models/`\n- [Kijai REF2VA pruned W4A8 · 11.77 GB / 10.96 GiB](https://huggingface.co/Kijai/MiniMax-H3-experimental/resolve/main/minimax_h3_ref2va_pruned_w4a8_mixed.safetensors?download=true) → `diffusion_models/`\n- [H3 Qwen3-VL 32B NVFP4 · 15.7 GB](https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors?download=true) → `text_encoders/`\n- [Original H3 Video VAE FP16 · 5.2 GB](https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_video_vae_fp16.safetensors?download=true) → `vae/`\n- [Qwen3-VL 4B analyzer + writer · 5.2 GB](https://huggingface.co/Comfy-Org/Qwen3-VL/resolve/main/text_encoders/qwen3vl_4b_fp8_scaled.safetensors?download=true) → `text_encoders/`\n\n## Optional acceleration and previews\n\n- [TAEH3 live preview · 0.01 GB](https://huggingface.co/Kijai/MiniMax-H3-TAE/resolve/main/vae_approx/taeh3.safetensors?download=true) → `vae_approx/`\n- [LightX resized rank-21 · 0.31 GB](https://huggingface.co/Kijai/MiniMax-H3_comfy/resolve/main/loras/minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_rank_21_bf16.safetensors?download=true) → `loras/`\n- [Experimental T=1 Image VAE · 5.2 GB](https://huggingface.co/Mamad8/MiniMax-H3-Image-VAE/resolve/main/minimax_h3_t1_image_vae_step1597.safetensors?download=true) → `vae/`\n- [Qwen3-VL 8B writer · 10.6 GB](https://huggingface.co/Comfy-Org/Qwen3-VL/resolve/main/text_encoders/qwen3vl_8b_fp8_scaled.safetensors?download=true) → `text_encoders/`\n\n## Optional PDD · choose 600 or 900 · ~1.30 GB each\n\n- [PDD 900 LoRA · 0.60 GB](https://huggingface.co/Mamad8/MiniMaxH3_R2V-PDD-Turbo-LoRA-Mamad8/resolve/main/LORA_h3_pdd_af384_step900_s.safetensors?download=true) → `loras/`\n- [PDD 900 heads · 0.70 GB](https://huggingface.co/Mamad8/MiniMaxH3_R2V-PDD-Turbo-LoRA-Mamad8/resolve/main/HEADS_h3_pdd_af384_step900_bank.safetensors?download=true) → `pdd_heads/`\n- [PDD 600 LoRA · 0.60 GB](https://huggingface.co/Mamad8/MiniMaxH3_R2V-PDD-Turbo-LoRA-Mamad8/resolve/main/LORA_h3_pdd_af384_step600_s.safetensors?download=true) → `loras/`\n- [PDD 600 heads · 0.70 GB](https://huggingface.co/Mamad8/MiniMaxH3_R2V-PDD-Turbo-LoRA-Mamad8/resolve/main/HEADS_h3_pdd_af384_step600_bank.safetensors?download=true) → `pdd_heads/`\n- [Install the required PDD custom node](https://github.com/mamad8c/ComfyUI-MiniMaxH3-PDD-Mamad8)\n\n> [!NOTE]\n> Core + every optional file above is ~69.2 GB. H3 Studio never downloads models automatically."
+        "# Recommended model set\n\n> **Core setup:** download files directly into the shown `ComfyUI/models/` folders. H3 Studio never downloads model weights automatically.\n\n## Core\n\n- [Kijai FL2VA pruned W4A8](https://huggingface.co/Kijai/MiniMax-H3-experimental/resolve/main/minimax_h3_fl2va_pruned_w4a8_mixed.safetensors?download=true) → `diffusion_models/`\n- [Kijai REF2VA pruned W4A8](https://huggingface.co/Kijai/MiniMax-H3-experimental/resolve/main/minimax_h3_ref2va_pruned_w4a8_mixed.safetensors?download=true) → `diffusion_models/`\n- [H3 Qwen3-VL 32B NVFP4](https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors?download=true) → `text_encoders/`\n- [Original H3 Video VAE FP16](https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_video_vae_fp16.safetensors?download=true) → `vae/`\n- [Qwen3-VL 4B analyzer + writer](https://huggingface.co/Comfy-Org/Qwen3-VL/resolve/main/text_encoders/qwen3vl_4b_fp8_scaled.safetensors?download=true) → `text_encoders/`\n\n## Optional\n\n- [TAEH3 live preview](https://huggingface.co/Kijai/MiniMax-H3-TAE/resolve/main/vae_approx/taeh3.safetensors?download=true) → `vae_approx/`\n- [LightX resized rank-21](https://huggingface.co/Kijai/MiniMax-H3_comfy/resolve/main/loras/minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_rank_21_bf16.safetensors?download=true) → `loras/`\n- [Experimental T=1 Image VAE](https://huggingface.co/Mamad8/MiniMax-H3-Image-VAE/resolve/main/minimax_h3_t1_image_vae_step1597.safetensors?download=true) → `vae/`\n- [Qwen3-VL 8B writer](https://huggingface.co/Comfy-Org/Qwen3-VL/resolve/main/text_encoders/qwen3vl_8b_fp8_scaled.safetensors?download=true) → `text_encoders/`\n\n## Optional PDD\n\nChoose either the **600** or **900** LoRA + heads pair and install [Mamad8's PDD custom node](https://github.com/mamad8c/ComfyUI-MiniMaxH3-PDD-Mamad8)."
       ],
       "color": "#22322f",
       "bgcolor": "#17211f"
@@ -1382,11 +1382,11 @@
       "id": 29,
       "type": "H3StudioWorkflowNote",
       "pos": [
-        1560,
-        1860
+        1700,
+        2010
       ],
       "size": [
-        480,
+        500,
         390
       ],
       "flags": {},
@@ -1411,14 +1411,59 @@
         }
       ],
       "outputs": [],
-      "title": "Upscaling, outpainting, and inpainting",
+      "title": "Upscaling / outpainting / inpainting",
       "properties": {
         "Node name for S&R": "H3StudioWorkflowNote",
         "purpose": "Documentation only; never enters the generation graph."
       },
       "widgets_values": [
         "optional / experimental",
-        "Upscaling is safest after H3's selected still: use ComfyUI's built-in Upscale Model Loader + Image Upscale With Model and a trusted image upscaler. H3 semantic outpainting works by increasing the target aspect ratio and explicitly placing the original reference within the new frame. Exact mask inpainting is not implemented here: H3 Studio has no verified mask-conditioned H3 route, and ComfyUI's VAE Encode for Inpainting requires a model trained for that contract. The node will not pretend semantic reference editing is pixel-locked inpainting."
+        "# Post-processing\n\n- **Upscaling:** run a normal ComfyUI image upscaler after the selected H3 still.\n- **Outpainting:** increase the target aspect ratio and explicitly place the original reference inside the new frame.\n- **Inpainting:** exact mask-conditioned H3 inpainting is **not implemented** here.\n\n> *Semantic reference editing is not pixel-locked inpainting, and H3 Studio does not present it as one.*"
+      ],
+      "color": "#22322f",
+      "bgcolor": "#17211f"
+    },
+    {
+      "id": 31,
+      "type": "H3StudioWorkflowNote",
+      "pos": [
+        180,
+        1480
+      ],
+      "size": [
+        700,
+        320
+      ],
+      "flags": {},
+      "order": 20,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "section",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "section"
+          }
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "text"
+          }
+        }
+      ],
+      "outputs": [],
+      "title": "Native H3 VAE decode",
+      "properties": {
+        "Node name for S&R": "H3StudioWorkflowNote",
+        "purpose": "Documentation only; never enters the generation graph."
+      },
+      "widgets_values": [
+        "models",
+        "# Native H3 VAE decode\n\n> **Start with Auto.** It keeps the proven native `256 / 64` geometry and chooses tile batching from available VRAM.\n\n## Manual controls\n\n- **Tile size:** `256`, `320`, `384`, `512`\n- **Overlap:** `64`, `96`, `128`\n- **Tile batch:** `Auto`, `1`, `2`, `4`\n\n**Larger tiles** use more VRAM but reduce tile count. *Smaller tiles* are safer when memory is tight.\n\n> Change Manual values only when tuning or benchmarking. **Auto** is the compatibility default."
       ],
       "color": "#22322f",
       "bgcolor": "#17211f"
@@ -1586,7 +1631,7 @@
         -1500,
         160,
         860,
-        940
+        1020
       ],
       "color": "#355b54",
       "font_size": 28,
@@ -1596,10 +1641,10 @@
       "id": 2,
       "title": "02 · MODELS AND CONDITIONING",
       "bounding": [
-        -580,
+        -620,
         190,
-        680,
-        600
+        720,
+        660
       ],
       "color": "#2f665b",
       "font_size": 26,
@@ -1609,10 +1654,10 @@
       "id": 3,
       "title": "03 · SAMPLE AND EXTRACT STILL",
       "bounding": [
-        160,
+        120,
         190,
-        740,
-        1230
+        820,
+        1640
       ],
       "color": "#6b5937",
       "font_size": 26,
@@ -1622,9 +1667,9 @@
       "id": 4,
       "title": "04 · OUTPUT",
       "bounding": [
-        970,
+        1000,
         190,
-        560,
+        580,
         1320
       ],
       "color": "#496073",
@@ -1635,10 +1680,10 @@
       "id": 5,
       "title": "REFERENCE GUIDE",
       "bounding": [
-        1500,
+        1640,
         190,
-        540,
-        2300
+        620,
+        2260
       ],
       "color": "#5c5243",
       "font_size": 24,
@@ -1649,9 +1694,9 @@
       "title": "READ BEFORE FIRST RUN",
       "bounding": [
         -1500,
-        -240,
+        -250,
         2750,
-        400
+        410
       ],
       "color": "#324e49",
       "font_size": 30,
@@ -1661,9 +1706,9 @@
       "id": 7,
       "title": "OPTIONAL - MULTI-PROFILE BENCHMARK LAB",
       "bounding": [
-        -580,
-        1600,
-        1940,
+        -620,
+        1880,
+        1980,
         700
       ],
       "color": "#60467a",
@@ -2422,8 +2467,8 @@
     "frontendVersion": "1.30.0",
     "h3studio": {
       "schema_version": 8,
-      "template_version": "1.6.0",
-      "design_source": "H3 Studio maintained column layout",
+      "template_version": "1.7.0",
+      "design_source": "H3 Studio release column layout with guarded gutters",
       "audio_prompt_sections": false,
       "hub_included": false
     }
