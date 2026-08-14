@@ -1,6 +1,6 @@
 # Third-party notices
 
-ComfyUI-MiniMax-H3-Studio is an independent project inspired by three existing implementations.
+ComfyUI-MiniMax-H3-Studio is an independent project inspired by several existing implementations.
 
 ## ComfyUI-MiniMaxH3-Easy
 
@@ -21,6 +21,19 @@ Source: https://github.com/nkxx188/ComfyUI-MiniMaxH3-Easy
 Resolution math, exact-frame decode concepts, still-selection strategies, sampling-profile organization, workflow validation ideas, and `h3studio/nodes/image_runtime.py` are adapted from `astropuzzo/ComfyUI-MiniMax-H3-Image-Studio`, released under the Unlicense/public-domain dedication.
 
 Source: https://github.com/astropuzzo/ComfyUI-MiniMax-H3-Image-Studio
+
+## Qwen3.5 GGUF prompt-prep performance reference
+
+`workordie/ComfyUI-Qwen3.5` demonstrated a practical Qwen3.5 multimodal GGUF workflow using llama.cpp and published the performance comparison that motivated evaluating Qwen3.5-4B Q4_K_XL for H3 Studio prompt preparation. That project is Apache-2.0:
+https://github.com/workordie/ComfyUI-Qwen3.5
+
+H3 Studio's implementation is independent and does not bundle or import that custom node. It integrates against llama.cpp's public `llama-server`, `llama-mtmd-cli`, and `llama-cli` interfaces, uses its own lifecycle/cache contracts, and stores the optional model assets in H3 Studio's existing `models/h3studio_vlm` destination.
+
+The optional Qwen3.5-4B GGUF language model and BF16 multimodal projector are distributed separately by Unsloth under the model repository's published terms and are not bundled in H3 Studio:
+https://huggingface.co/unsloth/Qwen3.5-4B-GGUF
+
+llama.cpp is a separate optional runtime dependency and remains under its own license:
+https://github.com/ggml-org/llama.cpp
 
 ## Earlier H3 Studio prototypes
 
