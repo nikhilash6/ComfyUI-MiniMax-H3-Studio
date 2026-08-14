@@ -5,6 +5,7 @@ from __future__ import annotations
 from .analyzer_runtime_fixes import install as install_analyzer_runtime_fixes
 from .analyzer_stack import install as install_analyzer_stack
 from .dependency_web import register_dependency_routes
+from .llama_cpp_dependency import register_routes as register_llama_cpp_routes
 from .nodes.benchmark import NODE_CLASS_MAPPINGS as BENCHMARK_NODE_CLASS_MAPPINGS
 from .nodes.benchmark import NODE_DISPLAY_NAME_MAPPINGS as BENCHMARK_NODE_DISPLAY_NAME_MAPPINGS
 from .nodes.comparison import NODE_CLASS_MAPPINGS as COMPARISON_NODE_CLASS_MAPPINGS
@@ -50,6 +51,7 @@ install_qwen35_gguf()
 register_routes()
 register_runtime_routes()
 register_dependency_routes()
+register_llama_cpp_routes()
 
 NODE_CLASS_MAPPINGS = {
     "H3StudioLoader": H3StudioLoader,
