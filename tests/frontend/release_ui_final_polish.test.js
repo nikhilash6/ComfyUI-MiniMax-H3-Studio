@@ -6,7 +6,7 @@ const source = readFileSync(new URL("../../web/h3_release_ui_polish.js", import.
 
 test("final workflow polish uses the official LightX 8-step download", () => {
   assert.ok(source.includes("https://huggingface.co/lightx2v/Minimax-h3-Turbo/resolve/main/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors?download=true"));
-  assert.ok(source.includes("Official LightX 8-step v1.0"));
+  assert.ok(source.includes("LightX v1.0 · 8-step · official full"));
 });
 
 test("decode note warns about poor manual overlap", () => {
