@@ -30,6 +30,18 @@ def _helper_bundle(*loaders):
     return None
 
 
+def _close_external_helper(value) -> None:
+    """Release a stage-scoped non-Comfy backend without assuming its type."""
+
+    close = getattr(value, "close", None)
+    if not callable(close):
+        return
+    try:
+        close()
+    except Exception as error:
+        LOGGER.warning("[H3 Studio] External prompt helper release failed: %s: %s", type(error).__name__, error)
+
+
 def _release_optional_helpers(bundle) -> None:
     if bundle is None:
         return
@@ -39,14 +51,16 @@ def _release_optional_helpers(bundle) -> None:
         return
 
     release_stage_model(analyzer, "visual-analyzer->h3-conditioning")
+    _close_external_helper(analyzer)
     if writer is not analyzer:
         release_stage_model(writer, "prompt-writer->h3-conditioning")
+        _close_external_helper(writer)
     bundle.analyzer_clip = None
     bundle.prompt_writer_clip = None
     del analyzer, writer
     gc.collect()
 
-    LOGGER.info("[H3 Studio] Released optional Qwen analyzer/writer before H3 conditioning")
+    LOGGER.info("[H3 Studio] Released optional analyzer/writer before H3 conditioning")
 
 
 def _memory_safe_analyze_references(clip, prompt, references, images, **kwargs):

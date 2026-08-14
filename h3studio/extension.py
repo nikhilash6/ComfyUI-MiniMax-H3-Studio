@@ -5,6 +5,7 @@ from __future__ import annotations
 from .analyzer_runtime_fixes import install as install_analyzer_runtime_fixes
 from .analyzer_stack import install as install_analyzer_stack
 from .dependency_web import register_dependency_routes
+from .llama_cpp_dependency import register_routes as register_llama_cpp_routes
 from .nodes.benchmark import NODE_CLASS_MAPPINGS as BENCHMARK_NODE_CLASS_MAPPINGS
 from .nodes.benchmark import NODE_DISPLAY_NAME_MAPPINGS as BENCHMARK_NODE_DISPLAY_NAME_MAPPINGS
 from .nodes.comparison import NODE_CLASS_MAPPINGS as COMPARISON_NODE_CLASS_MAPPINGS
@@ -28,6 +29,8 @@ from .nodes.save import NODE_DISPLAY_NAME_MAPPINGS as SAVE_NODE_DISPLAY_NAME_MAP
 from .nodes.smart_benchmark import NODE_CLASS_MAPPINGS as SMART_BENCHMARK_NODE_CLASS_MAPPINGS
 from .nodes.smart_benchmark import NODE_DISPLAY_NAME_MAPPINGS as SMART_BENCHMARK_NODE_DISPLAY_NAME_MAPPINGS
 from .prompt_prep_hotfix_v2 import install as install_prompt_prep_hotfix_v2
+from .qwen35_gguf import install as install_qwen35_gguf
+from .qwen35_gguf_text_fallback import install as install_qwen35_gguf_text_fallback
 from .runtime_guards import install_runtime_guards
 from .runtime_web import register_runtime_routes
 from .web_routes import register_routes
@@ -42,9 +45,17 @@ install_runtime_guards()
 # cache misses can establish a clean helper residency boundary without changing
 # H3 generation semantics.
 install_prompt_prep_hotfix_v2()
+# The GGUF extension wraps the final resilient resolver so Auto can prefer the
+# fast llama.cpp path when its runtime + model pair are actually available and
+# fall back to the native Qwen3.5 path otherwise.
+install_qwen35_gguf()
+# llama-mtmd-cli is image-oriented; text-only prompt writing uses the shared
+# llama-server or llama-cli instead of ever falling into mtmd interactive mode.
+install_qwen35_gguf_text_fallback()
 register_routes()
 register_runtime_routes()
 register_dependency_routes()
+register_llama_cpp_routes()
 
 NODE_CLASS_MAPPINGS = {
     "H3StudioLoader": H3StudioLoader,
