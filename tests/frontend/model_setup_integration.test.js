@@ -7,14 +7,15 @@ const source = readFileSync(new URL("../../web/h3_model_setup.js", import.meta.u
 test("maintained workflow gets the model setup node", () => {
   assert.match(source, /H3StudioModelSetup/);
   assert.match(source, /beforeConfigureGraph\(graphData\)/);
-  assert.match(source, /\[-2350,220\]/);
+  assert.match(source, /\[-2380,220\]/);
 });
 
-test("model setup integrates with UAD analyze verify and install APIs", () => {
+test("model setup integrates with nonblocking UAD analyze verify and install APIs", () => {
   assert.match(source, /\/uad\/status/);
-  assert.match(source, /\/uad\/analyze/);
-  assert.match(source, /\/uad\/verify/);
+  assert.match(source, /\/uad\/analyze-fast/);
+  assert.match(source, /\/uad\/verify-fast/);
   assert.match(source, /\/uad\/install/);
+  assert.match(source, /Promise\.all/);
   assert.match(source, /models\/\$\{asset\.destination\}\/\$\{asset\.filename\}/);
 });
 
@@ -23,6 +24,15 @@ test("missing UAD uses ComfyUI Manager install endpoint with explicit confirmati
   assert.match(source, /window\.confirm/);
   assert.match(source, /Restart ComfyUI/);
   assert.match(source, /press R or hard refresh/);
+});
+
+test("core runtime and acceleration LoRAs are visibly separated", () => {
+  assert.match(source, /group:"core"/);
+  assert.match(source, /group:"accel-recommended"/);
+  assert.match(source, /group:"accel-alternative"/);
+  assert.match(source, /Core runtime/);
+  assert.match(source, /No acceleration LoRAs live here/);
+  assert.match(source, /kind:"LoRA"/);
 });
 
 test("manifest includes H3 role-aware destinations and current LightX profiles", () => {
