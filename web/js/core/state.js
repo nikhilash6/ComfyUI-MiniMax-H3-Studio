@@ -44,14 +44,21 @@ export const RETENTION = Object.freeze([
   "reference_only",
 ]);
 
+// The optional third tuple value is the route required by an acceleration
+// profile. selectControl only consumes the first two values, while validation
+// uses the route metadata to prevent FL2VA/REF2VA adapter mismatches.
 export const SAMPLING_PROFILES = Object.freeze([
-  ["base_quality_20", "Base Quality · RES 20"],
-  ["base_balanced_12", "Base Balanced · RES 12"],
-  ["lightx_v1_fl2v_8", "LightX v1.0 · FL2V 8-step · official ComfyUI"],
-  ["lightx_er_sde_4", "LightX v0.1 · ER-SDE 4 · empirical"],
-  ["lightx_sa_solver_4", "LightX v0.1 · SA-Solver 4 · empirical"],
-  ["pdd_ref2va_4_600", "PDD REF2VA · 4-step · ckpt 600"],
-  ["pdd_ref2va_4_900", "PDD REF2VA · 4-step · ckpt 900"],
+  ["base_quality_20", "Base Quality · RES 20", null],
+  ["base_balanced_12", "Base Balanced · RES 12", null],
+  ["lightx_v1_fl2v_8", "LightX v1.0 · FL2VA 8-step · official full", "fl2va"],
+  ["lightx_v1_fl2v_8_pruned", "LightX v1.0 · FL2VA 8-step · Kijai pruned rank-24", "fl2va"],
+  ["lightx_v1_fl2v_4_pruned", "LightX v1.0 · FL2VA 4-step 768p · Kijai pruned rank-31", "fl2va"],
+  ["lightx_er_sde_4", "LightX v0.1 · FL2VA ER-SDE 4 · Kijai pruned rank-21", "fl2va"],
+  ["lightx_sa_solver_4", "LightX v0.1 · FL2VA SA-Solver 4 · Kijai pruned rank-21", "fl2va"],
+  ["lightx_v01_ref2v_er_sde_4_pruned", "LightX v0.1 · REF2VA ER-SDE 4 · Kijai pruned rank-20", "ref2va"],
+  ["lightx_v01_ref2v_sa_solver_4_pruned", "LightX v0.1 · REF2VA SA-Solver 4 · Kijai pruned rank-20", "ref2va"],
+  ["pdd_ref2va_4_600", "PDD REF2VA · 4-step · ckpt 600", "ref2va"],
+  ["pdd_ref2va_4_900", "PDD REF2VA · 4-step · ckpt 900", "ref2va"],
 ]);
 
 export const FRAME_PROFILES = Object.freeze([
@@ -367,12 +374,17 @@ export function serializeState(state) {
   return JSON.stringify(normalizeState(state));
 }
 
+function samplingProfileRoute(profile) {
+  return SAMPLING_PROFILES.find(([key]) => key === profile)?.[2] || null;
+}
+
 export function validateGenerationContract(value) {
   const state = normalizeState(value);
   const { mode, route, sampling_profile: profile } = state.generation;
   const referenceCount = state.references.filter((reference) => reference.enabled !== false).length;
   const isPdd = String(profile).startsWith("pdd_ref2va_");
-  const isLightxFl2v = String(profile).startsWith("lightx_");
+  const isLightx = String(profile).startsWith("lightx_");
+  const profileRoute = samplingProfileRoute(profile);
   if (mode === "image_to_image" && referenceCount === 0) return "Image-to-image requires at least one enabled reference image.";
   if (mode === "reference_edit" && referenceCount === 0) return "Reference mix/edit requires at least one enabled reference image.";
   if (isPdd && referenceCount === 0) return "PDD REF2VA requires at least one enabled reference image.";
@@ -380,7 +392,12 @@ export function validateGenerationContract(value) {
     return "PDD REF2VA supports reference mix/edit; use Auto or Reference mix/edit mode.";
   }
   if (isPdd && route === "fl2va") return "PDD is trained for REF2VA and cannot run on a forced FL2VA route.";
-  if (isLightxFl2v && route === "ref2va") return "The configured LightX adapters are FL2V/FL2VA-only and cannot run on a forced REF2VA route.";
+  if (isLightx && profileRoute === "fl2va" && route === "ref2va") {
+    return "The selected LightX profile is FL2V/FL2VA-only and cannot run on a forced REF2VA route.";
+  }
+  if (isLightx && profileRoute === "ref2va" && route === "fl2va") {
+    return "The selected LightX profile is REF2V/REF2VA-only and cannot run on a forced FL2VA route.";
+  }
   let effectiveMode = mode;
   if (mode === "auto") {
     effectiveMode = referenceCount === 0
@@ -388,8 +405,11 @@ export function validateGenerationContract(value) {
       : referenceCount === 1 && !isPdd ? "image_to_image" : "reference_edit";
   }
   const expectedRoute = effectiveMode === "reference_edit" ? "ref2va" : "fl2va";
-  if (isLightxFl2v && expectedRoute !== "fl2va") {
-    return "The selected LightX profile uses an FL2V adapter. Use text-to-image or a single-source FL2VA edit, or choose Base/PDD for REF2VA reference mixing.";
+  if (isLightx && profileRoute === "fl2va" && expectedRoute !== "fl2va") {
+    return "The selected LightX profile uses an FL2V adapter. Use text-to-image or a single-source FL2VA edit, or choose a REF2VA profile for reference mixing.";
+  }
+  if (isLightx && profileRoute === "ref2va" && expectedRoute !== "ref2va") {
+    return "The selected LightX profile uses a REF2V adapter. Use Reference mix/edit with at least one reference and Auto/REF2VA, or choose an FL2VA profile for text-to-image or single-source edits.";
   }
   if (route !== "auto" && route !== expectedRoute) {
     return `Forced ${route.toUpperCase()} is incompatible with ${effectiveMode.replaceAll("_", " ")} mode; use Auto.`;
