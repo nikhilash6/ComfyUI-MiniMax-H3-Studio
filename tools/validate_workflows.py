@@ -116,54 +116,11 @@ def main():
     if not 1800 <= lines <= 2800:
         errors.append(f"{path.name}: expected 1,800-2,800 meaningful lines, got {lines}")
 
-    native_path = ROOT / "example_workflows" / "H3_Studio_Native_Fast_T2I.json"
-    native = json.loads(native_path.read_text(encoding="utf-8"))
-    errors.extend(validate_graph(native, native_path.name))
-    native_types = {node.get("type") for node in native.get("nodes", [])}
-    native_required = {
-        "UNETLoader",
-        "CLIPLoader",
-        "VAELoader",
-        "H3StudioTextToImagePrepare",
-        "LoraLoaderModelOnly",
-        "H3StudioSamplingPreset",
-        "BasicGuider",
-        "SamplerCustomAdvanced",
-        "VAEDecode",
-        "ImageFromBatch",
-        "PreviewImage",
-        "SaveImage",
-    }
-    missing_native = native_required - native_types
-    if missing_native:
-        errors.append(f"{native_path.name}: missing native-stage nodes {sorted(missing_native)}")
-    forbidden_native = {
-        "H3StudioLoader",
-        "H3StudioDirector",
-        "H3StudioCondition",
-        "H3StudioContextSamplingPreset",
-        "H3StudioDecode",
-        "H3StudioTAEH3Preview",
-    }
-    present_forbidden = forbidden_native & native_types
-    if present_forbidden:
-        errors.append(f"{native_path.name}: contains combined/legacy runtime nodes {sorted(present_forbidden)}")
-    if native.get("definitions", {}).get("subgraphs"):
-        errors.append(f"{native_path.name}: native fast path must not hide runtime stages in a subgraph")
-    native_nodes = {node["id"]: node for node in native.get("nodes", [])}
-    vae_id = next((node_id for node_id, value in native_nodes.items() if value.get("type") == "VAELoader"), None)
-    vae_targets = {
-        native_nodes[link[3]].get("type")
-        for link in native.get("links", [])
-        if link[1] == vae_id and link[3] in native_nodes
-    }
-    if vae_targets != {"VAEDecode"}:
-        errors.append(f"{native_path.name}: VAE must be decode-only, got targets {sorted(vae_targets)}")
     if errors:
         raise SystemExit("\n".join(errors))
     print(
-        f"Workflow graphs are structurally valid: legacy={len(workflow['nodes'])} nodes, "
-        f"native-fast={len(native['nodes'])} independent nodes, subgraph={len(subgraphs[0]['nodes'])} nodes."
+        f"Workflow graphs are structurally valid: unified={len(workflow['nodes'])} nodes, "
+        f"subgraph={len(subgraphs[0]['nodes'])} nodes."
     )
 
 
