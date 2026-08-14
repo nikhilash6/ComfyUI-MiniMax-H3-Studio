@@ -32,20 +32,36 @@ def _director_nodes(workflow: dict[str, Any]):
         yield from _director_nodes(subgraph)
 
 
-def _replace_director_state(workflow: dict[str, Any], state_json: str) -> None:
+def _director_widget_index(director: dict[str, Any], name: str) -> int | None:
+    """Resolve a serialized widget index without assuming every input owns a widget."""
+
+    inputs = director.get("inputs", ())
+    widget_index = 0
+    for input_index, input_slot in enumerate(inputs):
+        if input_slot.get("widget") is not None:
+            if input_slot.get("name") == name:
+                return widget_index
+            widget_index += 1
+        elif input_slot.get("name") == name:
+            # Minimal/legacy workflow fixtures may omit the widget descriptor.
+            values = director.get("widgets_values")
+            if isinstance(values, list) and input_index < len(values):
+                return input_index
+    return None
+
+
+def _set_director_widget(director: dict[str, Any], name: str, value: Any) -> None:
+    index = _director_widget_index(director, name)
+    values = director.get("widgets_values")
+    if index is not None and isinstance(values, list) and index < len(values):
+        values[index] = value
+
+
+def _replace_director_state(workflow: dict[str, Any], state_json: str, seed: int) -> None:
     for director in _director_nodes(workflow):
         director.setdefault("properties", {})["h3studio_state"] = state_json
-        state_index = next(
-            (
-                index
-                for index, input_slot in enumerate(director.get("inputs", ()))
-                if input_slot.get("name") == "studio_state"
-            ),
-            None,
-        )
-        values = director.get("widgets_values")
-        if state_index is not None and isinstance(values, list) and state_index < len(values):
-            values[state_index] = state_json
+        _set_director_widget(director, "studio_state", state_json)
+        _set_director_widget(director, "seed", int(seed))
 
 
 def completed_png_metadata(
@@ -62,11 +78,13 @@ def completed_png_metadata(
     saved_extra = deepcopy(extra_pnginfo) if extra_pnginfo is not None else {}
     workflow = saved_extra.get("workflow")
     if isinstance(workflow, dict):
-        _replace_director_state(workflow, state_json)
+        _replace_director_state(workflow, state_json, context.seed)
     if isinstance(saved_prompt, dict):
         for prompt_node in saved_prompt.values():
             if prompt_node.get("class_type") == "H3StudioDirector":
-                prompt_node.setdefault("inputs", {})["studio_state"] = state_json
+                inputs = prompt_node.setdefault("inputs", {})
+                inputs["studio_state"] = state_json
+                inputs["seed"] = int(context.seed)
     saved_extra["h3studio"] = {
         "schema_version": context.schema_version,
         "state": context.state.as_dict(),
