@@ -5,6 +5,11 @@ const NODE_CLASS = "H3StudioDecode";
 const SUBGRAPH_CLASS = "5930b00d-9f8e-4b87-9cb5-ff5f7cf3b30a";
 const DECODE_NODE_ID = 105;
 const PROMOTED_WIDGETS = ["tiling_mode", "tile_size", "tile_overlap", "tile_batch"];
+const MODE_VALUES = ["Auto", "Manual"];
+const TILE_SIZE_VALUES = [256, 320, 384, 512];
+const TILE_OVERLAP_VALUES = [64, 96, 128];
+const BATCH_VALUES = ["Auto", "1", "2", "4"];
+const PROMOTED_DEFAULTS = ["Auto", 256, 64, "Auto"];
 const EVENT = "h3studio.decode_status";
 
 function graphNodeById(value) {
@@ -12,6 +17,10 @@ function graphNodeById(value) {
     const numeric = Number(value);
     const id = Number.isFinite(numeric) ? numeric : value;
     return app.graph?.getNodeById?.(id) || app.graph?._nodes_by_id?.[id] || null;
+}
+
+function nodeClass(node) {
+    return String(node?.comfyClass || node?.type || "");
 }
 
 function widget(node, name) {
@@ -23,6 +32,38 @@ function setStatus(node, text) {
     if (!status) return;
     status.value = text;
     node.setDirtyCanvas?.(true, true);
+}
+
+function normalizeStringChoice(value, allowed, fallback) {
+    const raw = String(value ?? "");
+    return allowed.includes(raw) ? raw : fallback;
+}
+
+function normalizeNumericChoice(value, allowed, fallback) {
+    const numeric = Number(value);
+    return allowed.includes(numeric) ? numeric : fallback;
+}
+
+function constrainChoiceWidget(node, name, values, fallback, numeric = false) {
+    const target = widget(node, name);
+    if (!target) return;
+    const next = numeric
+        ? normalizeNumericChoice(target.value, values, fallback)
+        : normalizeStringChoice(target.value, values, fallback);
+    target.value = next;
+    if (target._state) target._state.value = next;
+    target.type = "combo";
+    target.options ||= {};
+    target.options.values = [...values];
+}
+
+function sanitizeControlWidgets(node) {
+    const kind = nodeClass(node);
+    if (kind !== NODE_CLASS && kind !== SUBGRAPH_CLASS) return;
+    constrainChoiceWidget(node, "tiling_mode", MODE_VALUES, "Auto");
+    constrainChoiceWidget(node, "tile_size", TILE_SIZE_VALUES, 256, true);
+    constrainChoiceWidget(node, "tile_overlap", TILE_OVERLAP_VALUES, 64, true);
+    constrainChoiceWidget(node, "tile_batch", BATCH_VALUES, "Auto");
 }
 
 function idleText(node) {
@@ -37,6 +78,7 @@ function idleText(node) {
 }
 
 function refreshModeUI(node) {
+    sanitizeControlWidgets(node);
     const mode = String(widget(node, "tiling_mode")?.value || "Auto");
     const manual = mode === "Manual";
     for (const name of ["tile_size", "tile_overlap"]) {
@@ -47,6 +89,7 @@ function refreshModeUI(node) {
         target.options.disabled = !manual;
     }
     setStatus(node, idleText(node));
+    node.setDirtyCanvas?.(true, true);
 }
 
 function wrapWidgetCallback(node, name) {
@@ -59,6 +102,26 @@ function wrapWidgetCallback(node, name) {
         return result;
     };
     target.__h3DecodeWrapped = true;
+}
+
+function sanitizeRuntimeNode(node) {
+    const kind = nodeClass(node);
+    if (kind !== NODE_CLASS && kind !== SUBGRAPH_CLASS) return;
+    sanitizeControlWidgets(node);
+    for (const name of PROMOTED_WIDGETS) wrapWidgetCallback(node, name);
+    refreshModeUI(node);
+}
+
+function sanitizeSerializedDecodeValues(node) {
+    const kind = String(node?.type || "");
+    if (kind !== NODE_CLASS && kind !== SUBGRAPH_CLASS) return;
+    const values = Array.isArray(node.widgets_values) ? [...node.widgets_values] : [];
+    while (values.length < PROMOTED_DEFAULTS.length) values.push(PROMOTED_DEFAULTS[values.length]);
+    values[0] = normalizeStringChoice(values[0], MODE_VALUES, "Auto");
+    values[1] = normalizeNumericChoice(values[1], TILE_SIZE_VALUES, 256);
+    values[2] = normalizeNumericChoice(values[2], TILE_OVERLAP_VALUES, 64);
+    values[3] = normalizeStringChoice(values[3], BATCH_VALUES, "Auto");
+    node.widgets_values = values;
 }
 
 function mergeProxyWidgets(node) {
@@ -90,7 +153,10 @@ function promoteDecodeControls(graphData) {
 
     const patchNodes = (nodes) => {
         if (!Array.isArray(nodes)) return;
-        for (const node of nodes) mergeProxyWidgets(node);
+        for (const node of nodes) {
+            sanitizeSerializedDecodeValues(node);
+            mergeProxyWidgets(node);
+        }
     };
 
     patchNodes(graphData.nodes);
@@ -119,8 +185,7 @@ function formatProgress(data) {
 api.addEventListener(EVENT, (event) => {
     const data = event?.detail || event;
     const node = graphNodeById(data?.node);
-    const nodeClass = String(node?.comfyClass || node?.type || "");
-    if (!node || nodeClass !== NODE_CLASS) return;
+    if (!node || nodeClass(node) !== NODE_CLASS) return;
     setStatus(node, formatProgress(data));
 });
 
@@ -129,6 +194,18 @@ app.registerExtension({
 
     beforeConfigureGraph(graphData) {
         promoteDecodeControls(graphData);
+    },
+
+    nodeCreated(node) {
+        queueMicrotask(() => sanitizeRuntimeNode(node));
+    },
+
+    loadedGraphNode(node) {
+        queueMicrotask(() => sanitizeRuntimeNode(node));
+    },
+
+    afterConfigureGraph() {
+        for (const node of app.graph?._nodes || []) sanitizeRuntimeNode(node);
     },
 
     async beforeRegisterNodeDef(nodeType, nodeData) {
@@ -146,16 +223,20 @@ app.registerExtension({
                 status.options.serialize = false;
                 this.__h3NativeDecodeStatus = status;
             }
-            for (const name of PROMOTED_WIDGETS) {
-                wrapWidgetCallback(this, name);
-            }
-            refreshModeUI(this);
+            sanitizeRuntimeNode(this);
             const minimumWidth = 390;
             const minimumHeight = 220;
             if (Array.isArray(this.size)) {
                 this.size[0] = Math.max(Number(this.size[0]) || 0, minimumWidth);
                 this.size[1] = Math.max(Number(this.size[1]) || 0, minimumHeight);
             }
+            return result;
+        };
+
+        const originalConfigure = nodeType.prototype.onConfigure;
+        nodeType.prototype.onConfigure = function (...args) {
+            const result = originalConfigure?.apply(this, args);
+            sanitizeRuntimeNode(this);
             return result;
         };
     },
