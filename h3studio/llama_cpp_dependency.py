@@ -107,7 +107,12 @@ def _build_runtime() -> dict[str, Any]:
 
     build = repo / "build"
     arch = _cuda_arch()
-    cuda_available = bool(arch and (shutil.which("nvcc") or Path("/usr/local/cuda/bin/nvcc").is_file()))
+    nvcc = shutil.which("nvcc") or (str(Path("/usr/local/cuda/bin/nvcc")) if Path("/usr/local/cuda/bin/nvcc").is_file() else "")
+    if arch and not nvcc:
+        raise RuntimeError(
+            f"A CUDA GPU (SM{arch}) is visible but nvcc/CUDA toolkit is missing. Refusing a silent CPU build because this is the Fast prompt-prep path."
+        )
+    cuda_available = bool(arch and nvcc)
     configure = [
         "cmake",
         "-S", str(repo),
@@ -123,7 +128,7 @@ def _build_runtime() -> dict[str, Any]:
     _run(
         [
             "cmake", "--build", str(build), "--config", "Release",
-            "--target", "llama-server", "llama-mtmd-cli", "-j", jobs,
+            "--target", "llama-server", "llama-mtmd-cli", "llama-cli", "-j", jobs,
         ],
         timeout=1200,
     )
