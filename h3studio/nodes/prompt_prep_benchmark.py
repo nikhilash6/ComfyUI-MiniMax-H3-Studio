@@ -1,8 +1,4 @@
-"""End-to-end analyzer + prompt-director benchmark for H3 Studio.
-
-This benchmark never samples MiniMax H3. It measures only optional prompt
-preparation so the 32B H3 conditioning encoder and generation path are untouched.
-"""
+"""End-to-end benchmark for H3 Studio's optional analyzer + prompt writer."""
 
 from __future__ import annotations
 
@@ -16,25 +12,20 @@ from typing import Any
 
 import torch
 
+from .. import analyzer_stack
 from ..analyzer_stack import (
     AUTO_QWEN35_4B,
     AUTO_WRITER_QWEN35_4B,
     FASTEST_MINICPM_V46,
     FAST_QWEN35_2B,
     LEGACY_QWEN3VL_8B,
-    SAME_AS_ANALYZER if False else None,
 )
-from .. import analyzer_stack
 from ..context import H3StudioContext
 from ..prompting import comfy_analyzer
 from .loader import H3StudioBundle
 
 LOGGER = logging.getLogger(__name__)
-
-# Keep the literal here instead of importing nodes.loader so analyzer_stack can
-# continue patching that legacy module without an import cycle.
 SAME = "Same as image analyzer"
-
 TEST_CASES = [
     "single portrait",
     "full-body character",
@@ -51,8 +42,8 @@ TEST_CASES = [
 class Profile:
     key: str
     label: str
-    analyzer_choice: str
-    writer_choice: str
+    analyzer: str
+    writer: str
 
 
 PROFILES = (
@@ -63,31 +54,30 @@ PROFILES = (
 )
 
 
-def _rss_bytes() -> int:
+def _rss() -> int:
     try:
         import psutil
 
         return int(psutil.Process(os.getpid()).memory_info().rss)
     except Exception:
-        pass
-    try:
-        import resource
+        try:
+            import resource
 
-        value = int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
-        return value if os.name == "nt" else value * 1024
-    except Exception:
-        return 0
+            value = int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+            return value if os.name == "nt" else value * 1024
+        except Exception:
+            return 0
 
 
-class _MemorySampler:
+class _PeakMemory:
     def __init__(self):
-        self.peak_rss = _rss_bytes()
-        self._stop = threading.Event()
-        self._thread = threading.Thread(target=self._run, name="h3studio-prompt-benchmark-memory", daemon=True)
+        self.rss = _rss()
+        self.stop = threading.Event()
+        self.thread = threading.Thread(target=self._poll, daemon=True)
 
-    def _run(self):
-        while not self._stop.wait(0.02):
-            self.peak_rss = max(self.peak_rss, _rss_bytes())
+    def _poll(self):
+        while not self.stop.wait(0.02):
+            self.rss = max(self.rss, _rss())
 
     def __enter__(self):
         if torch.cuda.is_available():
@@ -95,16 +85,15 @@ class _MemorySampler:
                 torch.cuda.reset_peak_memory_stats()
             except Exception:
                 pass
-        self._thread.start()
+        self.thread.start()
         return self
 
-    def __exit__(self, *_exc):
-        self._stop.set()
-        self._thread.join(timeout=1.0)
-        self.peak_rss = max(self.peak_rss, _rss_bytes())
+    def __exit__(self, *_args):
+        self.stop.set()
+        self.thread.join(timeout=1)
+        self.rss = max(self.rss, _rss())
 
-    @property
-    def peak_vram(self) -> int:
+    def vram(self) -> int:
         if not torch.cuda.is_available():
             return 0
         try:
@@ -113,63 +102,52 @@ class _MemorySampler:
             return 0
 
 
-def _generated_token_count(value: Any) -> int:
+def _token_count(value: Any) -> int:
     if isinstance(value, str):
-        return max(1, len(value.split()))
+        return len(value.split())
     if torch.is_tensor(value):
         return int(value.numel())
     if isinstance(value, (tuple, list)):
-        if not value:
-            return 0
-        if all(isinstance(item, int) for item in value):
+        if value and all(isinstance(item, int) for item in value):
             return len(value)
-        return sum(_generated_token_count(item) for item in value)
+        return sum(_token_count(item) for item in value)
     return 0
 
 
-class _CountingBackend:
+class _Counter:
     def __init__(self, raw: Any):
         self.raw = raw
-        self.generate_calls = 0
-        self.output_tokens = 0
+        self.calls = 0
+        self.tokens = 0
 
     def reset(self):
-        self.generate_calls = 0
-        self.output_tokens = 0
+        self.calls = self.tokens = 0
 
     def tokenize(self, *args, **kwargs):
         return self.raw.tokenize(*args, **kwargs)
 
     def generate(self, *args, **kwargs):
-        self.generate_calls += 1
+        self.calls += 1
         value = self.raw.generate(*args, **kwargs)
-        self.output_tokens += _generated_token_count(value)
+        self.tokens += _token_count(value)
         return value
 
     def decode(self, *args, **kwargs):
         return self.raw.decode(*args, **kwargs)
 
-    def __getattr__(self, name: str):
+    def __getattr__(self, name):
         return getattr(self.raw, name)
 
 
-def _clear_prompt_caches() -> None:
+def _clear(which: str = "all"):
     with comfy_analyzer._CACHE_LOCK:
-        comfy_analyzer._ANALYSIS_CACHE.clear()
-        comfy_analyzer._WRITER_CACHE.clear()
+        if which in {"all", "analysis"}:
+            comfy_analyzer._ANALYSIS_CACHE.clear()
+        if which in {"all", "writer"}:
+            comfy_analyzer._WRITER_CACHE.clear()
 
 
-def _clear_analysis_cache() -> None:
-    with comfy_analyzer._CACHE_LOCK:
-        comfy_analyzer._ANALYSIS_CACHE.clear()
-
-
-def _clear_writer_cache() -> None:
-    with comfy_analyzer._CACHE_LOCK:
-        comfy_analyzer._WRITER_CACHE.clear()
-
-
-def _release_external() -> None:
+def _release():
     analyzer_stack.stop_minicpm_server()
     try:
         import comfy.model_management
@@ -179,155 +157,126 @@ def _release_external() -> None:
         pass
 
 
-def _profile_names(profile: Profile) -> tuple[str, str]:
-    analyzer_name = analyzer_stack.resolve_analyzer(profile.analyzer_choice)
-    if not analyzer_name:
-        raise RuntimeError(f"{profile.label}: analyzer is unavailable.")
-    writer_name = analyzer_stack.resolve_writer(profile.writer_choice, analyzer_name)
-    if not writer_name:
-        raise RuntimeError(f"{profile.label}: prompt writer is unavailable.")
-    return analyzer_name, writer_name
-
-
-def _backend_metadata(name: str) -> dict[str, Any]:
+def _metadata(name: str) -> dict[str, Any]:
     spec = analyzer_stack.analyzer_spec(name)
+    compact = "".join(ch for ch in name.lower() if ch.isalnum())
+    quant = "Q4_K_M" if "q4km" in compact else "BF16" if "bf16" in compact else "FP8" if "fp8" in compact else ""
     return {
         "name": name,
         "family": spec.family if spec else "unknown",
         "backend": spec.backend if spec else "unknown",
         "file": spec.model_file if spec else name,
-        "quantization": (
-            "Q4_K_M" if "q4_k_m" in name.lower() or "q4km" in "".join(ch for ch in name.lower() if ch.isalnum())
-            else "BF16" if "bf16" in name.lower()
-            else "FP8" if "fp8" in name.lower()
-            else ""
-        ),
+        "quantization": quant,
     }
 
 
-def _analyze(
-    backend: Any,
-    studio_context: H3StudioContext,
-    analyzer_name: str,
-) -> tuple[tuple[Any, ...], str, str]:
+def _analyze(backend: Any, context: H3StudioContext, name: str):
     return comfy_analyzer.analyze_references(
         backend,
-        studio_context.state.prompt,
-        studio_context.state.references,
-        studio_context.images,
-        analyzer_name=analyzer_name,
-        max_image_edge=studio_context.state.prompt_options.analyzer_resolution,
+        context.state.prompt,
+        context.state.references,
+        context.images,
+        analyzer_name=name,
+        max_image_edge=context.state.prompt_options.analyzer_resolution,
         deep_enhancement=False,
     )
 
 
-def _write(backend: Any, studio_context: H3StudioContext, references: tuple[Any, ...], writer_name: str):
+def _write(backend: Any, context: H3StudioContext, references, name: str):
     return comfy_analyzer._run_prompt_writer(
         backend,
-        studio_context.state.prompt,
+        context.state.prompt,
         references,
-        writer_name=writer_name,
-        additional_instruction=studio_context.state.prompt_options.system_instruction,
+        writer_name=name,
+        additional_instruction=context.state.prompt_options.system_instruction,
     )
 
 
-def _benchmark_profile(profile: Profile, studio_context: H3StudioContext) -> dict[str, Any]:
-    analyzer_name, writer_name = _profile_names(profile)
+def _one(profile: Profile, context: H3StudioContext) -> dict[str, Any]:
+    analyzer_name = analyzer_stack.resolve_analyzer(profile.analyzer)
+    if not analyzer_name:
+        raise RuntimeError("analyzer unavailable")
+    writer_name = analyzer_stack.resolve_writer(profile.writer, analyzer_name)
+    if not writer_name:
+        raise RuntimeError("writer unavailable")
     shared = (
         analyzer_stack.model_family(analyzer_name) in {"qwen35", "qwen3vl"}
         and analyzer_stack._compact(analyzer_name) == analyzer_stack._compact(writer_name)
     )
-    result: dict[str, Any] = {
+    out: dict[str, Any] = {
         "profile": profile.key,
         "label": profile.label,
-        "analyzer": _backend_metadata(analyzer_name),
-        "writer": _backend_metadata(writer_name),
+        "analyzer": _metadata(analyzer_name),
+        "writer": _metadata(writer_name),
         "shared_model": shared,
     }
-    _clear_prompt_caches()
-    _release_external()
-
-    with _MemorySampler() as memory:
-        load_started = time.perf_counter()
+    _clear()
+    _release()
+    with _PeakMemory() as memory:
+        started = time.perf_counter()
         analyzer_raw = analyzer_stack.load_analysis_backend(analyzer_name)
-        analyzer = _CountingBackend(analyzer_raw)
-        result["cold_model_load_s"] = time.perf_counter() - load_started
+        analyzer = _Counter(analyzer_raw)
+        out["cold_model_load_s"] = time.perf_counter() - started
 
-        # Prime the loaded model once. This includes first-run residency/kernel
-        # costs and is retained as cold analyzer latency rather than pretending it
-        # is representative warm speed.
         analyzer.reset()
-        cold_started = time.perf_counter()
-        cold_refs, _cold_prompt, cold_note = _analyze(analyzer, studio_context, analyzer_name)
-        result["cold_analyzer_s"] = time.perf_counter() - cold_started
-        result["cold_analyzer_generate_calls"] = analyzer.generate_calls
+        started = time.perf_counter()
+        _cold_refs, _cold_prompt, _cold_note = _analyze(analyzer, context, analyzer_name)
+        out["cold_analyzer_s"] = time.perf_counter() - started
 
-        _clear_analysis_cache()
+        _clear("analysis")
         analyzer.reset()
-        warm_started = time.perf_counter()
-        analyzed_refs, _prompt, analysis_note = _analyze(analyzer, studio_context, analyzer_name)
-        result["warm_analyzer_s"] = time.perf_counter() - warm_started
-        result["analyzer_output_tokens"] = analyzer.output_tokens
-        result["analyzer_retries"] = max(0, analyzer.generate_calls - 1)
-        result["analyzer_json_success"] = "malformed" not in analysis_note.lower()
+        started = time.perf_counter()
+        refs, _prompt, analysis_note = _analyze(analyzer, context, analyzer_name)
+        out["warm_analyzer_s"] = time.perf_counter() - started
+        out["analyzer_output_tokens"] = analyzer.tokens
+        out["analyzer_retries"] = max(0, analyzer.calls - 1)
+        out["analyzer_json_success"] = "malformed" not in analysis_note.lower()
 
-        switch_started = time.perf_counter()
-        if shared:
-            writer_raw = getattr(analyzer_raw, "raw_clip", analyzer_raw)
-        else:
-            writer_raw = analyzer_stack.load_writer_backend(writer_name)
-        result["model_switch_s"] = time.perf_counter() - switch_started if not shared else 0.0
+        started = time.perf_counter()
+        writer_raw = getattr(analyzer_raw, "raw_clip", analyzer_raw) if shared else analyzer_stack.load_writer_backend(writer_name)
+        out["model_switch_s"] = 0.0 if shared else time.perf_counter() - started
+        writer = _Counter(writer_raw)
 
-        writer = _CountingBackend(writer_raw)
-        _clear_writer_cache()
+        _clear("writer")
         writer.reset()
-        writer_started = time.perf_counter()
-        enhanced, writer_note = _write(writer, studio_context, analyzed_refs, writer_name)
-        result["writer_s"] = time.perf_counter() - writer_started
-        result["writer_output_tokens"] = writer.output_tokens
-        result["writer_retries"] = max(0, writer.generate_calls - 1)
-        result["writer_json_success"] = "fallback" not in writer_note.lower()
-        result["enhanced_prompt_words"] = len(str(enhanced).split())
-        result["total_prompt_prep_s"] = result["warm_analyzer_s"] + result["model_switch_s"] + result["writer_s"]
-        result["cold_total_prompt_prep_s"] = (
-            result["cold_model_load_s"] + result["cold_analyzer_s"] + result["model_switch_s"] + result["writer_s"]
-        )
+        started = time.perf_counter()
+        enhanced, writer_note = _write(writer, context, refs, writer_name)
+        out["writer_s"] = time.perf_counter() - started
+        out["writer_output_tokens"] = writer.tokens
+        out["writer_retries"] = max(0, writer.calls - 1)
+        out["writer_json_success"] = "fallback" not in writer_note.lower()
+        out["enhanced_prompt_words"] = len(str(enhanced).split())
+        out["total_prompt_prep_s"] = out["warm_analyzer_s"] + out["model_switch_s"] + out["writer_s"]
+        out["cold_total_prompt_prep_s"] = out["cold_model_load_s"] + out["cold_analyzer_s"] + out["model_switch_s"] + out["writer_s"]
 
-        # Real cache-hit latency: both factual descriptions and writer result are
-        # hot and the exact same connected Director input is used.
-        cache_started = time.perf_counter()
+        started = time.perf_counter()
         comfy_analyzer.analyze_references(
             analyzer,
-            studio_context.state.prompt,
-            studio_context.state.references,
-            studio_context.images,
+            context.state.prompt,
+            context.state.references,
+            context.images,
             analyzer_name=analyzer_name,
-            max_image_edge=studio_context.state.prompt_options.analyzer_resolution,
+            max_image_edge=context.state.prompt_options.analyzer_resolution,
             deep_enhancement=True,
             writer_clip=writer,
             writer_name=writer_name,
         )
-        result["cache_hit_s"] = time.perf_counter() - cache_started
-        result["peak_vram_bytes"] = memory.peak_vram
-        result["peak_system_ram_bytes"] = memory.peak_rss
-        result["analysis_note"] = analysis_note
-        result["writer_note"] = writer_note
-        result["cold_analysis_note"] = cold_note
-        result["reference_count"] = len(cold_refs)
+        out["cache_hit_s"] = time.perf_counter() - started
+        out["peak_vram_bytes"] = memory.vram()
+        out["peak_system_ram_bytes"] = memory.rss
+        out["analysis_note"] = analysis_note
+        out["writer_note"] = writer_note
 
     del analyzer, analyzer_raw, writer, writer_raw
-    _release_external()
-    return result
+    _release()
+    return out
 
 
-def _format_seconds(value: Any) -> str:
-    try:
-        return f"{float(value):.3f}s"
-    except Exception:
-        return "n/a"
+def _seconds(value: Any) -> str:
+    return f"{float(value):.3f}s"
 
 
-def _human_bytes(value: int) -> str:
+def _bytes(value: int) -> str:
     size = float(value or 0)
     for unit in ("B", "KB", "MB", "GB", "TB"):
         if size < 1024 or unit == "TB":
@@ -342,8 +291,8 @@ class H3StudioPromptPrepBenchmark:
     RETURN_TYPES = ("STRING", "STRING")
     RETURN_NAMES = ("benchmark_report", "benchmark_json")
     DESCRIPTION = (
-        "Benchmarks analyzer + prompt-director configurations A-D without sampling MiniMax H3. "
-        "Use representative Director inputs and label the qualitative test case; compare cold load, warm vision, writer, model switch, cache, retries and memory."
+        "Benchmarks only H3 Studio prompt preparation: cold model load, warm analyzer, prompt writer, model switching, "
+        "cache hit, retries, output tokens and peak memory. MiniMax H3 generation is not sampled or modified."
     )
 
     @classmethod
@@ -363,7 +312,7 @@ class H3StudioPromptPrepBenchmark:
         if not isinstance(studio_context, H3StudioContext):
             raise ValueError("Connect H3 Studio Director's studio_context output.")
         if not studio_context.images or not studio_context.state.references:
-            raise ValueError("Prompt Prep Benchmark needs at least one reference image so analyzer latency is measurable.")
+            raise ValueError("Prompt Prep Benchmark needs at least one reference image.")
 
         keys = {
             "A only": {"A"},
@@ -372,13 +321,12 @@ class H3StudioPromptPrepBenchmark:
             "D only": {"D"},
         }.get(str(profiles), {"A", "B", "C", "D"})
         records = []
-        LOGGER.info("\n[H3 Studio Prompt Prep Benchmark] case=%s | profiles=%s", test_case, ",".join(sorted(keys)))
         for profile in PROFILES:
             if profile.key not in keys:
                 continue
             LOGGER.info("[H3 Studio Prompt Prep Benchmark] %s · %s", profile.key, profile.label)
             try:
-                record = _benchmark_profile(profile, studio_context)
+                record = _one(profile, studio_context)
                 record["ok"] = True
             except Exception as exc:
                 LOGGER.exception("[H3 Studio Prompt Prep Benchmark] %s failed", profile.key)
@@ -387,8 +335,8 @@ class H3StudioPromptPrepBenchmark:
             record["analyzer_resolution"] = int(studio_context.state.prompt_options.analyzer_resolution)
             records.append(record)
 
-        successful = [item for item in records if item.get("ok")]
-        fastest = min(successful, key=lambda item: item["total_prompt_prep_s"])["profile"] if successful else "none"
+        good = [record for record in records if record.get("ok")]
+        fastest = min(good, key=lambda record: record["total_prompt_prep_s"])["profile"] if good else "none"
         payload = {
             "schema": "H3PB1",
             "test_case": str(test_case),
@@ -398,19 +346,18 @@ class H3StudioPromptPrepBenchmark:
         }
         lines = [
             f"H3 Studio Prompt Prep Benchmark · {test_case} · refs={len(studio_context.images)}",
-            "Metrics are prompt preparation only; MiniMax H3 sampling/32B conditioning is untouched.",
+            "Prompt preparation only; H3 32B conditioning and sampling are untouched.",
         ]
-        for item in records:
-            if not item.get("ok"):
-                lines.append(f"{item['profile']} FAIL · {item['label']} · {item['error']}")
+        for record in records:
+            if not record.get("ok"):
+                lines.append(f"{record['profile']} FAIL · {record['label']} · {record['error']}")
                 continue
             lines.append(
-                f"{item['profile']} · {item['label']} · warm total={_format_seconds(item['total_prompt_prep_s'])} · "
-                f"vision={_format_seconds(item['warm_analyzer_s'])} · writer={_format_seconds(item['writer_s'])} · "
-                f"switch={_format_seconds(item['model_switch_s'])} · cold load={_format_seconds(item['cold_model_load_s'])} · "
-                f"cache={_format_seconds(item['cache_hit_s'])} · VRAM peak={_human_bytes(item['peak_vram_bytes'])} · "
-                f"RAM peak={_human_bytes(item['peak_system_ram_bytes'])} · analyzer retries={item['analyzer_retries']} · "
-                f"writer retries={item['writer_retries']}"
+                f"{record['profile']} · {record['label']} · warm total={_seconds(record['total_prompt_prep_s'])} · "
+                f"vision={_seconds(record['warm_analyzer_s'])} · writer={_seconds(record['writer_s'])} · "
+                f"switch={_seconds(record['model_switch_s'])} · cold load={_seconds(record['cold_model_load_s'])} · "
+                f"cache={_seconds(record['cache_hit_s'])} · VRAM={_bytes(record['peak_vram_bytes'])} · "
+                f"RAM={_bytes(record['peak_system_ram_bytes'])} · retries={record['analyzer_retries']}/{record['writer_retries']}"
             )
         lines.append(f"Fastest warm end-to-end in this run: {fastest}")
         report = "\n".join(lines)
