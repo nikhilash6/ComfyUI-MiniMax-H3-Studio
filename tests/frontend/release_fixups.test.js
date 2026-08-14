@@ -3,8 +3,9 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const preset = readFileSync(new URL("../../web/h3studio_release_fixups.js", import.meta.url), "utf8");
-const benchmark = readFileSync(new URL("../../web/h3studio_smart_benchmark_v3.js", import.meta.url), "utf8");
+const benchmark = readFileSync(new URL("../../web/h3studio_smart_benchmark.js", import.meta.url), "utf8");
 const migration = readFileSync(new URL("../../web/h3studio_smart_benchmark_legacy_migration.js", import.meta.url), "utf8");
+const ui = readFileSync(new URL("../../web/zz_h3studio_ui_v4.js", import.meta.url), "utf8");
 const pdd = readFileSync(new URL("../../web/h3studio_pdd_dependency.js", import.meta.url), "utf8");
 
 test("shared presets resolve the Loader through the actual Director graph", () => {
@@ -24,24 +25,32 @@ test("Director add-ons remount after the core panel is rebuilt", () => {
   assert.match(preset, /h3s-share-section/);
 });
 
-test("legacy benchmark still migrates without the old overflow-clipping overlay", () => {
+test("legacy benchmark absorbs into an existing Smart Benchmark instead of duplicating it", () => {
   assert.match(migration, /H3StudioABComparison/);
   assert.match(migration, /H3StudioSmartBenchmark/);
-  assert.match(migration, /inputSource\(oldNode, "h3_bundle"\)/);
-  assert.match(migration, /inputSource\(oldNode, "studio_context"\)/);
-  assert.match(migration, /outputTargets\(oldNode, 0\)/);
-  assert.match(migration, /Migrated legacy Benchmark Lab to Smart Benchmark Lab/);
+  assert.match(migration, /Existing Smart Benchmark found/);
+  assert.match(migration, /instead of creating a duplicate/);
+  assert.match(migration, /app\.graph\.remove\(oldNode\)/);
 });
 
-test("Smart Benchmark v3 is scrollable, has quick presets and exposes asset failures", () => {
-  assert.match(benchmark, /overflow-y:auto!important/);
-  assert.doesNotMatch(benchmark, /\.h3b-root[^`]*overflow:hidden!important/);
-  assert.match(benchmark, /Quick benchmark presets/);
+test("Smart Benchmark v4 owns one scrollable renderer and presets update visible state immediately", () => {
+  assert.match(benchmark, /max-height:700px;overflow:auto/);
+  assert.match(benchmark, /dedupeDomWidgets/);
+  assert.match(benchmark, /h3studio_benchmark_preset/);
+  assert.match(benchmark, /render\(node\)/);
   assert.match(benchmark, /Auto vs OG/);
   assert.match(benchmark, /Runtime sweep/);
   assert.match(benchmark, /Memory sweep/);
   assert.match(benchmark, /assets unavailable · retry/);
   assert.match(benchmark, /\/h3studio\/assets/);
+});
+
+test("Director v4 force-hides leaked legacy widgets such as Height using the real hidden type", () => {
+  assert.match(ui, /VISIBLE_NATIVE/);
+  assert.match(ui, /widget\.type = "hidden"/);
+  assert.match(ui, /widget\.computeSize = \(\) => \[0, -4\]/);
+  assert.match(ui, /onDrawForeground/);
+  assert.match(ui, /h3s-choice-menu/);
 });
 
 test("PDD dependency plus pair install/repair is one non-reentrant flow", () => {
