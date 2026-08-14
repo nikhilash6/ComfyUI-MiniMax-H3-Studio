@@ -39,15 +39,18 @@ test("Smart Benchmark v3 is scrollable, has quick presets and exposes asset fail
   assert.match(benchmark, /Quick benchmark presets/);
   assert.match(benchmark, /Auto vs OG/);
   assert.match(benchmark, /Runtime sweep/);
+  assert.match(benchmark, /Memory sweep/);
   assert.match(benchmark, /assets unavailable · retry/);
   assert.match(benchmark, /\/h3studio\/assets/);
 });
 
-test("PDD dependency install resumes on a freshly rendered button only once", () => {
+test("PDD dependency plus pair install/repair is one non-reentrant flow", () => {
   assert.match(pdd, /\/h3studio\/dependencies\/pdd\/install/);
+  assert.match(pdd, /\/uad\/install/);
+  assert.match(pdd, /\/uad\/verify-fast/);
   assert.match(pdd, /\[data-pdd-install\],\[data-pdd-repair\]/);
   assert.match(pdd, /stopImmediatePropagation/);
-  assert.match(pdd, /querySelector\?\.\(selector\)/);
-  assert.match(pdd, /h3DependencyBypass/);
-  assert.doesNotMatch(pdd, /button\.dataset\.h3DependencyResume/);
+  assert.match(pdd, /node\.__h3PddPairFlowBusy/);
+  assert.doesNotMatch(pdd, /button\.click\(\)/);
+  assert.doesNotMatch(pdd, /window\.confirm/);
 });
