@@ -8,9 +8,7 @@ from .nodes.comparison import NODE_CLASS_MAPPINGS as COMPARISON_NODE_CLASS_MAPPI
 from .nodes.comparison import NODE_DISPLAY_NAME_MAPPINGS as COMPARISON_NODE_DISPLAY_NAME_MAPPINGS
 from .nodes.decode import H3StudioDecode
 from .nodes.director import (
-    H3StudioCondition,
     H3StudioContextInspector,
-    H3StudioContextSamplingPreset,
     H3StudioDirector,
     H3StudioOutput,
 )
@@ -19,21 +17,24 @@ from .nodes.image_runtime import NODE_DISPLAY_NAME_MAPPINGS as IMAGE_NODE_DISPLA
 from .nodes.loader import H3StudioLoader
 from .nodes.model_setup import H3StudioModelSetup
 from .nodes.preview import H3StudioTAEH3Preview
+from .nodes.runtime import H3StudioRuntimeCondition, H3StudioRuntimeSamplingPreset
 from .nodes.save import NODE_CLASS_MAPPINGS as SAVE_NODE_CLASS_MAPPINGS
 from .nodes.save import NODE_DISPLAY_NAME_MAPPINGS as SAVE_NODE_DISPLAY_NAME_MAPPINGS
 from .runtime_guards import install_runtime_guards
+from .runtime_web import register_runtime_routes
 from .web_routes import register_routes
 
 install_runtime_guards()
 register_routes()
+register_runtime_routes()
 
 NODE_CLASS_MAPPINGS = {
     "H3StudioLoader": H3StudioLoader,
     "H3StudioDirector": H3StudioDirector,
-    "H3StudioCondition": H3StudioCondition,
+    "H3StudioCondition": H3StudioRuntimeCondition,
     "H3StudioOutput": H3StudioOutput,
     "H3StudioContextInspector": H3StudioContextInspector,
-    "H3StudioContextSamplingPreset": H3StudioContextSamplingPreset,
+    "H3StudioContextSamplingPreset": H3StudioRuntimeSamplingPreset,
     "H3StudioTAEH3Preview": H3StudioTAEH3Preview,
     "H3StudioModelSetup": H3StudioModelSetup,
     **BENCHMARK_NODE_CLASS_MAPPINGS,
