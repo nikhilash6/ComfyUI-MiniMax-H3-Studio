@@ -3,30 +3,46 @@ import { app } from "../../scripts/app.js";
 const WORKFLOW_ID = "51ffc0bb-1b7a-4a1c-a183-1ce99edb4e5e";
 const PREVIEW_CLASS = "H3StudioTAEH3Preview";
 const NOTE_CLASS = "H3StudioWorkflowNote";
+const DIRECTOR_CLASS = "H3StudioDirector";
+const FINAL_SWITCH_CLASS = "H3StudioLazyImageSwitch";
+const COMPARISON_CLASS = "H3StudioComparisonView";
 
 const DOWNLOAD_NOTE = `# Recommended model set
 
-> **Core setup:** download files directly into the shown \`ComfyUI/models/\` folders. H3 Studio never downloads model weights automatically.
+> **Install manually:** place each file in the shown \`ComfyUI/models/\` folder. H3 Studio never downloads model weights automatically. Acceleration profiles load the exact matching LoRA by filename, so do **not** add these profile LoRAs again as custom LoRAs.
 
-## Core
+## Core models
 
-- [Kijai FL2VA pruned W4A8](https://huggingface.co/Kijai/MiniMax-H3-experimental/resolve/main/minimax_h3_fl2va_pruned_w4a8_mixed.safetensors?download=true) → \`diffusion_models/\`
-- [Kijai REF2VA pruned W4A8](https://huggingface.co/Kijai/MiniMax-H3-experimental/resolve/main/minimax_h3_ref2va_pruned_w4a8_mixed.safetensors?download=true) → \`diffusion_models/\`
-- [H3 Qwen3-VL 32B NVFP4](https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors?download=true) → \`text_encoders/\`
-- [Original H3 Video VAE FP16](https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_video_vae_fp16.safetensors?download=true) → \`vae/\`
-- [Qwen3-VL 4B analyzer + writer](https://huggingface.co/Comfy-Org/Qwen3-VL/resolve/main/text_encoders/qwen3vl_4b_fp8_scaled.safetensors?download=true) → \`text_encoders/\`
+- **FL2VA base** · [Kijai pruned W4A8](https://huggingface.co/Kijai/MiniMax-H3-experimental/resolve/main/minimax_h3_fl2va_pruned_w4a8_mixed.safetensors?download=true) → \`diffusion_models/\`
+- **REF2VA base** · [Kijai pruned W4A8](https://huggingface.co/Kijai/MiniMax-H3-experimental/resolve/main/minimax_h3_ref2va_pruned_w4a8_mixed.safetensors?download=true) → \`diffusion_models/\`
+- **H3 text encoder** · [Qwen3-VL 32B NVFP4](https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors?download=true) → \`text_encoders/\`
+- **Original final VAE** · [H3 Video VAE FP16](https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_video_vae_fp16.safetensors?download=true) → \`vae/\`
+- **Prompt analyzer / writer** · [Qwen3-VL 4B](https://huggingface.co/Comfy-Org/Qwen3-VL/resolve/main/text_encoders/qwen3vl_4b_fp8_scaled.safetensors?download=true) → \`text_encoders/\`
 
-## Optional
+## Recommended acceleration profiles
 
-- [TAEH3 live preview](https://huggingface.co/Kijai/MiniMax-H3-TAE/resolve/main/vae_approx/taeh3.safetensors?download=true) → \`vae_approx/\`
-- [LightX 4-step resized rank-21](https://huggingface.co/Kijai/MiniMax-H3_comfy/resolve/main/loras/minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_rank_21_bf16.safetensors?download=true) → \`loras/\`
-- [Official LightX 8-step v1.0](https://huggingface.co/lightx2v/Minimax-h3-Turbo/resolve/main/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors?download=true) → \`loras/\`
-- [Experimental T=1 Image VAE](https://huggingface.co/Mamad8/MiniMax-H3-Image-VAE/resolve/main/minimax_h3_t1_image_vae_step1597.safetensors?download=true) → \`vae/\`
-- [Qwen3-VL 8B writer](https://huggingface.co/Comfy-Org/Qwen3-VL/resolve/main/text_encoders/qwen3vl_8b_fp8_scaled.safetensors?download=true) → \`text_encoders/\`
+> **FL2VA only.** Use these for text-to-image or a single-source FL2VA edit.
 
-## Optional PDD
+- **LightX v1.0 · 8-step · official full** · [\`minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors\`](https://huggingface.co/lightx2v/Minimax-h3-Turbo/resolve/main/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors?download=true) → \`loras/\`
+- **LightX v1.0 · 8-step · Kijai pruned rank-24** · [smaller equivalent](https://huggingface.co/Kijai/MiniMax-H3_comfy/resolve/main/loras/minimax_h3_fl2v_lightx2v_turbo_8step_v1.0_resized_avg_rank_24_bf16.safetensors?download=true) → \`loras/\`
+- **LightX v1.0 · 4-step 768p · Kijai pruned rank-31** · [speed profile](https://huggingface.co/Kijai/MiniMax-H3_comfy/resolve/main/loras/minimax_h3_fl2v_lightx2v_turbo_4step_v1.0_768p_resized_avg_rank_31_bf16.safetensors?download=true) → \`loras/\`
 
-Choose either the **600** or **900** LoRA + heads pair and install [Mamad8's PDD custom node](https://github.com/mamad8c/ComfyUI-MiniMaxH3-PDD-Mamad8).`;
+## Alternative / pruned acceleration models
+
+- **FL2VA · LightX v0.1 · 4-step · Kijai pruned rank-21** · [ER-SDE / SA-Solver profile artifact](https://huggingface.co/Kijai/MiniMax-H3_comfy/resolve/main/loras/minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_rank_21_bf16.safetensors?download=true) → \`loras/\`
+- **REF2VA · LightX v0.1 · 4-step · Kijai pruned rank-20** · [reference-generation artifact](https://huggingface.co/Kijai/MiniMax-H3_comfy/resolve/main/loras/minimax_h3_ref2v_lightx2v_turbo_4step_v0.1_resized_avg_rank_20_bf16.safetensors?download=true) → \`loras/\`
+
+> The REF2V profile is rejected on FL2VA routes. Switch **Mode** to Reference mix/edit and use Auto/REF2VA. FL2V profiles are likewise rejected on REF2VA.
+
+## Preview / VAE extras
+
+- **TAEH3 live preview** · [\`taeh3.safetensors\`](https://huggingface.co/Kijai/MiniMax-H3-TAE/resolve/main/vae_approx/taeh3.safetensors?download=true) → \`vae_approx/\`
+- **Experimental T=1 Image VAE** · [\`minimax_h3_t1_image_vae_step1597.safetensors\`](https://huggingface.co/Mamad8/MiniMax-H3-Image-VAE/resolve/main/minimax_h3_t1_image_vae_step1597.safetensors?download=true) → \`vae/\`
+- **Optional Qwen3-VL 8B writer** · [\`qwen3vl_8b_fp8_scaled.safetensors\`](https://huggingface.co/Comfy-Org/Qwen3-VL/resolve/main/text_encoders/qwen3vl_8b_fp8_scaled.safetensors?download=true) → \`text_encoders/\`
+
+## PDD · optional REF2VA acceleration
+
+Choose either the **600** or **900** LoRA + heads pair and install [Mamad8's PDD custom node](https://github.com/mamad8c/ComfyUI-MiniMaxH3-PDD-Mamad8). PDD is REF2VA-only.`;
 
 const DECODE_NOTE = `# Native H3 VAE decode
 
@@ -94,8 +110,61 @@ function serializedNodeById(graphData, id) {
 function isMaintainedUnifiedWorkflow(graphData) {
   if (String(graphData?.id || "") === WORKFLOW_ID) return true;
   const nodes = graphData?.nodes || [];
-  return nodes.some((node) => String(node?.type || "") === "H3StudioDirector")
+  return nodes.some((node) => String(node?.type || "") === DIRECTOR_CLASS)
     && nodes.some((node) => Number(node?.id) === 28 && String(node?.type || "") === NOTE_CLASS);
+}
+
+function appendOriginLink(node, slot, linkId) {
+  const output = node?.outputs?.[slot];
+  if (!output) return false;
+  const links = Array.isArray(output.links) ? [...output.links] : [];
+  if (!links.includes(linkId)) links.push(linkId);
+  output.links = links;
+  return true;
+}
+
+function ensureComparisonNode(graphData) {
+  const nodes = graphData?.nodes || [];
+  if (nodes.some((node) => String(node?.type || "") === COMPARISON_CLASS)) return;
+  const director = nodes.find((node) => String(node?.type || "") === DIRECTOR_CLASS);
+  const finalSwitch = nodes.find((node) => String(node?.type || "") === FINAL_SWITCH_CLASS);
+  if (!director?.outputs?.[0] || !finalSwitch?.outputs?.[0]) return;
+
+  const nodeId = Math.max(Number(graphData.last_node_id) || 0, ...nodes.map((node) => Number(node?.id) || 0)) + 1;
+  const existingLinks = Array.isArray(graphData.links) ? graphData.links : [];
+  let linkId = Math.max(Number(graphData.last_link_id) || 0, ...existingLinks.map((link) => Number(link?.[0]) || 0));
+  const imageLink = ++linkId;
+  const contextLink = ++linkId;
+  const order = Math.max(0, ...nodes.map((node) => Number(node?.order) || 0)) + 1;
+
+  appendOriginLink(finalSwitch, 0, imageLink);
+  appendOriginLink(director, 0, contextLink);
+  existingLinks.push(
+    [imageLink, Number(finalSwitch.id), 0, nodeId, 0, "IMAGE"],
+    [contextLink, Number(director.id), 0, nodeId, 1, "H3_STUDIO_CONTEXT"],
+  );
+  graphData.links = existingLinks;
+  graphData.nodes.push({
+    id: nodeId,
+    type: COMPARISON_CLASS,
+    pos: [1060, 1010],
+    size: [460, 420],
+    flags: {},
+    order,
+    mode: 0,
+    inputs: [
+      { name: "images", type: "IMAGE", link: imageLink },
+      { name: "studio_context", type: "H3_STUDIO_CONTEXT", link: contextLink },
+    ],
+    outputs: [],
+    title: "Reference comparison · optional",
+    properties: { "Node name for S&R": COMPARISON_CLASS },
+    widgets_values: [],
+    color: "#3c514c",
+    bgcolor: "#24312f",
+  });
+  graphData.last_node_id = nodeId;
+  graphData.last_link_id = linkId;
 }
 
 function patchNote(graphData, id, title, markdown) {
@@ -110,6 +179,8 @@ function patchNote(graphData, id, title, markdown) {
 
 function patchWorkflowLayout(graphData) {
   if (!isMaintainedUnifiedWorkflow(graphData)) return;
+
+  ensureComparisonNode(graphData);
 
   for (const [id, layout] of NODE_LAYOUT) {
     const target = serializedNodeById(graphData, id);
@@ -128,7 +199,7 @@ function patchWorkflowLayout(graphData) {
 
   graphData.extra ||= {};
   graphData.extra.h3studio ||= {};
-  graphData.extra.h3studio.design_source = "H3 Studio release layout with tight group bounds";
+  graphData.extra.h3studio.design_source = "H3 Studio release layout with tight group bounds and comparison repair";
 }
 
 function constrainNumericCombo(node, name, definition) {
