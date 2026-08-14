@@ -12,6 +12,6 @@ test("UAD fast metadata requests are cached and deduplicated", () => {
 });
 
 test("manual Refresh sizes invalidates metadata cache", () => {
-  assert.match(source, /data-action=\\"metadata\\"/);
+  assert.match(source, /data-action="metadata"/);
   assert.match(source, /cache\.clear\(\)/);
 });
