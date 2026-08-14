@@ -11,6 +11,7 @@ from .constants import (
     ROUTE_AUTO,
     ROUTE_FL2VA,
     ROUTE_REF2VA,
+    SAMPLING_PROFILES,
 )
 from .errors import RouteError
 
@@ -39,6 +40,12 @@ class RouteDecision:
         return f"{self.mode} → {self.selected} · {self.reason}{suffix}"
 
 
+def _profile_route(sampling_profile: str) -> str | None:
+    metadata = SAMPLING_PROFILES.get(str(sampling_profile or ""), {})
+    route = str(metadata.get("route") or "").strip().lower()
+    return route if route in {ROUTE_FL2VA, ROUTE_REF2VA} else None
+
+
 def validate_generation_contract(
     mode: str,
     requested_route: str,
@@ -53,7 +60,8 @@ def validate_generation_contract(
     requested_route = str(requested_route or ROUTE_AUTO).strip().lower()
     sampling_profile = str(sampling_profile or "")
     is_pdd = sampling_profile.startswith("pdd_ref2va_")
-    is_lightx_fl2v = sampling_profile.startswith("lightx_")
+    profile_route = _profile_route(sampling_profile)
+    is_lightx = sampling_profile.startswith("lightx_")
     if mode not in {"auto", MODE_TEXT_TO_IMAGE, MODE_IMAGE_TO_IMAGE, MODE_REFERENCE_EDIT}:
         raise RouteError(f"Unsupported H3 generation mode {mode!r}.")
     if requested_route not in {ROUTE_AUTO, ROUTE_FL2VA, ROUTE_REF2VA}:
@@ -68,8 +76,10 @@ def validate_generation_contract(
         raise RouteError("PDD REF2VA supports reference mix/edit; use Auto or Reference mix/edit mode.")
     if is_pdd and requested_route == ROUTE_FL2VA:
         raise RouteError("PDD is trained for REF2VA and cannot run on a forced FL2VA route.")
-    if is_lightx_fl2v and requested_route == ROUTE_REF2VA:
-        raise RouteError("The configured LightX adapters are FL2V/FL2VA-only and cannot run on a forced REF2VA route.")
+    if is_lightx and profile_route == ROUTE_FL2VA and requested_route == ROUTE_REF2VA:
+        raise RouteError("The selected LightX profile is FL2V/FL2VA-only and cannot run on a forced REF2VA route.")
+    if is_lightx and profile_route == ROUTE_REF2VA and requested_route == ROUTE_FL2VA:
+        raise RouteError("The selected LightX profile is REF2V/REF2VA-only and cannot run on a forced FL2VA route.")
 
     effective_mode = mode
     if mode == "auto":
@@ -80,10 +90,15 @@ def validate_generation_contract(
         else:
             effective_mode = MODE_REFERENCE_EDIT
     expected_route = ROUTE_REF2VA if effective_mode == MODE_REFERENCE_EDIT else ROUTE_FL2VA
-    if is_lightx_fl2v and expected_route != ROUTE_FL2VA:
+    if is_lightx and profile_route == ROUTE_FL2VA and expected_route != ROUTE_FL2VA:
         raise RouteError(
             "The selected LightX profile uses an FL2V adapter. Use text-to-image or a single-source FL2VA edit, "
-            "or choose Base/PDD for REF2VA reference mixing."
+            "or choose a REF2VA profile for reference mixing."
+        )
+    if is_lightx and profile_route == ROUTE_REF2VA and expected_route != ROUTE_REF2VA:
+        raise RouteError(
+            "The selected LightX profile uses a REF2V adapter. Use Reference mix/edit with at least one reference "
+            "and Auto/REF2VA, or choose an FL2VA profile for text-to-image or single-source edits."
         )
     if requested_route != ROUTE_AUTO and requested_route != expected_route:
         raise RouteError(

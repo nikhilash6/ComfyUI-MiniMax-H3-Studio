@@ -10,8 +10,10 @@ import {
 
 test("Director exposes the official LightX v1.0 8-step profile", () => {
   assert.equal(
-    SAMPLING_PROFILES.some(([key, label]) => (
-      key === "lightx_v1_fl2v_8" && label === "LightX v1.0 · FL2V 8-step · official ComfyUI"
+    SAMPLING_PROFILES.some(([key, label, route]) => (
+      key === "lightx_v1_fl2v_8"
+      && label === "LightX v1.0 · FL2VA 8-step · official full"
+      && route === "fl2va"
     )),
     true,
   );
