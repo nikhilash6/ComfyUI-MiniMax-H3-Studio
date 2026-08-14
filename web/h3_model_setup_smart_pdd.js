@@ -285,6 +285,24 @@ async function enhance(node) {
   }
   state.nodeLoaded = await pddNodeLoaded();
   mount();
+
+  // The base Model Setup renderer replaces root.innerHTML during metadata,
+  // verification and selection updates. Remount only our direct-child UI when
+  // that happens so the PDD panel and rich transfer card never disappear.
+  let remountScheduled = false;
+  const observer = new MutationObserver(() => {
+    if (remountScheduled) return;
+    remountScheduled = true;
+    queueMicrotask(() => {
+      remountScheduled = false;
+      if (!node.__h3ModelSetup?.root) return;
+      makeTransfer(root);
+      mount();
+    });
+  });
+  observer.observe(root, { childList: true });
+  node.__h3SmartPddObserver = observer;
+
   if (state.uad?.capabilities?.pdd_heads) refresh(false);
 }
 
