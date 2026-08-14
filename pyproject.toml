@@ -59,4 +59,5 @@ ignore = ["E501"]
 # optional CUDA/process resources. Keep the exception tightly scoped.
 "h3studio/analyzer_stack.py" = ["I001", "SIM105"]
 "h3studio/nodes/prompt_prep_benchmark.py" = ["I001", "SIM105"]
+"h3studio/qwen35_gguf.py" = ["I001"]
 "h3studio/runtime_web.py" = ["I001"]
