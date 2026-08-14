@@ -1,6 +1,6 @@
-export const STUDIO_PANEL_HEIGHT = 570;
+export const STUDIO_PANEL_HEIGHT = 530;
 export const STUDIO_NODE_WIDTH = 680;
-export const STUDIO_NODE_HEIGHT = 820;
+export const STUDIO_NODE_HEIGHT = 780;
 
 export function studioPanelSize(width) {
   const safeWidth = Number.isFinite(Number(width)) ? Number(width) : 0;
