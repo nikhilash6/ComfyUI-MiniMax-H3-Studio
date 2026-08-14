@@ -5,6 +5,15 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from .analyzer_stack import (
+    FASTEST_MINICPM_V46,
+    FAST_QWEN35_2B,
+    QWEN35_2B_FILE,
+    QWEN35_4B_FILE,
+    analyzer_spec,
+    minicpm_status,
+    model_family,
+)
 from .constants import SAMPLING_PROFILES
 from .runtime_optimization import RUNTIME_LABELS, detect_capabilities
 
@@ -20,6 +29,7 @@ def _compact(value: Any) -> str:
 def _size(category: str, name: str) -> int:
     try:
         import folder_paths
+
         path = folder_paths.get_full_path(category, name)
         return int(Path(path).stat().st_size) if path else 0
     except Exception:
@@ -57,6 +67,7 @@ def _route_for_model(name: str) -> str:
 def _quant_for_name(name: str) -> str:
     compact = _compact(name)
     for label, token in (
+        ("Q4_K_M", "q4km"),
         ("W4A8", "w4a8"),
         ("NVFP4", "nvfp4"),
         ("INT8 ConvRoT", "int8convrot"),
@@ -69,6 +80,11 @@ def _quant_for_name(name: str) -> str:
     return ""
 
 
+def _is_h3_conditioner(name: str) -> bool:
+    compact = _compact(name)
+    return "qwen3vl" in compact and ("minimax" in compact or "h3" in compact)
+
+
 def _recommended_lora_strengths() -> dict[str, float]:
     result: dict[str, float] = {}
     for metadata in SAMPLING_PROFILES.values():
@@ -77,11 +93,47 @@ def _recommended_lora_strengths() -> dict[str, float]:
             result[artifact.split("/")[-1].casefold()] = float(metadata["lora_strength"])
     try:
         from .acceleration import PDD_PROFILES
+
         for profile in PDD_PROFILES.values():
             result[_normalize(profile.lora_filename).split("/")[-1].casefold()] = float(profile.lora_strength)
     except Exception:
         pass
     return result
+
+
+def _prompt_model_entry(name: str, category: str) -> dict[str, Any] | None:
+    family = model_family(name)
+    if family not in {"qwen35", "qwen3vl", "minicpm_v46"}:
+        return None
+    if family == "qwen3vl" and _is_h3_conditioner(name):
+        return None
+    spec = analyzer_spec(name)
+    compact = _compact(name)
+    if family == "qwen35":
+        tier = "recommended" if "qwen354b" in compact else "fast" if "qwen352b" in compact else "modern"
+        roles = ["image_analyzer", "prompt_writer"]
+    elif family == "minicpm_v46":
+        if "mmproj" in compact:
+            roles = ["vision_projector"]
+            tier = "fastest_vision"
+        else:
+            roles = ["image_analyzer"]
+            tier = "fastest_vision"
+    else:
+        roles = ["image_analyzer", "prompt_writer"]
+        tier = "legacy"
+    return {
+        "name": name,
+        "category": category,
+        "family": family,
+        "backend": spec.backend if spec else "unknown",
+        "roles": roles,
+        "tier": tier,
+        "recommended": tier == "recommended",
+        "legacy": tier == "legacy",
+        "quantization": _quant_for_name(name),
+        "size_bytes": _size(category, name),
+    }
 
 
 def asset_catalog() -> dict[str, Any]:
@@ -91,41 +143,100 @@ def asset_catalog() -> dict[str, Any]:
         compact = _compact(name)
         if "minimax" not in compact and "h3" not in compact:
             continue
-        models.append({
-            "name": name,
-            "category": category,
-            "route": _route_for_model(name),
-            "quantization": _quant_for_name(name),
-            "size_bytes": _size(category, name),
-        })
+        models.append(
+            {
+                "name": name,
+                "category": category,
+                "route": _route_for_model(name),
+                "quantization": _quant_for_name(name),
+                "size_bytes": _size(category, name),
+            }
+        )
 
     loras = []
     for name, category in _files("loras"):
         base = name.split("/")[-1].casefold()
-        loras.append({
-            "name": name,
-            "size_bytes": _size(category, name),
-            "recommended_strength": strengths.get(base),
-            "known_h3": any(token in _compact(name) for token in ("minimax", "h3", "lightx", "pdd")),
-        })
+        loras.append(
+            {
+                "name": name,
+                "size_bytes": _size(category, name),
+                "recommended_strength": strengths.get(base),
+                "known_h3": any(token in _compact(name) for token in ("minimax", "h3", "lightx", "pdd")),
+            }
+        )
 
     encoders = []
+    prompt_models = []
     for name, category in _files("text_encoders", "clip"):
-        if "qwen3vl" not in _compact(name):
+        family = model_family(name)
+        if family not in {"qwen35", "qwen3vl"}:
             continue
-        encoders.append({"name": name, "size_bytes": _size(category, name), "quantization": _quant_for_name(name)})
+        conditioner = _is_h3_conditioner(name)
+        encoders.append(
+            {
+                "name": name,
+                "family": family,
+                "h3_conditioner": conditioner,
+                "size_bytes": _size(category, name),
+                "quantization": _quant_for_name(name),
+            }
+        )
+        entry = _prompt_model_entry(name, category)
+        if entry:
+            prompt_models.append(entry)
+
+    for name, category in _files("h3studio_vlm"):
+        entry = _prompt_model_entry(name, category)
+        if entry:
+            prompt_models.append(entry)
 
     vaes = []
     for name, category in _files("vae", "vae_approx"):
         compact = _compact(name)
         if not any(token in compact for token in ("minimaxh3", "taeh3")):
             continue
-        vaes.append({"name": name, "category": category, "size_bytes": _size(category, name), "quantization": _quant_for_name(name)})
+        vaes.append(
+            {
+                "name": name,
+                "category": category,
+                "size_bytes": _size(category, name),
+                "quantization": _quant_for_name(name),
+            }
+        )
 
+    qwen4_installed = any(item["name"].split("/")[-1] == QWEN35_4B_FILE for item in prompt_models)
+    qwen2_installed = any(item["name"].split("/")[-1] == QWEN35_2B_FILE for item in prompt_models)
+    mini = minicpm_status()
     return {
         "models": models,
         "loras": loras,
         "text_encoders": encoders,
+        "prompt_models": prompt_models,
+        "prompt_profiles": [
+            {
+                "key": "recommended",
+                "label": "Recommended · Qwen3.5 4B shared",
+                "analyzer": "Auto · Qwen3.5 4B",
+                "writer": "Same as image analyzer",
+                "ready": qwen4_installed,
+            },
+            {
+                "key": "fast",
+                "label": "Fast · Qwen3.5 2B analyzer + Qwen3.5 4B writer",
+                "analyzer": FAST_QWEN35_2B,
+                "writer": "Auto · Qwen3.5 4B writer",
+                "ready": qwen2_installed and qwen4_installed,
+            },
+            {
+                "key": "fastest_vision",
+                "label": "Fastest Vision · MiniCPM-V 4.6 + Qwen3.5 4B writer",
+                "analyzer": FASTEST_MINICPM_V46,
+                "writer": "Auto · Qwen3.5 4B writer",
+                "ready": bool(mini.get("model_present") and mini.get("mmproj_present") and qwen4_installed),
+                "backend_ready": bool(mini.get("available")),
+            },
+        ],
+        "minicpm": mini,
         "vaes": vaes,
         "sampling_profiles": [
             {
