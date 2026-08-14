@@ -30,6 +30,7 @@ from .nodes.smart_benchmark import NODE_CLASS_MAPPINGS as SMART_BENCHMARK_NODE_C
 from .nodes.smart_benchmark import NODE_DISPLAY_NAME_MAPPINGS as SMART_BENCHMARK_NODE_DISPLAY_NAME_MAPPINGS
 from .prompt_prep_hotfix_v2 import install as install_prompt_prep_hotfix_v2
 from .qwen35_gguf import install as install_qwen35_gguf
+from .qwen35_gguf_text_fallback import install as install_qwen35_gguf_text_fallback
 from .runtime_guards import install_runtime_guards
 from .runtime_web import register_runtime_routes
 from .web_routes import register_routes
@@ -48,6 +49,9 @@ install_prompt_prep_hotfix_v2()
 # fast llama.cpp path when its runtime + model pair are actually available and
 # fall back to the native Qwen3.5 path otherwise.
 install_qwen35_gguf()
+# llama-mtmd-cli is image-oriented; text-only prompt writing uses the shared
+# llama-server or llama-cli instead of ever falling into mtmd interactive mode.
+install_qwen35_gguf_text_fallback()
 register_routes()
 register_runtime_routes()
 register_dependency_routes()
