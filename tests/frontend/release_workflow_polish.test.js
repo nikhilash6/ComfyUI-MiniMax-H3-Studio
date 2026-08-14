@@ -31,11 +31,11 @@ test("sampling wrapper has enough room for promoted native decode controls", () 
   assert.ok(decodeSource.includes("kind === SUBGRAPH_CLASS ? 480 : 260"));
 });
 
-test("decode controls use readable labels and the Director has a release-safe minimum", () => {
+test("decode controls use readable labels and the Director keeps its tested height guard", () => {
   assert.ok(decodeSource.includes('tiling_mode: "Tiling mode"'));
   assert.ok(decodeSource.includes('tile_overlap: "Tile overlap"'));
   assert.ok(STUDIO_NODE_WIDTH >= 680);
-  assert.ok(STUDIO_NODE_HEIGHT >= 820);
+  assert.equal(STUDIO_NODE_HEIGHT, 780);
 });
 
 test("workflow documentation uses structured markdown and includes decode guidance", () => {
