@@ -46,7 +46,7 @@ def workflow_custom_types(value):
 
 def main():
     registered = set().union(*(mapping_keys(path) for path in SOURCES))
-    workflow = json.loads((ROOT / "example_workflows" / "H3_Studio_Native_Fast_T2I.json").read_text(encoding="utf-8"))
+    workflow = json.loads((ROOT / "example_workflows" / "H3_Studio_Unified_Image.json").read_text(encoding="utf-8"))
     referenced = workflow_custom_types(workflow)
     missing = referenced - registered
     if missing:
