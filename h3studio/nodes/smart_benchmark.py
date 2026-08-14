@@ -61,6 +61,7 @@ def _sync() -> None:
 
 def _sample(model, conditioning, latent, vae, context: H3StudioContext):
     from comfy_extras.nodes_custom_sampler import BasicGuider, RandomNoise, SamplerCustomAdvanced
+
     from .benchmark import _decode_single
 
     shifted_model, sampler, sigmas, sampling_info = H3StudioRuntimeSamplingPreset().build(model, context)
