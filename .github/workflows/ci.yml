@@ -21,7 +21,7 @@ jobs:
           node-version: "20"
       - run: uv sync --extra dev --locked
       - run: uv run pytest -q
-      - run: uv run ruff check h3studio tests/backend tools
+      - run: uv run ruff check h3studio tests/backend tools --output-format=github
       - run: npm run check
       - run: python tools/generate_workflows.py --check
       - run: python tools/validate_workflows.py
