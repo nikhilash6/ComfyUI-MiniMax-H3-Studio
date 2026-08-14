@@ -3,7 +3,8 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const preset = readFileSync(new URL("../../web/h3studio_release_fixups.js", import.meta.url), "utf8");
-const benchmark = readFileSync(new URL("../../web/h3studio_smart_benchmark_v2.js", import.meta.url), "utf8");
+const benchmark = readFileSync(new URL("../../web/h3studio_smart_benchmark_v3.js", import.meta.url), "utf8");
+const migration = readFileSync(new URL("../../web/h3studio_smart_benchmark_legacy_migration.js", import.meta.url), "utf8");
 const pdd = readFileSync(new URL("../../web/h3studio_pdd_dependency.js", import.meta.url), "utf8");
 
 test("shared presets resolve the Loader through the actual Director graph", () => {
@@ -23,27 +24,30 @@ test("Director add-ons remount after the core panel is rebuilt", () => {
   assert.match(preset, /h3s-share-section/);
 });
 
-test("legacy benchmark is replaced by Smart Benchmark without losing graph wiring", () => {
-  assert.match(benchmark, /H3StudioABComparison/);
-  assert.match(benchmark, /H3StudioSmartBenchmark/);
-  assert.match(benchmark, /inputSource\(oldNode, "h3_bundle"\)/);
-  assert.match(benchmark, /inputSource\(oldNode, "studio_context"\)/);
-  assert.match(benchmark, /outputTargets\(oldNode, 0\)/);
-  assert.match(benchmark, /Migrated legacy Benchmark Lab to Smart Benchmark Lab/);
+test("legacy benchmark still migrates without the old overflow-clipping overlay", () => {
+  assert.match(migration, /H3StudioABComparison/);
+  assert.match(migration, /H3StudioSmartBenchmark/);
+  assert.match(migration, /inputSource\(oldNode, "h3_bundle"\)/);
+  assert.match(migration, /inputSource\(oldNode, "studio_context"\)/);
+  assert.match(migration, /outputTargets\(oldNode, 0\)/);
+  assert.match(migration, /Migrated legacy Benchmark Lab to Smart Benchmark Lab/);
 });
 
-test("Smart Benchmark v2 hides raw JSON widgets and constrains overflowing controls", () => {
-  assert.match(benchmark, /hideNativeWidget\(node, "scenarios_json"\)/);
-  assert.match(benchmark, /hideNativeWidget\(node, "max_scenarios"\)/);
-  assert.match(benchmark, /max-width:100%!important/);
-  assert.match(benchmark, /overflow:hidden!important/);
-  assert.match(benchmark, /grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+test("Smart Benchmark v3 is scrollable, has quick presets and exposes asset failures", () => {
+  assert.match(benchmark, /overflow-y:auto!important/);
+  assert.doesNotMatch(benchmark, /\.h3b-root[^`]*overflow:hidden!important/);
+  assert.match(benchmark, /Quick benchmark presets/);
+  assert.match(benchmark, /Auto vs OG/);
+  assert.match(benchmark, /Runtime sweep/);
+  assert.match(benchmark, /assets unavailable · retry/);
+  assert.match(benchmark, /\/h3studio\/assets/);
 });
 
-test("installing a PDD pair installs the fixed Mamad8 custom node first", () => {
+test("PDD dependency install resumes on a freshly rendered button only once", () => {
   assert.match(pdd, /\/h3studio\/dependencies\/pdd\/install/);
   assert.match(pdd, /\[data-pdd-install\],\[data-pdd-repair\]/);
   assert.match(pdd, /stopImmediatePropagation/);
-  assert.match(pdd, /button\.click\(\)/);
-  assert.match(pdd, /PDD node installed · restart/);
+  assert.match(pdd, /querySelector\?\.\(selector\)/);
+  assert.match(pdd, /h3DependencyBypass/);
+  assert.doesNotMatch(pdd, /button\.dataset\.h3DependencyResume/);
 });
