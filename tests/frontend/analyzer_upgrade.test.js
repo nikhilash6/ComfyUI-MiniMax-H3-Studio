@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const setup = readFileSync(new URL("../../web/h3studio_prompt_models_setup.js", import.meta.url), "utf8");
+const notes = readFileSync(new URL("../../web/h3studio_analyzer_notes_migration.js", import.meta.url), "utf8");
 const benchmark = readFileSync(new URL("../../web/h3studio_smart_benchmark_v3.js", import.meta.url), "utf8");
 const runtimeWeb = readFileSync(new URL("../../h3studio/runtime_web.py", import.meta.url), "utf8");
 const promptBenchmark = readFileSync(new URL("../../h3studio/nodes/prompt_prep_benchmark.py", import.meta.url), "utf8");
@@ -28,6 +29,14 @@ test("old automatic Qwen3-VL default migrates but explicit legacy files remain v
   assert.match(setup, /analyzer\.value = "Auto · Qwen3\.5 4B"/);
   assert.match(setup, /Legacy · Qwen3-VL 4B \/ 8B/);
   assert.match(setup, /not broken/);
+});
+
+test("workflow onboarding notes explain the new recommended, fast and fastest-vision stacks", () => {
+  assert.match(notes, /Recommended.*Qwen3\.5-4B/s);
+  assert.match(notes, /Fast.*Qwen3\.5-2B/s);
+  assert.match(notes, /Fastest Vision.*MiniCPM-V 4\.6/s);
+  assert.match(notes, /Legacy.*Qwen3-VL 4B\/8B/s);
+  assert.match(notes, /35-70 dense words/);
 });
 
 test("asset catalog exposes prompt-model family and MiniCPM backend status", () => {
