@@ -15,6 +15,9 @@ from typing import Any
 
 LIGHTX_MODEL_REPOSITORY = "https://huggingface.co/Kijai/MiniMax-H3_comfy"
 LIGHTX_LORA_FILENAME = "minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_rank_21_bf16.safetensors"
+LIGHTX_V1_FL2V_4_PRUNED_FILENAME = "minimax_h3_fl2v_lightx2v_turbo_4step_v1.0_768p_resized_avg_rank_31_bf16.safetensors"
+LIGHTX_V1_FL2V_8_PRUNED_FILENAME = "minimax_h3_fl2v_lightx2v_turbo_8step_v1.0_resized_avg_rank_24_bf16.safetensors"
+LIGHTX_V01_REF2V_4_PRUNED_FILENAME = "minimax_h3_ref2v_lightx2v_turbo_4step_v0.1_resized_avg_rank_20_bf16.safetensors"
 LIGHTX_V1_MODEL_REPOSITORY = "https://huggingface.co/lightx2v/Minimax-h3-Turbo"
 LIGHTX_V1_LORA_FILENAME = "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors"
 
@@ -43,6 +46,7 @@ class LightXProfile:
     lora_strength: float
     recipe_source: str
     adapter_label: str
+    route: str = "fl2va"
     runtime_profile: str | None = None
     scheduler: str = "simple"
     steps: int = 4
@@ -50,11 +54,12 @@ class LightXProfile:
     shift_audio: float = 3.0
 
 
-_OLD_LIGHTX_TOKENS = ("minimax", "h3", "lightx", "4step", "resized", "avg", "rank", "21", "bf16")
+_OLD_LIGHTX_TOKENS = ("minimax", "h3", "fl2v", "lightx2v", "4step", "v0.1", "resized", "rank", "21", "bf16")
 
 LIGHTX_PROFILES: Mapping[str, LightXProfile] = {
     "lightx_v1_fl2v_8": LightXProfile(
         key="lightx_v1_fl2v_8",
+        route="fl2va",
         sampler="euler",
         scheduler="simple",
         steps=8,
@@ -65,10 +70,41 @@ LIGHTX_PROFILES: Mapping[str, LightXProfile] = {
         artifact_tokens=("minimax", "h3", "fl2v", "turbo", "8step", "v1.0", "comfyui", "bf16"),
         lora_strength=1.0,
         recipe_source="LightX2V v1.0 DMD family; official 8-step ComfyUI artifact",
-        adapter_label="LightX v1.0 FL2V 8-step",
+        adapter_label="LightX v1.0 FL2VA 8-step · official full",
+    ),
+    "lightx_v1_fl2v_8_pruned": LightXProfile(
+        key="lightx_v1_fl2v_8_pruned",
+        route="fl2va",
+        sampler="euler",
+        scheduler="simple",
+        steps=8,
+        shift_video=6.0,
+        shift_audio=3.0,
+        lora_filename=LIGHTX_V1_FL2V_8_PRUNED_FILENAME,
+        repository=LIGHTX_MODEL_REPOSITORY,
+        artifact_tokens=("minimax", "h3", "fl2v", "lightx2v", "turbo", "8step", "v1.0", "resized", "rank", "24", "bf16"),
+        lora_strength=1.0,
+        recipe_source="LightX2V v1.0 8-step recipe; Kijai rank-reduced equivalent",
+        adapter_label="LightX v1.0 FL2VA 8-step · Kijai pruned rank-24",
+    ),
+    "lightx_v1_fl2v_4_pruned": LightXProfile(
+        key="lightx_v1_fl2v_4_pruned",
+        route="fl2va",
+        sampler="euler",
+        scheduler="simple",
+        steps=4,
+        shift_video=6.0,
+        shift_audio=3.0,
+        lora_filename=LIGHTX_V1_FL2V_4_PRUNED_FILENAME,
+        repository=LIGHTX_MODEL_REPOSITORY,
+        artifact_tokens=("minimax", "h3", "fl2v", "lightx2v", "turbo", "4step", "v1.0", "768p", "resized", "rank", "31", "bf16"),
+        lora_strength=1.0,
+        recipe_source="LightX2V v1.0 768p DMD 4-step recipe; Kijai rank-reduced equivalent",
+        adapter_label="LightX v1.0 FL2VA 4-step 768p · Kijai pruned rank-31",
     ),
     "lightx_er_sde_4": LightXProfile(
         key="lightx_er_sde_4",
+        route="fl2va",
         runtime_profile="LightX v0.1 | ER-SDE 4 steps",
         sampler="er_sde",
         lora_filename=LIGHTX_LORA_FILENAME,
@@ -76,10 +112,11 @@ LIGHTX_PROFILES: Mapping[str, LightXProfile] = {
         artifact_tokens=_OLD_LIGHTX_TOKENS,
         lora_strength=0.75,
         recipe_source="Kijai empirical ComfyUI",
-        adapter_label="LightX v0.1 resized rank-21",
+        adapter_label="LightX v0.1 FL2VA resized rank-21",
     ),
     "lightx_sa_solver_4": LightXProfile(
         key="lightx_sa_solver_4",
+        route="fl2va",
         runtime_profile="LightX v0.1 | SA-Solver 4 steps",
         sampler="sa_solver",
         lora_filename=LIGHTX_LORA_FILENAME,
@@ -87,7 +124,31 @@ LIGHTX_PROFILES: Mapping[str, LightXProfile] = {
         artifact_tokens=_OLD_LIGHTX_TOKENS,
         lora_strength=0.75,
         recipe_source="Kijai empirical ComfyUI",
-        adapter_label="LightX v0.1 resized rank-21",
+        adapter_label="LightX v0.1 FL2VA resized rank-21",
+    ),
+    "lightx_v01_ref2v_er_sde_4_pruned": LightXProfile(
+        key="lightx_v01_ref2v_er_sde_4_pruned",
+        route="ref2va",
+        runtime_profile="LightX v0.1 | ER-SDE 4 steps",
+        sampler="er_sde",
+        lora_filename=LIGHTX_V01_REF2V_4_PRUNED_FILENAME,
+        repository=LIGHTX_MODEL_REPOSITORY,
+        artifact_tokens=("minimax", "h3", "ref2v", "lightx2v", "turbo", "4step", "v0.1", "resized", "rank", "20", "bf16"),
+        lora_strength=0.75,
+        recipe_source="Kijai v0.1 ComfyUI recipe applied to the rank-reduced REF2V adapter",
+        adapter_label="LightX v0.1 REF2VA 4-step · Kijai pruned rank-20",
+    ),
+    "lightx_v01_ref2v_sa_solver_4_pruned": LightXProfile(
+        key="lightx_v01_ref2v_sa_solver_4_pruned",
+        route="ref2va",
+        runtime_profile="LightX v0.1 | SA-Solver 4 steps",
+        sampler="sa_solver",
+        lora_filename=LIGHTX_V01_REF2V_4_PRUNED_FILENAME,
+        repository=LIGHTX_MODEL_REPOSITORY,
+        artifact_tokens=("minimax", "h3", "ref2v", "lightx2v", "turbo", "4step", "v0.1", "resized", "rank", "20", "bf16"),
+        lora_strength=0.75,
+        recipe_source="Kijai v0.1 ComfyUI recipe applied to the rank-reduced REF2V adapter",
+        adapter_label="LightX v0.1 REF2VA 4-step · Kijai pruned rank-20",
     ),
 }
 
@@ -320,8 +381,8 @@ def build_lightx_backend(model: Any, profile_key: str):
         )
     else:
         # LightX2V's v1.0 H3 DMD family uses guidance-free Euler updates with
-        # video/audio flow shifts 6/3. The official ComfyUI artifact names its
-        # required denoise count directly, so keep that count explicit here.
+        # video/audio flow shifts 6/3. Keep each artifact's trained step count
+        # explicit so full and rank-reduced variants resolve to the same recipe.
         from .nodes.image_runtime import H3StudioSamplingSettings
 
         built_model, sampler, sigmas, base_info = H3StudioSamplingSettings().build(
@@ -337,7 +398,7 @@ def build_lightx_backend(model: Any, profile_key: str):
         )
 
     info = (
-        f"profile={profile.key} | {base_info} | adapter={profile.adapter_label} | "
+        f"profile={profile.key} | route={profile.route.upper()} | {base_info} | adapter={profile.adapter_label} | "
         f"lora={lora_name} @ {profile.lora_strength:g} | recipe={profile.recipe_source} | "
         f"lora_backend={patch_backend}"
     )
