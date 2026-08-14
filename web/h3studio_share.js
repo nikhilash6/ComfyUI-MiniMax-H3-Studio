@@ -4,6 +4,7 @@ import { applyState, stateFromNode } from "./js/studio_extension.js";
 const TARGET = "H3StudioDirector";
 const LOADER = "H3StudioLoader";
 const PREFIX = "H3S1:";
+const ZIP_PREFIX = "H3S1Z:";
 const STYLE_ID = "h3studio-share-style";
 
 function installStyles() {
@@ -77,8 +78,7 @@ function compactPreset(node) {
   };
 }
 
-function utf8ToBase64Url(text) {
-  const bytes = new TextEncoder().encode(text);
+function bytesToBase64Url(bytes) {
   let binary = "";
   for (let index = 0; index < bytes.length; index += 0x8000) {
     binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
@@ -86,24 +86,56 @@ function utf8ToBase64Url(text) {
   return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/g, "");
 }
 
-function base64UrlToUtf8(value) {
+function base64UrlToBytes(value) {
   const normalized = value.replaceAll("-", "+").replaceAll("_", "/");
   const padded = normalized + "=".repeat((4 - normalized.length % 4) % 4);
   const binary = atob(padded);
-  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-  return new TextDecoder().decode(bytes);
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
 
-function encodePreset(node) {
-  return `${PREFIX}${utf8ToBase64Url(JSON.stringify(compactPreset(node)))}`;
+async function gzipBytes(bytes) {
+  if (typeof CompressionStream !== "function") return null;
+  const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream("gzip"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
-function decodePreset(raw) {
+async function gunzipBytes(bytes) {
+  if (typeof DecompressionStream !== "function") throw new Error("This browser cannot unpack compressed H3S presets. Update the ComfyUI browser/frontend.");
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+async function encodePreset(node) {
+  const raw = new TextEncoder().encode(JSON.stringify(compactPreset(node)));
+  const normal = `${PREFIX}${bytesToBase64Url(raw)}`;
+  const zipped = await gzipBytes(raw);
+  if (!zipped) return normal;
+  const compact = `${ZIP_PREFIX}${bytesToBase64Url(zipped)}`;
+  return compact.length < normal.length ? compact : normal;
+}
+
+function extractShareCode(text) {
+  const candidates = [ZIP_PREFIX, PREFIX]
+    .map((prefix) => ({ prefix, index: text.indexOf(prefix) }))
+    .filter((item) => item.index >= 0)
+    .sort((a, b) => a.index - b.index);
+  if (!candidates.length) return "";
+  const match = candidates[0];
+  return text.slice(match.index).split(/\s/)[0];
+}
+
+async function decodePreset(raw) {
   const text = String(raw || "").trim();
-  const code = text.includes(PREFIX) ? text.slice(text.indexOf(PREFIX)).split(/\s/)[0] : text;
+  const code = extractShareCode(text);
   let value;
-  if (code.startsWith(PREFIX)) value = JSON.parse(base64UrlToUtf8(code.slice(PREFIX.length)));
-  else value = JSON.parse(text);
+  if (code.startsWith(ZIP_PREFIX)) {
+    const unpacked = await gunzipBytes(base64UrlToBytes(code.slice(ZIP_PREFIX.length)));
+    value = JSON.parse(new TextDecoder().decode(unpacked));
+  } else if (code.startsWith(PREFIX)) {
+    value = JSON.parse(new TextDecoder().decode(base64UrlToBytes(code.slice(PREFIX.length))));
+  } else {
+    value = JSON.parse(text);
+  }
   if (!value || Number(value.v || 0) !== 1) throw new Error("Unsupported H3 Studio preset version.");
   return value;
 }
@@ -127,20 +159,36 @@ function toast(summary, detail, severity = "success") {
   app.extensionManager?.toast?.add?.({ severity, summary, detail, life: 4500 });
 }
 
+function widgetChoices(target) {
+  if (!target) return null;
+  let values = target.options?.values;
+  if (typeof values === "function") {
+    try { values = values(); } catch { values = null; }
+  }
+  if (!Array.isArray(values)) return null;
+  return values.map((value) => String(value));
+}
+
 function setLoaderAssets(node, assets) {
   const loader = connectedLoader(node);
-  if (!loader || !assets || typeof assets !== "object") return { loader: false, changed: 0 };
+  if (!loader || !assets || typeof assets !== "object") return { loader: false, changed: 0, missing: [] };
   let changed = 0;
+  const missing = [];
   for (const [name, value] of Object.entries(assets)) {
     if (!value) continue;
     const target = widget(loader, name);
     if (!target || target.value === value) continue;
+    const choices = widgetChoices(target);
+    if (choices && !choices.includes(String(value))) {
+      missing.push(`${name}: ${value}`);
+      continue;
+    }
     target.value = value;
     target.callback?.(value, app.canvas, loader, [0, 0], {});
     changed += 1;
   }
   if (changed) loader.setDirtyCanvas?.(true, true);
-  return { loader: true, changed };
+  return { loader: true, changed, missing };
 }
 
 function applyPreset(node, preset) {
@@ -215,20 +263,25 @@ function buildSection(node) {
   help.textContent = "One pasteable H3S code carries runtime, Sampling Profile, resolution, custom LoRAs + strengths and connected Loader model choices. Prompts and reference images are never included.";
   const actions = document.createElement("div"); actions.className = "h3s-share-actions";
   actions.append(
-    button("Copy Discord", "Copy a readable one-line summary plus the H3S code", async () => {
-      const code = encodePreset(node);
+    button("Copy Discord", "Copy a readable one-line summary plus the shortest supported H3S code", async () => {
+      const code = await encodePreset(node);
       await copyText(`${summaryLine(node)}\n${code}`);
-      toast("Copied for Discord", `${code.length} character preset code`);
+      toast("Copied for Discord", `${code.length} character ${code.startsWith(ZIP_PREFIX) ? "compressed " : ""}preset code`);
     }, true),
-    button("Copy code", "Copy only the compact H3S1 code", async () => {
-      const code = encodePreset(node); await copyText(code); toast("Preset code copied", `${code.length} characters`);
+    button("Copy code", "Copy only the compact H3S preset code", async () => {
+      const code = await encodePreset(node); await copyText(code); toast("Preset code copied", `${code.length} characters`);
     }),
-    button("Paste / Import", "Paste an H3S1 code or JSON preset", async () => {
-      const raw = globalThis.prompt?.("Paste H3S1 preset code or JSON:", "");
+    button("Paste / Import", "Paste an H3S1/H3S1Z code or JSON preset", async () => {
+      const raw = globalThis.prompt?.("Paste H3S preset code or JSON:", "");
       if (!raw) return;
-      const preset = decodePreset(raw);
+      const preset = await decodePreset(raw);
       const result = applyPreset(node, preset);
-      toast("Preset imported", result.loader ? `Director restored · ${result.changed} Loader field${result.changed === 1 ? "" : "s"} updated` : "Director restored · connect H3 Studio Loader to apply shared model choices", result.loader ? "success" : "warn");
+      const missing = result.missing || [];
+      const detail = result.loader
+        ? `Director restored · ${result.changed} Loader field${result.changed === 1 ? "" : "s"} updated${missing.length ? ` · ${missing.length} shared asset${missing.length === 1 ? "" : "s"} missing locally` : ""}`
+        : "Director restored · connect H3 Studio Loader to apply shared model choices";
+      toast("Preset imported", detail, !result.loader || missing.length ? "warn" : "success");
+      if (missing.length) console.warn("[H3 Studio] Shared preset assets missing locally:\n" + missing.join("\n"));
       installShareSection(node, true);
     }),
   );
@@ -237,7 +290,7 @@ function buildSection(node) {
     toast("Effective config copied", "Ready to paste into Discord or an issue.");
   });
   const meta = document.createElement("div"); meta.className = "h3s-share-meta";
-  meta.textContent = "H3S1 is versioned and path-safe: filenames are logical ComfyUI model names, never absolute machine paths or secrets.";
+  meta.textContent = "H3S1/H3S1Z is versioned and path-safe. Discord sharing automatically uses gzip when it makes the code shorter; older uncompressed H3S1 codes still import.";
   body.append(help, actions, effective, meta);
   section.append(header, body);
   return section;
