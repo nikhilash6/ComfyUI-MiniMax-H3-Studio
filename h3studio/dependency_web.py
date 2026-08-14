@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import subprocess
@@ -53,12 +54,13 @@ def _git_dirty(path: Path) -> bool:
 def dependency_status() -> dict[str, object]:
     pdd = _pdd_path()
     return {
+        "ok": True,
         "pdd": {
             "installed": pdd.exists(),
             "git": (pdd / ".git").exists(),
             "head": _git_head(pdd),
             "path_name": PDD_DIRNAME,
-        }
+        },
     }
 
 
@@ -102,14 +104,18 @@ def register_dependency_routes() -> None:
     @server.routes.get("/h3studio/dependencies/status")
     async def h3studio_dependency_status(_request):
         try:
-            return web.json_response(dependency_status(), headers={"Cache-Control": "no-store"})
+            result = await asyncio.to_thread(dependency_status)
+            return web.json_response(result, headers={"Cache-Control": "no-store"})
         except Exception as exc:
             return web.json_response({"ok": False, "error": str(exc)}, status=500)
 
     @server.routes.post("/h3studio/dependencies/pdd/install")
     async def h3studio_install_pdd(_request):
         try:
-            return web.json_response(install_or_update_pdd())
+            # Git clone/fetch can take seconds. Never block PromptServer's aiohttp
+            # event loop or the browser/ComfyUI websocket appears to have crashed.
+            result = await asyncio.to_thread(install_or_update_pdd)
+            return web.json_response(result, headers={"Cache-Control": "no-store"})
         except Exception as exc:
             LOGGER.exception("[H3 Studio] PDD dependency install failed")
             return web.json_response({"ok": False, "error": str(exc)}, status=500)
