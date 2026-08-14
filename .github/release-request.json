@@ -1,20 +1,21 @@
 {
-  "version": "0.1.0-alpha.15",
+  "version": "0.1.0-alpha.16",
   "date": "2026-08-14",
   "sections": {
     "added": [
-      "Added first-class route-aware acceleration profiles for Kijai's pruned MiniMax H3 LightX adapters: FL2VA v1.0 4-step rank-31, FL2VA v1.0 8-step rank-24, and REF2VA v0.1 4-step rank-20, while keeping the existing FL2VA v0.1 rank-21 and official full v1.0 8-step profiles.",
-      "Added automatic restoration of the optional H3StudioComparisonView output node in maintained Unified Image workflows so Director output can switch between the generated image and reference comparison views.",
-      "Added clearer model-download documentation for core FL2VA/REF2VA models, recommended acceleration profiles, smaller pruned alternatives, preview/VAE extras, and PDD artifacts."
+      "Added a workload-aware Runtime Optimization layer with Auto, OG / Current, Quality, Fast, Low VRAM, and Extreme Low VRAM presets while keeping Base, LightX, PDD, steps, and LoRA sampling profiles independent.",
+      "Added explainable runtime detection and console reporting for GPU/VRAM, actual packed H3 sequence length, route/reference pressure, selected attention backend, head chunking, VAE path, model assets, fallbacks, and the reason Auto chose its effective configuration.",
+      "Added one-click H3S1 Discord preset sharing for runtime settings, sampling profile, resolution, connected logical model choices, and ordered custom LoRAs with exact strengths without including prompts, reference images, absolute paths, or secrets.",
+      "Added H3 Studio Smart Benchmark Lab with installed transformer and LoRA discovery, per-LoRA strengths, route-aware sampling profiles, runtime A/B helpers, scenario duplication and validation, same-seed execution, labeled comparison grids, and shareable H3B1 benchmark configurations."
     ],
     "fixed": [
-      "Removed the permanent JoJo-specific example from the Qwen prompt-writer system instruction so generic anime prompts remain style-neutral unless the user explicitly requests JoJo.",
-      "Added backend and frontend route validation so FL2V LightX adapters cannot silently run on REF2VA and the REF2V adapter is only offered for valid REF2VA reference-generation requests.",
-      "Restored the Director's generated/comparison output tabs when comparison mode is enabled and preserved the PR #37 workflow migration, decode warning, group sizing, and curated TAEH3 controls."
+      "Replaced fragile manual benchmark filename entry with installed-asset discovery and exact per-scenario LoRA configuration.",
+      "Kept OG / Current as an explicit unchanged runtime path and made every optimized path capability-detected so older ComfyUI or missing optional kernels fall back instead of silently assuming an unavailable backend.",
+      "Prevented Auto from enabling H3 FFN chunking by default; FFN chunking remains an explicit experimental override while attention-head chunking is reserved for actual memory pressure."
     ],
     "changed": [
-      "Removed the obsolete H3_Studio_Native_Fast_T2I example workflow and its generator/release-check path so H3_Studio_Unified_Image is the single maintained user workflow.",
-      "Refined the maintained workflow UI and model-profile labels around FL2VA versus REF2VA, 4-step versus 8-step, v0.1 versus v1.0, and full versus pruned LightX artifacts."
+      "Made Auto the recommended runtime default and made its policy workload-aware: short FL2VA still packets avoid excessive chunking, constrained REF2VA workloads escalate memory protection, and larger cards prefer Comfy Kitchen when it is actually available.",
+      "Kept newer native H3 denoise-mask and optional FaceRefine capabilities visible to detection without silently injecting experimental editing/refinement behavior into normal Studio generation."
     ]
   }
 }
