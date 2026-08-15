@@ -21,11 +21,13 @@ def build_h3_face_sampler(
     h3_bundle: Any = None,
     model: Any = None,
     vae: Any = None,
+    clip: Any = None,
     prompt: str = "",
 ) -> Optional[Callable[[Any, CropRegion, FaceRefineConfig], Any]]:
     """
     Build a real H3 FL2VA sampling callback for face crop refinement.
-    Uses the loaded H3 VAE for latent encode/decode and DiT model with prompt conditioning.
+    Uses H3StudioPrepare to create joint AV latents and tokenized prompt conditioning,
+    then samples with the FL2VA model at the configured denoise level.
     """
     resolved_vae = vae or getattr(h3_bundle, "video_vae", None) or getattr(h3_bundle, "vae", None)
     resolved_model = model or (
@@ -33,75 +35,68 @@ def build_h3_face_sampler(
         if hasattr(h3_bundle, "model_for")
         else getattr(h3_bundle, "model", None)
     )
-    resolved_clip = getattr(h3_bundle, "clip", None) or getattr(h3_bundle, "text_encoder", None)
+    resolved_clip = clip or getattr(h3_bundle, "clip", None) or getattr(h3_bundle, "text_encoder", None)
 
-    if resolved_vae is None and resolved_model is None:
+    if resolved_vae is None or resolved_model is None:
         return None
 
     def h3_sampler(crop_patch: torch.Tensor, region: CropRegion, config: FaceRefineConfig) -> torch.Tensor:
-        try:
-            patch = crop_patch
-            if patch.ndim == 3:
-                patch = patch.unsqueeze(0)
+        patch = crop_patch
+        if patch.ndim == 3:
+            patch = patch.unsqueeze(0)
 
-            # 1. Encode patch to latent space via VAE
-            latent_samples = None
-            if resolved_vae is not None and hasattr(resolved_vae, "encode"):
-                encoded = resolved_vae.encode(patch)
-                if isinstance(encoded, dict):
-                    latent_samples = encoded.get("samples", encoded)
-                else:
-                    latent_samples = encoded
+        # 1. Use H3StudioPrepare to build authentic FL2VA latent & conditioning
+        from .image_runtime import H3StudioPrepare
 
-            # 2. Conditioning and sampling pass with H3 model
-            refined_latent = None
-            if resolved_model is not None and latent_samples is not None:
-                try:
-                    import comfy.sample
+        face_prompt = (
+            f"high-detail photorealistic face, sharp facial features, natural skin texture: {prompt}"
+            if prompt
+            else "high-detail photorealistic face, sharp facial features, natural skin texture"
+        )
+        guide_dim = int(config.guide_size)
+        prep = H3StudioPrepare()
 
-                    face_prompt = (
-                        f"sharp facial details, clear photorealistic eyes and skin texture: {prompt}"
-                        if prompt
-                        else "sharp facial details, clear photorealistic eyes and skin texture"
-                    )
-                    cond = []
-                    if resolved_clip is not None and hasattr(resolved_clip, "tokenize"):
-                        tokens = resolved_clip.tokenize(face_prompt)
-                        cond = resolved_clip.encode_from_tokens(tokens)
+        positive, h3_latent, _, _, _, _ = prep.prepare(
+            clip=resolved_clip,
+            vae=resolved_vae,
+            mode="image_to_image (FL2VA)",
+            prompt=face_prompt,
+            width=guide_dim,
+            height=guide_dim,
+            frame_preset="5 frames (fastest / recommended)",
+            optimize_prompt=False,
+            preserve_strength=1.0 - config.denoise,
+            source_fit="stretch",
+            reference_size="same",
+            source_image=patch,
+        )
 
-                    noise = torch.randn_like(latent_samples)
-                    refined_latent = comfy.sample.sample(
-                        resolved_model,
-                        noise,
-                        config.steps,
-                        config.cfg,
-                        "euler",
-                        "simple",
-                        cond,
-                        [],
-                        latent_samples,
-                        denoise=config.denoise,
-                    )
-                except Exception as ex:
-                    LOGGER.debug("[H3 FaceRefine] Sampling pass exception: %s", ex)
+        # 2. Run sampling with H3 model
+        import comfy.sample
 
-            # 3. Decode latent back to image via VAE
-            if resolved_vae is not None and hasattr(resolved_vae, "decode"):
-                target = refined_latent if refined_latent is not None else latent_samples
-                if target is not None:
-                    decoded = resolved_vae.decode(target)
-                    if decoded.ndim == 5:
-                        decoded = decoded[:, 0]
-                    return decoded
+        latent_samples = h3_latent["samples"] if isinstance(h3_latent, dict) else h3_latent
+        noise = torch.randn_like(latent_samples)
+        refined_latent = comfy.sample.sample(
+            resolved_model,
+            noise,
+            config.steps,
+            config.cfg,
+            "euler",
+            "simple",
+            positive,
+            [],
+            latent_samples,
+            denoise=config.denoise,
+        )
 
-            if refined_latent is not None:
-                return refined_latent
-
-            return crop_patch
-
-        except Exception as err:
-            LOGGER.warning("[H3 FaceRefine] Patch refinement error: %s; using original crop.", err)
-            return crop_patch
+        # 3. Decode refined latent back to RGB image
+        decoded = resolved_vae.decode(refined_latent)
+        if decoded.ndim == 5:
+            # Video VAE [B, F, H, W, C] -> extract single still frame 0
+            decoded = decoded[0, 0:1]
+        elif decoded.ndim == 4 and decoded.shape[0] > 1:
+            decoded = decoded[0:1]
+        return decoded
 
     return h3_sampler
 

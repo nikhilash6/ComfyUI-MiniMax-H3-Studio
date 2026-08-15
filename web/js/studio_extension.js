@@ -61,11 +61,13 @@ function setWidget(node, name, value, invoke = false) {
   if (invoke) target.callback?.(value, app.canvas, node, [0, 0], {});
 }
 
+const MAX_SAFE_COMFY_SEED = 1125899906842623;
+
 function randomSeed() {
   const values = new Uint32Array(2);
   globalThis.crypto?.getRandomValues?.(values);
-  const combined = values[0] * 0x200000 + (values[1] & 0x1fffff);
-  return combined || Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+  const combined = (values[0] & 0x3ffff) * 0x100000000 + values[1];
+  return (combined % MAX_SAFE_COMFY_SEED) || Math.floor(Math.random() * MAX_SAFE_COMFY_SEED);
 }
 
 function hideWidget(target) {

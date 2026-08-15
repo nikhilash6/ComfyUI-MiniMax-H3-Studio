@@ -592,9 +592,11 @@ class H3StudioDecode:
                 )
                 fr_pipeline = H3FaceRefinePipeline()
                 sampler_fn = build_h3_face_sampler(
-                    model=samples.get("h3_model"),
+                    h3_bundle=samples.get("h3_bundle") if isinstance(samples, dict) else None,
+                    model=samples.get("h3_model") if isinstance(samples, dict) else None,
                     vae=vae,
-                    prompt=str(samples.get("h3_prompt", "")),
+                    clip=samples.get("h3_clip") if isinstance(samples, dict) else None,
+                    prompt=str(samples.get("h3_prompt", "")) if isinstance(samples, dict) else "",
                 )
                 refine_result = fr_pipeline.refine_image(images_out, fr_config, sampler_fn=sampler_fn)
                 if refine_result.faces_refined > 0:

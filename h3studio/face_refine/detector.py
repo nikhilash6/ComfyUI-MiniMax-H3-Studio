@@ -244,8 +244,8 @@ class AutoFaceDetector(FaceDetector):
 
     def __init__(self, detectors: Optional[List[FaceDetector]] = None) -> None:
         self.detectors = detectors or [
-            MediaPipeDetector(),
             YoloDetector(),
+            MediaPipeDetector(),
             OpenCVHaarDetector(),
         ]
         self._active_detector: Optional[FaceDetector] = None
