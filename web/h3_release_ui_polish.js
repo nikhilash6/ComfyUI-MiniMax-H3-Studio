@@ -177,29 +177,8 @@ function patchNote(graphData, id, title, markdown) {
   target.widgets_values = values;
 }
 
-function patchWorkflowLayout(graphData) {
-  if (!isMaintainedUnifiedWorkflow(graphData)) return;
-
-  ensureComparisonNode(graphData);
-
-  for (const [id, layout] of NODE_LAYOUT) {
-    const target = serializedNodeById(graphData, id);
-    if (!target) continue;
-    target.pos = [...layout.pos];
-    target.size = [...layout.size];
-  }
-
-  for (const group of graphData.groups || []) {
-    const bounding = GROUP_LAYOUT.get(Number(group?.id));
-    if (bounding) group.bounding = [...bounding];
-  }
-
-  patchNote(graphData, 28, "Model downloads", DOWNLOAD_NOTE);
-  patchNote(graphData, 31, "Native H3 VAE decode", DECODE_NOTE);
-
-  graphData.extra ||= {};
-  graphData.extra.h3studio ||= {};
-  graphData.extra.h3studio.design_source = "H3 Studio release layout with tight group bounds and comparison repair";
+function patchWorkflowLayout(_graphData) {
+  // Respect user-saved node positions and group bounds on canvas reload.
 }
 
 function constrainNumericCombo(node, name, definition) {
