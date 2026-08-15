@@ -1,6 +1,12 @@
 import { app } from "../../scripts/app.js";
 
 import { applyState, stateFromNode } from "./js/studio_extension.js";
+import {
+  capNativeForTarget,
+  formatMegapixels,
+  planResolution,
+  resolutionTier,
+} from "./js/core/state.js";
 
 const DIRECTOR = "H3StudioDirector";
 const BENCHMARK = "H3StudioSmartBenchmark";
@@ -110,6 +116,64 @@ function customAspectEditor(node) {
   aspectField.append(editor);
 }
 
+function previewMegapixels(node, input, value) {
+  const control = input.closest(".h3s-megapixel-control");
+  const range = input.closest(".h3s-range");
+  if (!control || !range) return;
+  const min = Number(input.min) || 0.2;
+  const max = Number(input.max) || 8.5;
+  const bounded = Math.max(min, Math.min(max, Number(value) || min));
+  const progress = max === min ? 0 : ((bounded - min) / (max - min)) * 100;
+  range.style.setProperty("--h3s-range-progress", `${progress}%`);
+
+  const state = stateFromNode(node);
+  const cap = capNativeForTarget(bounded, state.generation.cap_native_resolution);
+  const plan = planResolution(
+    state.generation.aspect_ratio,
+    bounded,
+    state.generation.custom_width,
+    state.generation.custom_height,
+    cap,
+  );
+  const tier = resolutionTier(bounded, cap);
+  const output = control.querySelector(".h3s-megapixel-value");
+  const strong = node.__h3studioPanel?.querySelector(".h3s-resolution-result strong");
+  const detail = node.__h3studioPanel?.querySelector(".h3s-resolution-result span");
+  const badge = node.__h3studioPanel?.querySelector(".h3s-resolution-tier");
+  const note = node.__h3studioPanel?.querySelector(".h3s-resolution-note");
+  if (output) output.textContent = formatMegapixels(bounded);
+  if (strong) strong.textContent = `${plan.width} × ${plan.height}`;
+  if (detail) detail.textContent = `${plan.actualMegapixels.toFixed(2)} MP actual · ${plan.capped ? "conservative" : "direct"}`;
+  if (badge) { badge.className = `h3s-resolution-tier is-${tier.key}`; badge.textContent = tier.label; }
+  if (note) note.textContent = tier.note;
+  range.dataset.tier = tier.key;
+}
+
+function bindSmoothMegapixel(node) {
+  const oldInput = node?.__h3studioPanel?.querySelector(".h3s-megapixel-control .h3s-range-native");
+  if (!oldInput || oldInput.dataset.h3V9Native === "1") return;
+
+  // The old redesign attached custom pointer math + a second live-analysis
+  // listener. Replace that input node so those anonymous handlers disappear.
+  const input = oldInput.cloneNode(true);
+  input.dataset.h3V9Native = "1";
+  input.dataset.h3LiveBound = "1"; // keep v8 from attaching its duplicate listener again
+  oldInput.replaceWith(input);
+
+  const live = () => previewMegapixels(node, input, Number(input.value));
+  const commit = () => {
+    const state = stateFromNode(node);
+    const value = Math.max(Number(input.min) || 0.2, Math.min(Number(input.max) || 8.5, Number(input.value) || 1));
+    state.generation.megapixels = value;
+    state.generation.cap_native_resolution = capNativeForTarget(value, state.generation.cap_native_resolution);
+    applyState(node, state);
+    node.__h3studioConfigured?.();
+  };
+  input.addEventListener("input", live, { passive: true });
+  input.addEventListener("change", commit);
+  live();
+}
+
 function availableDirectorHeight(node, panelWidget) {
   const total = Number(node?.size?.[1]) || 780;
   const top = Number(panelWidget?.last_y);
@@ -145,6 +209,7 @@ function syncDirector(node) {
     root.parentElement.style.setProperty("overflow", "hidden", "important");
   }
   customAspectEditor(node);
+  bindSmoothMegapixel(node);
 }
 
 function attachDirector(node) {
@@ -152,7 +217,7 @@ function attachDirector(node) {
   // v8's subtree observer also reacted to the live MP text updates. Replace it
   // with a root-only observer so dragging never schedules layout work per pixel.
   node.__h3studioPanel?.__h3InteractionObserver?.disconnect?.();
-  node.__h3studioPanel && (node.__h3studioPanel.__h3InteractionObserver = null);
+  if (node.__h3studioPanel) node.__h3studioPanel.__h3InteractionObserver = null;
   syncDirector(node);
   if (node.__h3studioUiHotfixV9) return;
   node.__h3studioUiHotfixV9 = true;
