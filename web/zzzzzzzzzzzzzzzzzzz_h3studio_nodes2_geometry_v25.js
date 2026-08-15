@@ -2,13 +2,9 @@ import { app } from "../../scripts/app.js";
 
 const DIRECTOR = "H3StudioDirector";
 const BENCHMARK = "H3StudioSmartBenchmark";
-const STYLE_ID = "h3studio-nodes2-natural-geometry-v26-style";
-const BENCHMARK_PLUMBING = new Set([
-  "scenarios_json", "max_scenarios", "grid_cell_size", "benchmark_mode", "profiles",
-  "matrix_megapixels", "repeats", "seed_strategy", "seed_step", "max_generations",
-  "allow_large_matrix", "include_reference_context", "include_original_prompt",
-  "live_cell_previews", "compare_vae",
-]);
+const STYLE_ID = "h3studio-nodes2-natural-geometry-v27-style";
+const DIRECTOR_VISIBLE = new Set(["prompt", "h3_prompt_mentions", "h3studio_controls"]);
+const BENCHMARK_VISIBLE = new Set(["h3studio_smart_benchmark"]);
 
 function widget(node, name) {
   return (node?.widgets || []).find((item) => item?.name === name) || null;
@@ -19,7 +15,8 @@ function installStyles() {
   const style = document.createElement("style");
   style.id = STYLE_ID;
   style.textContent = `
-    /* WidgetDOM.vue uses *:flex-1 in Nodes 2. Opt these custom surfaces out. */
+    /* Nodes 2 WidgetDOM.vue applies *:flex-1 to custom DOM children. H3 owns its
+       own internal layout, so the surface itself must stay intrinsic. */
     .h3s-studio-panel,.h3b7{
       flex:0 0 auto!important;
       flex-grow:0!important;
@@ -34,17 +31,19 @@ function installStyles() {
     .h3s-v6-layout,.h3s-v7-layout{
       height:auto!important;
       min-height:0!important;
+      max-height:none!important;
       overflow:hidden!important;
     }
     .h3s-v6-main,.h3s-v6-inspector,.h3s-v7-main,.h3s-v7-inspector{
       height:auto!important;
       min-height:0!important;
+      max-height:none!important;
       overflow-y:auto!important;
       overflow-x:hidden!important;
       overscroll-behavior:contain!important;
     }
 
-    /* Native Benchmark surface: inherit the Comfy node instead of painting a nested app. */
+    /* Keep the Benchmark visually part of the Comfy node rather than a nested app. */
     .h3b7.h3b23,
     .h3b7.h3b23>.h3b7-top,
     .h3b7.h3b23>.h3b7-body,
@@ -64,12 +63,21 @@ function installStyles() {
   document.head.append(style);
 }
 
-function hideBenchmarkPlumbing(node) {
-  if (node?.comfyClass !== BENCHMARK) return;
+function hideForNodes2(node) {
+  if (!node) return;
+  const visible = node.comfyClass === DIRECTOR
+    ? DIRECTOR_VISIBLE
+    : node.comfyClass === BENCHMARK
+      ? BENCHMARK_VISIBLE
+      : null;
+  if (!visible) return;
+
   for (const item of node.widgets || []) {
-    if (!BENCHMARK_PLUMBING.has(item?.name)) continue;
+    if (visible.has(item?.name)) continue;
     item.options ||= {};
-    // Nodes 2 reads options.hidden; legacy LiteGraph still uses widget.hidden.
+    /* Nodes 2 visibility comes from widget.options.hidden. widget.hidden alone
+       only covers the legacy LiteGraph path. Keep both so the workflow behaves
+       correctly in either renderer. */
     item.options.hidden = true;
     item.hidden = true;
   }
@@ -78,8 +86,15 @@ function hideBenchmarkPlumbing(node) {
 function nodes2Mount(root) {
   const parent = root?.parentElement;
   if (!parent) return null;
-  // Current WidgetDOM.vue mount: <div class="flex flex-col *:flex-1">...</div>.
-  return parent.classList?.contains("flex") && parent.classList?.contains("flex-col") ? parent : null;
+  /* Current WidgetDOM.vue mount is <div class="flex flex-col *:flex-1">. */
+  if (!parent.classList?.contains("flex") || !parent.classList?.contains("flex-col")) return null;
+  return parent;
+}
+
+function nodes2NodeElement(root) {
+  const mount = nodes2Mount(root);
+  if (!mount) return null;
+  return mount.closest?.(".lg-node") || mount.closest?.("[data-node-id]") || null;
 }
 
 function prepareNodes2Mount(root) {
@@ -91,27 +106,6 @@ function prepareNodes2Mount(root) {
   mount.style.setProperty("align-self", "start", "important");
   mount.style.setProperty("overflow", "hidden", "important");
   return mount;
-}
-
-function slotHeight(root) {
-  const parent = root?.parentElement;
-  const value = Number(parent?.clientHeight || 0);
-  return Number.isFinite(value) && value > 80 ? value : 0;
-}
-
-function releaseRoot(root, benchmark = false) {
-  if (!root?.isConnected) return;
-  const cap = slotHeight(root);
-  prepareNodes2Mount(root);
-  root.style.setProperty("flex", "0 0 auto", "important");
-  root.style.setProperty("flex-grow", "0", "important");
-  root.style.setProperty("flex-shrink", "0", "important");
-  root.style.setProperty("height", "auto", "important");
-  root.style.setProperty("min-height", "0", "important");
-  root.style.setProperty("align-self", "flex-start", "important");
-  root.style.setProperty("max-height", cap ? `${Math.floor(cap)}px` : "none", "important");
-  root.style.setProperty("overflow-x", "hidden", "important");
-  root.style.setProperty("overflow-y", benchmark ? "auto" : "hidden", "important");
 }
 
 function nativeBenchmarkSurface(root) {
@@ -131,6 +125,20 @@ function nativeBenchmarkSurface(root) {
   }
 }
 
+function releaseRoot(root, benchmark = false) {
+  if (!root?.isConnected) return;
+  prepareNodes2Mount(root);
+  root.style.setProperty("flex", "0 0 auto", "important");
+  root.style.setProperty("flex-grow", "0", "important");
+  root.style.setProperty("flex-shrink", "0", "important");
+  root.style.setProperty("height", "auto", "important");
+  root.style.setProperty("min-height", "0", "important");
+  root.style.setProperty("align-self", "flex-start", "important");
+  root.style.setProperty("max-height", benchmark ? "560px" : "none", "important");
+  root.style.setProperty("overflow-x", "hidden", "important");
+  root.style.setProperty("overflow-y", benchmark ? "auto" : "hidden", "important");
+}
+
 function releaseDirector(node) {
   const root = node?.__h3studioPanel;
   if (!root?.isConnected) return;
@@ -141,7 +149,6 @@ function releaseDirector(node) {
   const inspector = layout?.querySelector(".h3s-v6-inspector,.h3s-v7-inspector");
   if (!layout || !main || !inspector) return;
 
-  // v14 writes the whole widget-slot height into this layout; Nodes 2 already owns that slot.
   layout.style.setProperty("height", "auto", "important");
   layout.style.setProperty("min-height", "0", "important");
   layout.style.setProperty("max-height", "none", "important");
@@ -155,7 +162,6 @@ function releaseDirector(node) {
 }
 
 function releaseBenchmark(node) {
-  hideBenchmarkPlumbing(node);
   const root = node?.__h3bRoot;
   if (!root?.isConnected) return;
   releaseRoot(root, true);
@@ -163,70 +169,92 @@ function releaseBenchmark(node) {
 }
 
 function release(node) {
+  hideForNodes2(node);
   if (node?.comfyClass === DIRECTOR) releaseDirector(node);
   else if (node?.comfyClass === BENCHMARK) releaseBenchmark(node);
 }
 
-function captureNodes2Slot(node, root) {
-  if (node?.__h3Nodes2IntrinsicFitV26) return null;
-  const mount = nodes2Mount(root);
-  if (!mount || !Array.isArray(node?.size) || Number(node.size[1]) <= 0) return null;
-  const mountRect = mount.getBoundingClientRect();
-  const nodeElement = mount.closest?.("[data-node-id]");
-  const nodeRect = nodeElement?.getBoundingClientRect?.();
-  const nodePx = Number(nodeRect?.height || 0);
-  const mountPx = Number(mountRect.height || 0);
-  const scale = nodePx > 0 ? nodePx / Number(node.size[1]) : Number(app.canvas?.ds?.scale || 1);
-  if (!(mountPx > 4) || !(scale > 0)) return null;
-  return { mountPx, nodePx: nodePx || Number(node.size[1]) * scale, scale };
-}
+function fitNodes2Intrinsic(node, root) {
+  if (!node?.graph || !root?.isConnected || !Array.isArray(node?.size)) return;
+  const mount = prepareNodes2Mount(root);
+  const nodeEl = nodes2NodeElement(root);
+  if (!mount || !nodeEl) return;
 
-function fitNodes2Once(node, root, snapshot) {
-  if (!snapshot || node?.__h3Nodes2IntrinsicFitV26) return;
-  // Mark first so the setSize -> afterResize chain cannot recursively fit again.
-  node.__h3Nodes2IntrinsicFitV26 = true;
+  hideForNodes2(node);
+  release(node);
 
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    if (!node?.graph || !root?.isConnected) return;
+  const width = Number(node.size[0]);
+  const currentHeight = Number(node.size[1]);
+  const rectBefore = nodeEl.getBoundingClientRect();
+  if (!(width > 0) || !(currentHeight > 0) || !(rectBefore.width > 0)) return;
+
+  /* Width is stable while we probe height, so it gives us the canvas zoom scale
+     without depending on the already-broken node height. */
+  const scale = rectBefore.width / width;
+  if (!(scale > 0)) return;
+
+  const previousHeightVar = nodeEl.style.getPropertyValue("--node-height");
+  const previousHeightPriority = nodeEl.style.getPropertyPriority("--node-height");
+
+  /* LGraphNode.vue uses --node-height only as a min-height. Drop that floor for
+     one frame; the Vue node is then free to collapse to its actual DOM content. */
+  nodeEl.style.setProperty("--node-height", "1px", "important");
+
+  requestAnimationFrame(() => {
+    if (!node?.graph || !root?.isConnected || !nodeEl.isConnected) return;
+    hideForNodes2(node);
     release(node);
 
-    // Measure intrinsic H3 content with the stale slot cap temporarily removed.
-    root.style.setProperty("max-height", "none", "important");
-    const naturalPx = Math.ceil(root.getBoundingClientRect().height);
-    if (!(naturalPx > 20)) { release(node); return; }
+    const naturalFullPx = Math.ceil(nodeEl.getBoundingClientRect().height);
+    const titleHeight = Number(globalThis.LiteGraph?.NODE_TITLE_HEIGHT || 30);
+    const desiredHeight = Math.max(120, Math.ceil(naturalFullPx / scale - titleHeight + 2));
+    const now = Number(node.size?.[1] || currentHeight);
 
-    const desiredPx = snapshot.nodePx - snapshot.mountPx + naturalPx + 2;
-    const desiredGraphHeight = Math.max(260, Math.ceil(desiredPx / snapshot.scale));
-    const currentHeight = Number(node.size?.[1] || 0);
-
-    // Nodes 2 workflows often carry a stale legacy height. Shrink it once, never auto-grow it.
-    if (currentHeight > desiredGraphHeight + 8) {
-      node.setSize?.([Number(node.size[0]), desiredGraphHeight]);
+    if (now > desiredHeight + 8) {
+      node.setSize?.([Number(node.size[0]), desiredHeight]);
+      /* Do not wait for the external-layout bridge to repaint the CSS variable. */
+      nodeEl.style.setProperty("--node-height", `${desiredHeight + titleHeight}px`);
       node.setDirtyCanvas?.(true, true);
       node.graph?.setDirtyCanvas?.(true, true);
+    } else if (previousHeightVar) {
+      nodeEl.style.setProperty("--node-height", previousHeightVar, previousHeightPriority || "");
+    } else {
+      nodeEl.style.removeProperty("--node-height");
     }
+
     requestAnimationFrame(() => release(node));
-  }));
+  });
+}
+
+function scheduleBootFits(node, root) {
+  if (!nodes2Mount(root)) return;
+  node.__h3Nodes2BootFitStarted ??= performance.now();
+  const started = node.__h3Nodes2BootFitStarted;
+  for (const delay of [0, 90, 240, 520, 900]) {
+    setTimeout(() => {
+      /* Boot-only normalization: catch onConfigure/afterConfigureGraph size writes,
+         then stop. Manual resizing after load remains completely user-controlled. */
+      if (performance.now() - started > 1400) return;
+      fitNodes2Intrinsic(node, root);
+    }, delay);
+  }
 }
 
 function bind(node) {
   if (!node || ![DIRECTOR, BENCHMARK].includes(node.comfyClass)) return;
-  if (node.comfyClass === BENCHMARK) hideBenchmarkPlumbing(node);
+  hideForNodes2(node);
   const root = node.comfyClass === DIRECTOR ? node.__h3studioPanel : node.__h3bRoot;
   if (!root?.isConnected) {
     setTimeout(() => bind(node), 100);
     return;
   }
 
-  // Snapshot the Vue widget row before opting it out of flex-grow; this lets us remove
-  // exactly the stale excess height from the node rather than guessing a magic size.
-  const nodes2Snapshot = captureNodes2Slot(node, root);
   release(node);
-  fitNodes2Once(node, root, nodes2Snapshot);
+  scheduleBootFits(node, root);
 
   const dom = widget(node, node.comfyClass === DIRECTOR ? "h3studio_controls" : "h3studio_smart_benchmark");
-  if (dom?.options && !dom.options.__h3NaturalGeometryV26) {
-    dom.options.__h3NaturalGeometryV26 = true;
+  if (dom?.options && !dom.options.__h3NaturalGeometryV27) {
+    dom.options.__h3NaturalGeometryV27 = true;
     const previous = dom.options.afterResize;
     dom.options.afterResize = (...args) => {
       previous?.apply(dom, args);
@@ -235,21 +263,19 @@ function bind(node) {
     };
   }
 
-  if (root.__h3NaturalGeometryObserverV26) return;
+  if (root.__h3NaturalGeometryObserverV27) return;
   let queued = false;
   const observer = new MutationObserver(() => {
     if (queued) return;
     queued = true;
     requestAnimationFrame(() => {
       queued = false;
+      hideForNodes2(node);
       release(node);
     });
   });
   observer.observe(root, { childList:true, subtree:true, attributes:true, attributeFilter:["class"] });
-  root.__h3NaturalGeometryObserverV26 = observer;
-
-  requestAnimationFrame(() => requestAnimationFrame(() => release(node)));
-  setTimeout(() => release(node), 90);
+  root.__h3NaturalGeometryObserverV27 = observer;
 }
 
 function sweep() {
@@ -257,11 +283,17 @@ function sweep() {
 }
 
 app.registerExtension({
-  name:"H3Studio.Nodes2NaturalGeometryV26",
-  setup(){ installStyles(); setTimeout(sweep, 320); },
+  name:"H3Studio.Nodes2NaturalGeometryV27",
+  setup(){ installStyles(); setTimeout(sweep, 280); },
   nodeCreated(node){
-    if (node?.comfyClass === BENCHMARK) hideBenchmarkPlumbing(node);
-    if ([DIRECTOR, BENCHMARK].includes(node?.comfyClass)) setTimeout(() => bind(node), 100);
+    if ([DIRECTOR, BENCHMARK].includes(node?.comfyClass)) {
+      hideForNodes2(node);
+      setTimeout(() => bind(node), 80);
+    }
   },
-  afterConfigureGraph(){ installStyles(); setTimeout(sweep, 160); },
+  afterConfigureGraph(){
+    installStyles();
+    setTimeout(sweep, 100);
+    setTimeout(sweep, 360);
+  },
 });
