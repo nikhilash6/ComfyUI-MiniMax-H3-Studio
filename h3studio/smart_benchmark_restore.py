@@ -3,7 +3,7 @@
 The scenario lab is useful for comparing arbitrary model/runtime/LoRA setups,
 but the older benchmark node also had a rigorous matrix workflow: seed strategy,
 repeats, resolution sweeps, generation guards, context rendering, live previews
-and same-latent VAE A/B.  Keep both instead of making users choose one design.
+and same-latent VAE A/B. Keep both instead of making users choose one design.
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ SCENARIO_MODE = "Scenario lab"
 MATRIX_MODE = "Matrix A/B"
 VAE_MODE = "VAE decode A/B"
 BENCHMARK_MODES = (SCENARIO_MODE, MATRIX_MODE, VAE_MODE)
+MAX_SCENARIOS = 4
 
 _ORIGINAL_INPUT_TYPES = H3StudioSmartBenchmark.INPUT_TYPES.__func__
 _ORIGINAL_RUN = H3StudioSmartBenchmark.run
@@ -27,6 +28,8 @@ _INSTALLED = False
 def _input_types(cls) -> dict[str, Any]:
     base = _ORIGINAL_INPUT_TYPES(cls)
     required = dict(base.get("required", {}))
+    required["max_scenarios"] = ("INT", {"default": MAX_SCENARIOS, "min": 1, "max": MAX_SCENARIOS, "step": 1})
+    required["grid_cell_size"] = ("INT", {"default": 576, "min": 320, "max": 1024, "step": 64})
     required.update(
         {
             "benchmark_mode": (
@@ -93,7 +96,14 @@ def _run(
 ):
     mode = str(benchmark_mode or SCENARIO_MODE)
     if mode == SCENARIO_MODE:
-        return _ORIGINAL_RUN(self, h3_bundle, studio_context, scenarios_json, max_scenarios, grid_cell_size)
+        return _ORIGINAL_RUN(
+            self,
+            h3_bundle,
+            studio_context,
+            scenarios_json,
+            min(MAX_SCENARIOS, max(1, int(max_scenarios))),
+            grid_cell_size,
+        )
 
     comparison_kind = COMPARISON_KINDS[1] if mode == VAE_MODE else COMPARISON_KINDS[0]
     return H3StudioABComparison().compare(
