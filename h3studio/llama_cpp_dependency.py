@@ -1,9 +1,9 @@
 """Private llama.cpp runtime management for H3 Studio prompt prep.
 
-Normal installs use a pinned prebuilt conda-forge CUDA package inside an H3
-Studio-owned prefix.  Source compilation remains available only as an explicit
-fallback.  Browser callers cannot supply arbitrary repositories, package specs,
-paths, or shell commands.
+Normal installs use pinned prebuilt conda-forge GPU packages inside an H3
+Studio-owned prefix. Linux and Windows NVIDIA systems use CUDA builds; source
+compilation remains only an explicit fallback. Browser callers cannot supply
+arbitrary repositories, package specs, paths, or shell commands.
 """
 
 from __future__ import annotations
@@ -30,23 +30,61 @@ from .qwen35_gguf import mmproj_path as qwen35_mmproj_path
 from .qwen35_gguf import model_path as qwen35_model_path
 from .qwen35_gguf import status as qwen35_gguf_status
 
-# Prebuilt runtime pinned to a verified conda-forge Linux x64 CUDA 13.0 build.
 PREBUILT_LLAMA_VERSION = "10158"
-PREBUILT_LLAMA_BUILD = "cuda130_h8268db4_0"
-PREBUILT_CUDA_VERSION = "13.0"
 PREBUILT_CHANNEL = "conda-forge"
-
-# Micromamba is a single-file bootstrapper.  Pin both release and checksum so
-# H3 Studio never executes an unverified installer payload.
 MICROMAMBA_VERSION = "2.8.1-0"
-MICROMAMBA_URL = (
-    "https://github.com/mamba-org/micromamba-releases/releases/download/"
-    f"{MICROMAMBA_VERSION}/micromamba-linux-64"
-)
-MICROMAMBA_SHA256 = "9689782d863c05a1bf5d2d371ba527104e7a4eb4310c1637d8653b751aed9c82"
 
-# Explicit source-build fallback.  Kept pinned independently of the prebuilt
-# package so a conda outage does not force H3 Studio onto an arbitrary master.
+# Exact micromamba artifacts from the official mirrored release. H3 Studio
+# verifies SHA256 before executing anything.
+_MICROMAMBA = {
+    ("linux", "x86_64"): (
+        "micromamba-linux-64",
+        "9689782d863c05a1bf5d2d371ba527104e7a4eb4310c1637d8653b751aed9c82",
+    ),
+    ("linux", "amd64"): (
+        "micromamba-linux-64",
+        "9689782d863c05a1bf5d2d371ba527104e7a4eb4310c1637d8653b751aed9c82",
+    ),
+    ("linux", "aarch64"): (
+        "micromamba-linux-aarch64",
+        "e5ba23b5945aa49dfd11022e592a510d2686a8feee810e00140b73c9fdf0ba2a",
+    ),
+    ("windows", "amd64"): (
+        "micromamba-win-64.exe",
+        "8a51f88ec02600488ea20c3acd93fbd4da6c0f03fc499aa53fd234c6749b94b0",
+    ),
+    ("windows", "x86_64"): (
+        "micromamba-win-64.exe",
+        "8a51f88ec02600488ea20c3acd93fbd4da6c0f03fc499aa53fd234c6749b94b0",
+    ),
+}
+
+# Prefer CUDA 13 where supported, then automatically retry the CUDA 12.9
+# prebuilt. This keeps older Windows/Linux NVIDIA driver stacks useful without
+# ever falling back to a CPU build by accident.
+_PREBUILT_VARIANTS = {
+    ("linux", "x86_64"): [
+        ("cuda130_h8268db4_0", "13.0"),
+        ("cuda129_h0b4778f_0", "12.9"),
+    ],
+    ("linux", "amd64"): [
+        ("cuda130_h8268db4_0", "13.0"),
+        ("cuda129_h0b4778f_0", "12.9"),
+    ],
+    ("linux", "aarch64"): [
+        ("cuda130_hb3d4081_0", "13.0"),
+        ("cuda129_ha0b6bd5_0", "12.9"),
+    ],
+    ("windows", "amd64"): [
+        ("cuda130_h0f3e06c_0", "13.0"),
+        ("cuda129_hbe3cc3f_0", "12.9"),
+    ],
+    ("windows", "x86_64"): [
+        ("cuda130_h0f3e06c_0", "13.0"),
+        ("cuda129_hbe3cc3f_0", "12.9"),
+    ],
+}
+
 LLAMA_REPO = "https://github.com/ggml-org/llama.cpp.git"
 LLAMA_COMMIT = "7e4c0a96880dae4fc4268ad441f8a6446bd5460a"
 
@@ -69,8 +107,6 @@ def runtime_root() -> Path:
 
 
 def dependency_root() -> Path:
-    """Backward-compatible public helper: now points at the private runtime."""
-
     return runtime_root()
 
 
@@ -78,16 +114,28 @@ def _versions_root() -> Path:
     return runtime_root() / "versions"
 
 
-def _active_link() -> Path:
-    return runtime_root() / "current"
+def _active_pointer() -> Path:
+    # A tiny atomic pointer file works on normal Windows installs without
+    # requiring Developer Mode/admin symlink privileges.
+    return runtime_root() / "current.json"
 
 
 def _tools_root() -> Path:
     return _studio_root() / ".h3studio" / "tools"
 
 
+def _platform_key() -> tuple[str, str]:
+    return platform.system().lower(), platform.machine().lower()
+
+
+def _micromamba_asset() -> tuple[str, str] | None:
+    return _MICROMAMBA.get(_platform_key())
+
+
 def _micromamba_path() -> Path:
-    return _tools_root() / "micromamba" / MICROMAMBA_VERSION / "micromamba"
+    asset = _micromamba_asset()
+    filename = asset[0] if asset else ("micromamba.exe" if os.name == "nt" else "micromamba")
+    return _tools_root() / "micromamba" / MICROMAMBA_VERSION / filename
 
 
 def _mamba_root() -> Path:
@@ -133,9 +181,14 @@ def _cuda_arch() -> str:
     return ""
 
 
+def _prebuilt_variants() -> list[tuple[str, str]]:
+    if not _cuda_arch():
+        return []
+    return list(_PREBUILT_VARIANTS.get(_platform_key(), []))
+
+
 def _prebuilt_supported() -> bool:
-    machine = platform.machine().lower()
-    return platform.system().lower() == "linux" and machine in {"x86_64", "amd64"} and bool(_cuda_arch())
+    return bool(_micromamba_asset() and _prebuilt_variants())
 
 
 def _sha256(path: Path) -> str:
@@ -146,25 +199,39 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _is_executable(path: Path) -> bool:
+    return path.is_file() and (os.name == "nt" or os.access(path, os.X_OK))
+
+
 def _ensure_micromamba() -> Path:
+    asset = _micromamba_asset()
+    if not asset:
+        raise RuntimeError(f"No pinned micromamba bootstrap is available for {platform.system()} {platform.machine()}.")
+    filename, expected_sha = asset
     target = _micromamba_path()
-    if target.is_file() and os.access(target, os.X_OK) and _sha256(target) == MICROMAMBA_SHA256:
+    if _is_executable(target) and _sha256(target) == expected_sha:
         return target
 
     target.parent.mkdir(parents=True, exist_ok=True)
-    fd, temp_name = tempfile.mkstemp(prefix="micromamba-", dir=str(target.parent))
+    suffix = ".exe" if filename.endswith(".exe") else ""
+    fd, temp_name = tempfile.mkstemp(prefix="micromamba-", suffix=suffix, dir=str(target.parent))
     os.close(fd)
     temp = Path(temp_name)
+    url = (
+        "https://github.com/mamba-org/micromamba-releases/releases/download/"
+        f"{MICROMAMBA_VERSION}/{filename}"
+    )
     try:
-        request = urllib.request.Request(MICROMAMBA_URL, headers={"User-Agent": "H3-Studio/PromptPrep"})
+        request = urllib.request.Request(url, headers={"User-Agent": "H3-Studio/PromptPrep"})
         with urllib.request.urlopen(request, timeout=120) as response, temp.open("wb") as output:
             shutil.copyfileobj(response, output)
         actual = _sha256(temp)
-        if actual != MICROMAMBA_SHA256:
+        if actual != expected_sha:
             raise RuntimeError(
-                f"Micromamba checksum mismatch: expected {MICROMAMBA_SHA256}, got {actual}. Refusing to execute it."
+                f"Micromamba checksum mismatch: expected {expected_sha}, got {actual}. Refusing to execute it."
             )
-        temp.chmod(0o755)
+        if os.name != "nt":
+            temp.chmod(0o755)
         os.replace(temp, target)
     finally:
         if temp.exists():
@@ -173,28 +240,52 @@ def _ensure_micromamba() -> Path:
 
 
 def _private_prefix() -> Path | None:
-    link = _active_link()
-    if not link.is_symlink():
+    pointer = _active_pointer()
+    if not pointer.is_file():
         return None
     try:
-        prefix = link.resolve(strict=True)
-    except OSError:
+        data = json.loads(pointer.read_text(encoding="utf-8"))
+        relative = str(data.get("prefix") or "")
+        if not relative:
+            return None
+        versions = _versions_root().resolve()
+        prefix = (runtime_root() / relative).resolve()
+        if not prefix.is_relative_to(versions):
+            return None
+        return prefix if prefix.is_dir() else None
+    except Exception:
         return None
-    return prefix if prefix.is_dir() else None
+
+
+def _binary_candidates(prefix: Path, name: str) -> list[Path]:
+    suffixes = [".exe", ""] if os.name == "nt" else [""]
+    directories = [
+        prefix / "bin",
+        prefix / "Library" / "bin",
+        prefix / "Scripts",
+        prefix,
+    ]
+    return [directory / f"{name}{suffix}" for directory in directories for suffix in suffixes]
+
+
+def _find_binary(prefix: Path, name: str) -> Path:
+    for candidate in _binary_candidates(prefix, name):
+        if _is_executable(candidate):
+            return candidate
+    # Stable diagnostic path even when missing.
+    return _binary_candidates(prefix, name)[0]
 
 
 def _binary_paths(prefix: Path) -> dict[str, Path]:
-    suffix = ".exe" if os.name == "nt" else ""
-    bindir = prefix / ("Scripts" if os.name == "nt" else "bin")
     return {
-        "server": bindir / f"llama-server{suffix}",
-        "mtmd": bindir / f"llama-mtmd-cli{suffix}",
-        "cli": bindir / f"llama-cli{suffix}",
+        "server": _find_binary(prefix, "llama-server"),
+        "mtmd": _find_binary(prefix, "llama-mtmd-cli"),
+        "cli": _find_binary(prefix, "llama-cli"),
     }
 
 
 def _runtime_binaries_ok(prefix: Path) -> bool:
-    return all(path.is_file() and os.access(path, os.X_OK) for path in _binary_paths(prefix).values())
+    return all(_is_executable(path) for path in _binary_paths(prefix).values())
 
 
 def _activate_private_runtime(*, force: bool = False) -> Path | None:
@@ -235,13 +326,11 @@ def _write_manifest(prefix: Path, payload: dict[str, Any]) -> None:
 def _activate_prefix(prefix: Path) -> None:
     root = runtime_root()
     root.mkdir(parents=True, exist_ok=True)
-    link = _active_link()
-    if link.exists() and not link.is_symlink():
-        raise RuntimeError(f"Refusing to replace non-symlink runtime path: {link}")
-    temp = root / f".current-{uuid.uuid4().hex[:8]}"
     relative = os.path.relpath(prefix, root)
-    os.symlink(relative, temp, target_is_directory=True)
-    os.replace(temp, link)
+    payload = json.dumps({"prefix": relative}, sort_keys=True) + "\n"
+    temp = root / f".current-{uuid.uuid4().hex[:8]}.json"
+    temp.write_text(payload, encoding="utf-8")
+    os.replace(temp, _active_pointer())
 
 
 def _cleanup_old_versions(active: Path, keep: int = 2) -> None:
@@ -255,18 +344,33 @@ def _cleanup_old_versions(active: Path, keep: int = 2) -> None:
 
 
 def _smoke_image(path: Path) -> None:
-    # Tiny valid PNG, enough to exercise libmtmd without depending on PIL here.
     payload = base64.b64decode(
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZJ1sAAAAASUVORK5CYII="
     )
     path.write_bytes(payload)
 
 
+def _runtime_env(prefix: Path) -> dict[str, str]:
+    env = dict(os.environ)
+    path_dirs = []
+    for directory in (prefix / "bin", prefix / "Library" / "bin", prefix / "Scripts"):
+        if directory.is_dir():
+            path_dirs.append(str(directory))
+    if path_dirs:
+        env["PATH"] = os.pathsep.join(path_dirs + [env.get("PATH", "")])
+    if os.name != "nt" and (prefix / "lib").is_dir():
+        env["LD_LIBRARY_PATH"] = os.pathsep.join(
+            [str(prefix / "lib"), env.get("LD_LIBRARY_PATH", "")]
+        ).rstrip(os.pathsep)
+    return env
+
+
 def _smoke_test(prefix: Path) -> dict[str, Any]:
     binaries = _binary_paths(prefix)
+    env = _runtime_env(prefix)
     versions = {}
     for key, binary in binaries.items():
-        versions[key] = _run([str(binary), "--version"], timeout=30).strip().splitlines()[-1:]
+        versions[key] = _run([str(binary), "--version"], timeout=30, env=env).strip().splitlines()[-1:]
 
     model = qwen35_model_path()
     mmproj = qwen35_mmproj_path()
@@ -295,6 +399,7 @@ def _smoke_test(prefix: Path) -> dict[str, Any]:
                 "-p", "/no_think\\nReturn exactly: OK",
             ],
             timeout=180,
+            env=env,
         )
         elapsed = time.perf_counter() - started
     return {
@@ -314,71 +419,80 @@ def _micromamba_env() -> dict[str, str]:
 
 
 def _install_prebuilt_runtime() -> dict[str, Any]:
-    if not _prebuilt_supported():
+    variants = _prebuilt_variants()
+    if not variants:
         raise RuntimeError(
-            "The prebuilt fast runtime currently targets Linux x86_64 with an NVIDIA CUDA GPU. "
-            "Use the explicit source fallback on unsupported platforms."
+            "No pinned prebuilt GPU runtime is available for this OS/architecture/GPU. "
+            "Linux x64/aarch64 and Windows x64 NVIDIA CUDA systems are supported."
         )
 
     micromamba = _ensure_micromamba()
     versions = _versions_root()
     versions.mkdir(parents=True, exist_ok=True)
-    prefix = versions / f"llama-{PREBUILT_LLAMA_VERSION}-cuda130-{uuid.uuid4().hex[:8]}"
-    package_spec = f"llama.cpp={PREBUILT_LLAMA_VERSION}={PREBUILT_LLAMA_BUILD}"
+    failures: list[str] = []
 
-    try:
-        _run(
-            [
-                str(micromamba),
-                "create",
-                "-y",
-                "-p", str(prefix),
-                "-c", PREBUILT_CHANNEL,
-                "--override-channels",
-                package_spec,
-                f"cuda-version={PREBUILT_CUDA_VERSION}",
-            ],
-            timeout=600,
-            env=_micromamba_env(),
+    for build_string, cuda_version in variants:
+        prefix = versions / (
+            f"llama-{PREBUILT_LLAMA_VERSION}-{platform.system().lower()}-"
+            f"cuda{cuda_version.replace('.', '')}-{uuid.uuid4().hex[:8]}"
         )
-        if not _runtime_binaries_ok(prefix):
-            missing = [name for name, path in _binary_paths(prefix).items() if not path.is_file()]
-            raise RuntimeError(f"Prebuilt llama.cpp environment is missing required binaries: {', '.join(missing)}")
+        package_spec = f"llama.cpp={PREBUILT_LLAMA_VERSION}={build_string}"
+        try:
+            _run(
+                [
+                    str(micromamba),
+                    "create",
+                    "-y",
+                    "-p", str(prefix),
+                    "-c", PREBUILT_CHANNEL,
+                    "--override-channels",
+                    package_spec,
+                    f"cuda-version={cuda_version}",
+                ],
+                timeout=600,
+                env=_micromamba_env(),
+            )
+            if not _runtime_binaries_ok(prefix):
+                missing = [name for name, path in _binary_paths(prefix).items() if not _is_executable(path)]
+                raise RuntimeError(f"Prebuilt llama.cpp environment is missing required binaries: {', '.join(missing)}")
 
-        smoke = _smoke_test(prefix)
-        manifest = {
-            "provider": "conda-forge",
-            "install_mode": "prebuilt",
-            "llama_cpp_version": PREBUILT_LLAMA_VERSION,
-            "llama_cpp_build": PREBUILT_LLAMA_BUILD,
-            "cuda_version": PREBUILT_CUDA_VERSION,
-            "micromamba_version": MICROMAMBA_VERSION,
-            "installed_at_unix": int(time.time()),
-            "cuda_arch": _cuda_arch(),
-            "smoke": smoke,
-        }
-        _write_manifest(prefix, manifest)
-        _activate_prefix(prefix)
-        _activate_private_runtime(force=True)
-        _cleanup_old_versions(prefix)
-    except Exception:
-        shutil.rmtree(prefix, ignore_errors=True)
-        raise
+            smoke = _smoke_test(prefix)
+            manifest = {
+                "provider": "conda-forge",
+                "install_mode": "prebuilt",
+                "platform": platform.system(),
+                "machine": platform.machine(),
+                "llama_cpp_version": PREBUILT_LLAMA_VERSION,
+                "llama_cpp_build": build_string,
+                "cuda_version": cuda_version,
+                "micromamba_version": MICROMAMBA_VERSION,
+                "installed_at_unix": int(time.time()),
+                "cuda_arch": _cuda_arch(),
+                "smoke": smoke,
+            }
+            _write_manifest(prefix, manifest)
+            _activate_prefix(prefix)
+            _activate_private_runtime(force=True)
+            _cleanup_old_versions(prefix)
+            return {
+                "ok": True,
+                "root": str(runtime_root()),
+                "prefix": str(prefix),
+                "provider": "conda-forge",
+                "install_mode": "prebuilt",
+                "package": package_spec,
+                "cuda": True,
+                "cuda_version": cuda_version,
+                "cuda_arch": _cuda_arch(),
+                "smoke": smoke,
+                "runtime": qwen35_gguf_status(),
+                "restart_required": False,
+            }
+        except Exception as error:
+            failures.append(f"{build_string}: {type(error).__name__}: {error}")
+            shutil.rmtree(prefix, ignore_errors=True)
 
-    return {
-        "ok": True,
-        "root": str(runtime_root()),
-        "prefix": str(prefix),
-        "provider": "conda-forge",
-        "install_mode": "prebuilt",
-        "package": package_spec,
-        "cuda": True,
-        "cuda_version": PREBUILT_CUDA_VERSION,
-        "cuda_arch": _cuda_arch(),
-        "smoke": smoke,
-        "runtime": qwen35_gguf_status(),
-        "restart_required": False,
-    }
+    raise RuntimeError("All pinned prebuilt llama.cpp CUDA variants failed:\n" + "\n".join(failures[-2:]))
 
 
 def _git_clean(repo: Path) -> bool:
@@ -396,10 +510,12 @@ def _repo_origin(repo: Path) -> str:
 
 
 def _build_source_runtime() -> dict[str, Any]:
-    """Explicit slow fallback for platforms without the pinned prebuilt path."""
+    """Explicit slow fallback. Normal users should never need this path."""
 
     if platform.system().lower() != "linux":
-        raise RuntimeError("Automatic source fallback is currently enabled only on Linux.")
+        raise RuntimeError(
+            "The automatic source fallback is Linux-only. Windows NVIDIA users should use the prebuilt runtime."
+        )
     for tool in ("git", "cmake"):
         if not shutil.which(tool):
             raise RuntimeError(f"Cannot build llama.cpp because {tool} is not installed.")
@@ -477,6 +593,7 @@ def dependency_status() -> dict[str, Any]:
     prefix = _activate_private_runtime(force=False)
     manifest = _read_manifest(prefix)
     runtime = qwen35_gguf_status()
+    variants = _prebuilt_variants()
     return {
         "ok": True,
         "platform": platform.system(),
@@ -484,13 +601,14 @@ def dependency_status() -> dict[str, Any]:
         "root": str(runtime_root()),
         "prebuilt_supported": _prebuilt_supported(),
         "prebuilt_version": PREBUILT_LLAMA_VERSION,
-        "prebuilt_build": PREBUILT_LLAMA_BUILD,
-        "prebuilt_cuda_version": PREBUILT_CUDA_VERSION,
+        "prebuilt_variants": [
+            {"build": build, "cuda_version": cuda_version} for build, cuda_version in variants
+        ],
         "private_runtime_present": bool(prefix),
         "private_prefix": str(prefix or ""),
         "manifest": manifest,
         "micromamba_present": _micromamba_path().is_file(),
-        "source_fallback_available": bool(shutil.which("git") and shutil.which("cmake")),
+        "source_fallback_available": platform.system().lower() == "linux" and bool(shutil.which("git") and shutil.which("cmake")),
         "source_root": str(_source_root()),
         "source_checkout_present": (_source_root() / ".git").is_dir(),
         "pinned_source_commit": LLAMA_COMMIT,
@@ -535,8 +653,6 @@ __all__ = [
     "LLAMA_COMMIT",
     "LLAMA_REPO",
     "MICROMAMBA_VERSION",
-    "PREBUILT_CUDA_VERSION",
-    "PREBUILT_LLAMA_BUILD",
     "PREBUILT_LLAMA_VERSION",
     "dependency_root",
     "dependency_status",
