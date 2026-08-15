@@ -8,9 +8,11 @@ function installStyles() {
   style.id = STYLE_ID;
   style.textContent = `
     .h3final-benchmark{
-      --h3bf-control:color-mix(in srgb,var(--comfy-input-bg,#181c20) 90%,white 10%);
-      --h3bf-control-hover:color-mix(in srgb,var(--comfy-input-bg,#181c20) 84%,white 16%);
-      --h3bf-line:color-mix(in srgb,var(--border-color,#343a40) 72%,transparent);
+      --h3bf-control:color-mix(in srgb,var(--comfy-input-bg,#181c20) 88%,white 12%);
+      --h3bf-control-hover:color-mix(in srgb,var(--comfy-input-bg,#181c20) 82%,white 18%);
+      --h3bf-card:color-mix(in srgb,var(--comfy-input-bg,#181c20) 24%,transparent);
+      --h3bf-card-head:color-mix(in srgb,var(--comfy-input-bg,#181c20) 42%,transparent);
+      --h3bf-line:color-mix(in srgb,var(--border-color,#343a40) 76%,transparent);
       --h3bf-line-soft:color-mix(in srgb,var(--border-color,#343a40) 48%,transparent);
       --h3bf-muted:color-mix(in srgb,var(--descrip-text,#7f8992) 92%,white 8%);
       --h3bf-text:var(--input-text,#e7eaed);
@@ -18,17 +20,12 @@ function installStyles() {
       background-image:none!important;
     }
 
-    /* One continuous node surface. Never paint a second app/card inside ComfyUI. */
     .h3final-benchmark .h3b7-top,
     .h3final-benchmark .h3b7-body,
     .h3final-benchmark .h3b7-toolbar,
     .h3final-benchmark .h3b15-plan,
     .h3final-benchmark .h3b7-summary,
     .h3final-benchmark .h3b7-list,
-    .h3final-benchmark .h3b7-scenario,
-    .h3final-benchmark .h3b7-scenario[open],
-    .h3final-benchmark .h3b7-scenario>summary,
-    .h3final-benchmark .h3b7-scenario[open]>summary,
     .h3final-benchmark .h3b7-fields,
     .h3final-benchmark .h3b7-field,
     .h3final-benchmark .h3b7-loras,
@@ -39,7 +36,6 @@ function installStyles() {
       box-shadow:none!important;
     }
 
-    /* Header/setup use the exact same graphite language as the scenario controls. */
     .h3final-benchmark .h3b7-top{border-bottom:1px solid var(--h3bf-line)!important}
     .h3final-benchmark .h3b7-toolbar,
     .h3final-benchmark .h3b15-plan,
@@ -84,45 +80,60 @@ function installStyles() {
     }
     .h3final-benchmark .h3b15-seeds button:hover{background:var(--h3bf-control)!important}
 
-    /* Scenario = a property sheet, not the light-gray card seen in the old UI. */
+    /* Scenario cards: calm, bounded, and aligned with Director. */
+    .h3final-benchmark .h3b7-list{
+      display:flex!important;
+      flex-direction:column!important;
+      gap:10px!important;
+      margin:0!important;
+      padding-bottom:4px!important;
+    }
     .h3final-benchmark .h3b7-list:before{
-      border-bottom:1px solid var(--h3bf-line)!important;
+      border-bottom:0!important;
       color:#89939b!important;
-      padding:12px 0 7px!important;
+      padding:13px 2px 2px!important;
     }
     .h3final-benchmark .h3b7-scenario,
     .h3final-benchmark .h3b7-scenario[open]{
+      position:relative!important;
+      width:100%!important;
       margin:0!important;
       padding:0!important;
-      border:0!important;
-      border-bottom:1px solid var(--h3bf-line)!important;
-      border-radius:0!important;
-      overflow:visible!important;
+      border:1px solid color-mix(in srgb,var(--border-color,#41484f) 82%,white 5%)!important;
+      border-radius:10px!important;
+      background:var(--h3bf-card)!important;
+      background-image:none!important;
+      box-shadow:none!important;
+      overflow:hidden!important;
     }
+
+    /* Kill the old active-scenario stripe completely. */
+    .h3final-benchmark .h3b7-scenario:before,
     .h3final-benchmark .h3b7-scenario[open]:before{
-      left:-1px!important;
-      top:9px!important;
-      bottom:10px!important;
-      width:2px!important;
-      background:#718391!important;
-      opacity:.75!important;
+      display:none!important;
+      content:none!important;
     }
+
     .h3final-benchmark .h3b7-scenario>summary,
     .h3final-benchmark .h3b7-scenario[open]>summary{
-      min-height:48px!important;
-      padding:6px 4px 6px 8px!important;
+      min-height:50px!important;
+      padding:7px 10px!important;
       border:0!important;
       border-radius:0!important;
-      background:transparent!important;
+      background:var(--h3bf-card-head)!important;
+      background-image:none!important;
+    }
+    .h3final-benchmark .h3b7-scenario[open]>summary{
+      border-bottom:1px solid var(--h3bf-line-soft)!important;
     }
     .h3final-benchmark .h3b7-scenario>summary:hover,
     .h3final-benchmark .h3b7-scenario[open]>summary:hover{
-      background:color-mix(in srgb,var(--h3bf-control) 28%,transparent)!important;
+      background:color-mix(in srgb,var(--h3bf-card-head) 78%,white 4%)!important;
     }
     .h3final-benchmark .h3b7-index{
       background:transparent!important;
       border-color:color-mix(in srgb,var(--border-color,#41484f) 78%,white 7%)!important;
-      color:#a2abb2!important;
+      color:#a6afb6!important;
     }
     .h3final-benchmark .h3b7-name{
       background:transparent!important;
@@ -131,30 +142,44 @@ function installStyles() {
     .h3final-benchmark .h3b7-name:hover,
     .h3final-benchmark .h3b7-name:focus{background:var(--h3bf-control)!important}
 
+    /* Real inner padding prevents labels from touching/clipping against the node edge. */
     .h3final-benchmark .h3b7-fields{
+      width:100%!important;
       margin:0!important;
-      padding:2px 4px 12px 8px!important;
-      border-top:1px solid var(--h3bf-line-soft)!important;
+      padding:4px 12px 12px!important;
+      border:0!important;
+      overflow:visible!important;
     }
     .h3final-benchmark .h3b7-field{
-      grid-template-columns:112px minmax(0,1fr)!important;
+      display:grid!important;
+      grid-template-columns:118px minmax(0,1fr)!important;
+      align-items:center!important;
       gap:14px!important;
-      min-height:47px!important;
-      padding:6px 0!important;
+      width:100%!important;
+      min-height:50px!important;
+      padding:7px 2px!important;
       border:0!important;
       border-bottom:1px solid var(--h3bf-line-soft)!important;
+      overflow:visible!important;
     }
+    .h3final-benchmark .h3b7-field:last-of-type{border-bottom:0!important}
     .h3final-benchmark .h3b7-label{
-      color:#939ca4!important;
-      font-size:7.8px!important;
+      display:block!important;
+      width:100%!important;
+      min-width:0!important;
+      padding-left:2px!important;
+      overflow:visible!important;
+      white-space:nowrap!important;
+      color:#969fa7!important;
+      font-size:7.9px!important;
       font-weight:650!important;
+      line-height:1.2!important;
     }
 
-    /* Inputs should be graphite, not pitch black. */
+    /* Inputs use one graphite tone rather than black boxes inside a gray card. */
     .h3final-benchmark .h3b7-input,
     .h3final-benchmark .h3b7-select,
     .h3final-benchmark .h3b17-select,
-    .h3final-benchmark .h3final-mp,
     .h3final-benchmark .h3final-lora-picker,
     .h3final-benchmark .h3final-strength-value{
       background-color:var(--h3bf-control)!important;
@@ -165,32 +190,90 @@ function installStyles() {
     .h3final-benchmark .h3b7-input:hover,
     .h3final-benchmark .h3b7-select:hover,
     .h3final-benchmark .h3b17-select:hover,
-    .h3final-benchmark .h3final-mp:hover,
     .h3final-benchmark .h3final-lora-picker:hover{
       background-color:var(--h3bf-control-hover)!important;
       border-color:#59636c!important;
     }
 
-    /* Target size belongs to its row; no inset card look. */
-    .h3final-benchmark .h3final-target-field{padding-top:7px!important;padding-bottom:7px!important}
+    /* Target size: one clean rail, no chunky inset control card. */
+    .h3final-benchmark .h3final-target-field{
+      padding-top:9px!important;
+      padding-bottom:9px!important;
+    }
     .h3final-benchmark .h3final-mp{
-      min-height:36px!important;
-      padding:5px 10px!important;
-      border-radius:7px!important;
+      display:grid!important;
+      grid-template-columns:minmax(0,1fr) 78px!important;
+      gap:16px!important;
+      align-items:center!important;
+      width:100%!important;
+      min-height:46px!important;
+      padding:3px 4px!important;
+      border:0!important;
+      border-radius:0!important;
+      background:transparent!important;
+      box-shadow:none!important;
+    }
+    .h3final-benchmark .h3final-mp-main{min-width:0!important;padding-top:2px!important}
+    .h3final-benchmark .h3final-mp-track{
+      position:relative!important;
+      height:22px!important;
+      --h3final-mp:0%;
+    }
+    .h3final-benchmark .h3final-mp-track:before{
+      content:''!important;
+      position:absolute!important;
+      left:0!important;right:0!important;top:50%!important;
+      height:5px!important;
+      border-radius:99px!important;
+      background:color-mix(in srgb,var(--border-color,#343a40) 78%,black 10%)!important;
+      transform:translateY(-50%)!important;
+    }
+    .h3final-benchmark .h3final-mp-track:after{
+      content:''!important;
+      position:absolute!important;
+      left:0!important;top:50%!important;
+      width:var(--h3final-mp)!important;
+      height:5px!important;
+      border-radius:99px!important;
+      background:linear-gradient(90deg,#72aa9e 0%,#84aa87 28%,#b1a66c 55%,#c9855f 78%,#c76568 100%)!important;
+      transform:translateY(-50%)!important;
+    }
+    .h3final-benchmark .h3final-mp-thumb{
+      width:14px!important;
+      height:14px!important;
+      border:2px solid color-mix(in srgb,var(--comfy-input-bg,#181c20) 78%,black 22%)!important;
+      background:#b8c1c7!important;
+      box-shadow:0 1px 4px rgba(0,0,0,.34)!important;
+    }
+    .h3final-benchmark .h3final-mp-scale{
+      margin-top:2px!important;
+      color:#727d85!important;
+      font-size:6.7px!important;
+      font-variant-numeric:tabular-nums!important;
+    }
+    .h3final-benchmark .h3final-mp-value{
+      align-self:center!important;
+      padding-right:2px!important;
+      text-align:right!important;
+      color:#f0f2f3!important;
+      font-size:9.2px!important;
+      font-weight:760!important;
+      font-variant-numeric:tabular-nums!important;
+      white-space:nowrap!important;
     }
 
-    /* LoRA editor follows the same flat rows and never becomes a gray sub-card. */
+    /* LoRA section belongs inside the scenario card, aligned to the property rows. */
     .h3final-benchmark .h3b7-loras{
       width:100%!important;
       margin:0!important;
-      padding:7px 0 0 126px!important;
+      padding:7px 2px 2px 134px!important;
       border:0!important;
     }
     .h3final-benchmark .h3b7-loras>summary{
-      min-height:34px!important;
+      min-height:36px!important;
       padding:4px 0!important;
       border:0!important;
-      color:#9da6ad!important;
+      color:#9fa8af!important;
       background:transparent!important;
     }
     .h3final-benchmark .h3b7-lora-body{
@@ -204,7 +287,7 @@ function installStyles() {
       border-radius:0!important;
     }
     .h3final-benchmark .h3final-add-lora{
-      min-height:32px!important;
+      min-height:33px!important;
       border:1px solid color-mix(in srgb,var(--border-color,#41484f) 84%,white 7%)!important;
       border-radius:7px!important;
       background:var(--h3bf-control)!important;
@@ -213,8 +296,17 @@ function installStyles() {
     .h3final-benchmark .h3final-add-lora:hover{background:var(--h3bf-control-hover)!important;border-color:#59636c!important}
 
     @container (max-width:700px){
-      .h3final-benchmark .h3b7-field{grid-template-columns:92px minmax(0,1fr)!important;gap:10px!important}
-      .h3final-benchmark .h3b7-loras{padding-left:102px!important}
+      .h3final-benchmark .h3b7-fields{padding-left:10px!important;padding-right:10px!important}
+      .h3final-benchmark .h3b7-field{grid-template-columns:96px minmax(0,1fr)!important;gap:10px!important}
+      .h3final-benchmark .h3b7-loras{padding-left:108px!important}
+      .h3final-benchmark .h3final-mp{grid-template-columns:minmax(0,1fr) 68px!important;gap:10px!important}
+    }
+    @container (max-width:520px){
+      .h3final-benchmark .h3b7-field{grid-template-columns:1fr!important;gap:6px!important;padding:9px 2px!important}
+      .h3final-benchmark .h3b7-label{padding-left:0!important}
+      .h3final-benchmark .h3b7-loras{padding-left:2px!important}
+      .h3final-benchmark .h3final-mp{grid-template-columns:1fr!important;gap:3px!important}
+      .h3final-benchmark .h3final-mp-value{text-align:left!important}
     }
   `;
   document.head.append(style);
