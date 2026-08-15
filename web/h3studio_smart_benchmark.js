@@ -140,11 +140,16 @@ function hideNativeWidget(target) {
   if (!target) return;
   target.hidden = true;
   target.__h3b7OriginalCompute ||= target.computeSize;
-  target.computeSize = () => [0, 0];
+  target.computeSize = () => [0, -4];
   target.type = "hidden";
+  if (target.inputEl?.style) target.inputEl.style.display = "none";
+  if (target.element?.style && target.name !== WIDGET_NAME) target.element.style.display = "none";
 }
 function hidePlumbing(node) {
-  for (const name of ["scenarios_json", "max_scenarios", "grid_cell_size"]) hideNativeWidget(widget(node, name));
+  for (const w of node?.widgets || []) {
+    if (w?.name === WIDGET_NAME) continue;
+    hideNativeWidget(w);
+  }
 }
 
 async function loadCatalog(force = false) {

@@ -266,6 +266,14 @@ function attachDirector(node) {
 
 function fixBenchmark(node) {
   if (node?.comfyClass !== BENCHMARK) return;
+  for (const w of node.widgets || []) {
+    if (w?.name === "h3studio_smart_benchmark") continue;
+    w.hidden = true;
+    w.type = "hidden";
+    w.computeSize = () => [0, -4];
+    if (w.inputEl?.style) w.inputEl.style.display = "none";
+    if (w.element?.style && w.name !== "h3studio_smart_benchmark") w.element.style.display = "none";
+  }
   const root = node.__h3bRoot;
   if (root?.parentElement) root.parentElement.classList.remove("h3b4-parent-fix");
   if (root) {
