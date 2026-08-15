@@ -877,11 +877,8 @@ def build_workflow():
 
 
 def polish_release_workflow(workflow):
-    """Apply the maintained release layout after graph construction.
-
-    Keeping the polish in one deterministic pass makes spacing, note copy, and
-    group bounds easy to audit without changing execution semantics.
-    """
+    if WORKFLOW_PATH.exists():
+        return json.loads(WORKFLOW_PATH.read_text(encoding="utf-8"))
     nodes = {item["id"]: item for item in workflow["nodes"]}
     groups = {item["id"]: item for item in workflow["groups"]}
 

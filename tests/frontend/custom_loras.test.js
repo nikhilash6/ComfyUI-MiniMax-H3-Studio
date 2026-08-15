@@ -20,8 +20,7 @@ test("custom LoRA extension discovers installed ComfyUI LoRAs and survives panel
   assert.doesNotMatch(source, /queueMicrotask\(wait\)/);
 });
 
-test("custom LoRA UI explains the quantized-model fast path and acceleration ownership", () => {
-  assert.match(source, /bypass-forward/);
-  assert.match(source, /not merged and requantized/);
-  assert.match(source, /LightX\/PDD acceleration is already applied/);
+test("custom LoRA UI explains acceleration ownership", () => {
+  assert.match(source, /Speed already applies LightX\/PDD acceleration/);
+  assert.match(source, /Add only compatible custom H3 LoRAs here/);
 });

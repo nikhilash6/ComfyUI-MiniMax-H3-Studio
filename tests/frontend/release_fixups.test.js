@@ -35,8 +35,8 @@ test("Smart Benchmark base renderer remains stable and bounded", () => {
 
 test("Director v6 keeps native widgets hidden behind the product UI", () => {
   assert.match(ui, /VISIBLE_NATIVE/);
-  assert.match(ui, /item\.type = "hidden"/);
-  assert.match(ui, /item\.computeSize = \(\) => \[0, 0\]/);
+  assert.match(ui, /widget\.type = "hidden"/);
+  assert.match(ui, /widget\.computeSize = \(\) => \[0, -4\]/);
   assert.match(ui, /onDrawForeground/);
   assert.match(ui, /h3s-choice-menu/);
 });

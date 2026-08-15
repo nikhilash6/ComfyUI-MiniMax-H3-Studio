@@ -12,7 +12,9 @@ SOURCES = [
     ROOT / "h3studio" / "nodes" / "benchmark.py",
     ROOT / "h3studio" / "nodes" / "comparison.py",
     ROOT / "h3studio" / "nodes" / "image_runtime.py",
+    ROOT / "h3studio" / "nodes" / "model_setup.py",
     ROOT / "h3studio" / "nodes" / "save.py",
+    ROOT / "h3studio" / "nodes" / "smart_benchmark.py",
 ]
 
 
