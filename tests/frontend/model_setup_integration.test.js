@@ -42,3 +42,8 @@ test("manifest includes H3 role-aware destinations and current LightX profiles",
   assert.match(source, /minimax_h3_ref2v_lightx2v_turbo_4step_v0\.1_resized_avg_rank_20_bf16\.safetensors/);
   assert.match(source, /destination:"vae_approx"/);
 });
+
+test("Model Setup widget computeSize does not couple to dynamic node.size to avoid runaway expansion", () => {
+  assert.doesNotMatch(source, /computeSize\s*=\s*\(width\)\s*=>\s*\[[^\]]*node\.size/);
+  assert.match(source, /widget\.computeSize\s*=\s*\(width\)\s*=>/);
+});

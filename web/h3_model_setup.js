@@ -317,9 +317,18 @@ function installUI(node) {
     root.querySelector('[data-action="repair"]')?.addEventListener('click',()=>downloadSelected(true));
   }
 
-  const widget=node.addDOMWidget('h3_model_setup','h3_model_setup',root,{serialize:false,hideOnZoom:false});
-  widget.computeSize=(width)=>[width,Math.max(780,(node.size?.[1]||860)-30)];
-  node.setSize?.([Math.max(node.size?.[0]||820,820),Math.max(node.size?.[1]||860,860)]);
+  const widget = node.addDOMWidget("h3_model_setup", "h3_model_setup", root, {
+    serialize: false,
+    hideOnZoom: false,
+    getValue: () => undefined,
+    getMinHeight: () => 480,
+    getMaxHeight: () => 1400,
+  });
+  // Widget height must not be derived from dynamic node.size[1] to prevent
+  // ComfyUI's computeSize feedback loop from expanding the node downward forever.
+  widget.computeSize = (width) => [Math.max(680, Number(width) || 820), 760];
+  widget.computedHeight = 760;
+  node.setSize?.([Math.max(node.size?.[0] || 820, 680), Math.max(node.size?.[1] || 860, 480)]);
   render();
   detect();
 }
