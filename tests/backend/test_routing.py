@@ -46,6 +46,22 @@ def test_pdd_accepts_auto_or_reference_edit_with_references() -> None:
     validate_generation_contract("reference_edit", "ref2va", "pdd_ref2va_4_900", 2)
 
 
+def test_lightx_fl2v_can_run_experimentally_on_ref2va(caplog) -> None:
+    validate_generation_contract("reference_edit", "auto", "lightx_v1_fl2v_8", 2)
+    validate_generation_contract("reference_edit", "ref2va", "lightx_v1_fl2v_8", 2)
+    assert "Experimental LightX cross-route" in caplog.text
+
+
+def test_lightx_ref2v_still_rejects_fl2va_cross_route() -> None:
+    with pytest.raises(RouteError, match="REF2V/REF2VA-only"):
+        validate_generation_contract(
+            "image_to_image",
+            "fl2va",
+            "lightx_v01_ref2v_er_sde_4_pruned",
+            1,
+        )
+
+
 def test_invalid_route_raises() -> None:
     with pytest.raises(RouteError):
         choose_route("magic", "text_to_image", 0)
