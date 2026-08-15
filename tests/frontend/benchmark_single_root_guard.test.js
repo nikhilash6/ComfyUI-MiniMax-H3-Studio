@@ -5,12 +5,12 @@ import test from "node:test";
 const guard = readFileSync(new URL("../../web/zz_h3studio_smart_benchmark_root_guard.js", import.meta.url), "utf8");
 const benchmark = readFileSync(new URL("../../web/h3studio_smart_benchmark.js", import.meta.url), "utf8");
 
-test("Smart Benchmark keeps ComfyUI's DOM widget handle bound to the live renderer root", () => {
+test("Smart Benchmark preserves ComfyUI's original tracked DOM root across redraws", () => {
   assert.match(guard, /Object\.defineProperty\(node, "__h3bRoot"/);
-  assert.match(guard, /existing\.element = value/);
-  assert.match(guard, /SmartBenchmarkSingleRootGuard/);
+  assert.match(guard, /absorbRenderedRoot\(stableRoot, value\)/);
+  assert.match(guard, /value\.replaceWith\(stableRoot\)/);
+  assert.match(guard, /SmartBenchmarkStableRootGuard/);
   assert.match(guard, /duplicate DOM widget/);
-  assert.match(guard, /copyComfyGeometry/);
 });
 
 test("Smart Benchmark is bounded to one internal scroll surface without viewport-width overflow", () => {
@@ -18,7 +18,7 @@ test("Smart Benchmark is bounded to one internal scroll surface without viewport
   assert.match(guard, /overflow-y", "auto"/);
   assert.match(guard, /overflow-x", "hidden"/);
   assert.match(guard, /container-type:inline-size/);
-  assert.match(guard, /never force width\/max-width here/i);
+  assert.match(guard, /ComfyUI owns exact overlay width\/transform/);
   assert.match(guard, /root\.style\.removeProperty\("width"\)/);
   assert.match(benchmark, /const WIDGET_NAME = "h3studio_smart_benchmark"/);
 });
