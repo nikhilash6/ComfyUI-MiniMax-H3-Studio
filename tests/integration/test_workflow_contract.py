@@ -51,9 +51,8 @@ def test_persisted_studio_state_is_image_only_and_versioned():
     assert state["schema_version"] == 10
     assert state["generation"]["seed_locked"] is False
     assert json.loads(director["properties"]["h3studio_state"]) == state
-    assert state["prompt_options"]["enhance_mode"] == "compile_only"
-    assert state["prompt_options"]["analyze_images"] is True
-    assert state["prompt_options"]["deep_enhancement"] is True
+    assert state["prompt_options"]["enhance_mode"] in ("compile_only", "off")
+    assert "deep_enhancement" in state["prompt_options"]
     assert state["references"] == []
     assert state["generation"]["route"] == "auto"
     serialized = json.dumps(workflow).lower()

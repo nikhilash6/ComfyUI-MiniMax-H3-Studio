@@ -39,223 +39,6 @@
       "bgcolor": "#17211f"
     },
     {
-      "id": 10,
-      "type": "H3StudioDirector",
-      "pos": [
-        -1428.7229723339021,
-        291.9832003294935
-      ],
-      "size": [
-        755.0159422628965,
-        913.71990535446
-      ],
-      "flags": {},
-      "order": 11,
-      "mode": 0,
-      "inputs": [
-        {
-          "label": "Media",
-          "name": "media",
-          "shape": 7,
-          "type": "*",
-          "link": null
-        },
-        {
-          "label": "H3 model bundle",
-          "name": "h3_bundle",
-          "shape": 7,
-          "type": "H3_STUDIO_BUNDLE",
-          "link": 3
-        }
-      ],
-      "outputs": [
-        {
-          "name": "studio_context",
-          "type": "H3_STUDIO_CONTEXT",
-          "links": [
-            1,
-            10,
-            14,
-            15,
-            25
-          ]
-        },
-        {
-          "name": "compiled_prompt",
-          "type": "STRING",
-          "links": null
-        },
-        {
-          "name": "state_json",
-          "type": "STRING",
-          "links": null
-        },
-        {
-          "name": "width",
-          "type": "INT",
-          "links": null
-        },
-        {
-          "name": "height",
-          "type": "INT",
-          "links": null
-        },
-        {
-          "name": "seed",
-          "type": "INT",
-          "links": [
-            9
-          ]
-        },
-        {
-          "name": "diagnostics",
-          "type": "STRING",
-          "links": null
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "H3StudioDirector",
-        "h3studio_virtual_media_links": [],
-        "h3studio_state": "{\"schema_version\":10,\"prompt\":\"Describe the final still image. Upload references here only when they have a specific visual job.\",\"references\":[],\"prompt_options\":{\"enhance_mode\":\"compile_only\",\"analyze_images\":true,\"deep_enhancement\":true,\"analyzer_resolution\":512,\"adherence\":0.85,\"detail_level\":\"detailed\",\"preserve_user_text\":true,\"infer_roles\":true,\"system_instruction\":\"\",\"analyzer_model\":\"\",\"analyzer_device\":\"auto\",\"analyzer_quantization\":\"auto\",\"analyzer_max_tokens\":1800,\"analyzer_keep_loaded\":false},\"generation\":{\"mode\":\"auto\",\"route\":\"auto\",\"seed\":42,\"seed_locked\":false,\"seed_queue_reservations\":0,\"aspect_ratio\":\"1:1\",\"megapixels\":1,\"custom_width\":1024,\"custom_height\":1024,\"cap_native_resolution\":true,\"sampling_profile\":\"base_quality_20\",\"frame_profile\":\"recommended_5\",\"frame_selection\":\"decode_recommended\",\"reference_short_edge\":2048,\"source_image_ordinal\":1},\"ui\":{\"advanced_open\":false,\"comparison_enabled\":false,\"reference_details\":{},\"director_node_id\":\"10\",\"runtime_optimization\":\"auto\",\"runtime_advanced\":{\"attention_backend\":\"auto\",\"head_chunks\":0,\"ffn_chunks\":0,\"ffn_sequence_threshold\":4096}}}",
-        "h3studio_prompt_reference_doc": {
-          "version": 1,
-          "parts": [
-            {
-              "type": "text",
-              "text": "Describe the final still image."
-            }
-          ]
-        }
-      },
-      "widgets_values": [
-        "image",
-        "Describe the final still image. Upload references here only when they have a specific visual job.",
-        null,
-        "Custom",
-        "1:1",
-        992,
-        992,
-        5,
-        false,
-        24,
-        "First frame priority",
-        "Max 2K Short Edge",
-        "By index",
-        1,
-        42,
-        42,
-        "compile_only",
-        0.85,
-        "auto",
-        "base_quality_20",
-        "recommended_5",
-        "",
-        "{\"schema_version\":10,\"prompt\":\"Describe the final still image. Upload references here only when they have a specific visual job.\",\"references\":[],\"prompt_options\":{\"enhance_mode\":\"compile_only\",\"analyze_images\":true,\"deep_enhancement\":true,\"analyzer_resolution\":512,\"adherence\":0.85,\"detail_level\":\"detailed\",\"preserve_user_text\":true,\"infer_roles\":true,\"system_instruction\":\"\",\"analyzer_model\":\"\",\"analyzer_device\":\"auto\",\"analyzer_quantization\":\"auto\",\"analyzer_max_tokens\":1800,\"analyzer_keep_loaded\":false},\"generation\":{\"mode\":\"auto\",\"route\":\"auto\",\"seed\":42,\"seed_locked\":false,\"seed_queue_reservations\":0,\"aspect_ratio\":\"1:1\",\"megapixels\":1,\"custom_width\":1024,\"custom_height\":1024,\"cap_native_resolution\":true,\"sampling_profile\":\"base_quality_20\",\"frame_profile\":\"recommended_5\",\"frame_selection\":\"decode_recommended\",\"reference_short_edge\":2048,\"source_image_ordinal\":1},\"ui\":{\"advanced_open\":false,\"comparison_enabled\":false,\"reference_details\":{},\"director_node_id\":\"10\",\"runtime_optimization\":\"auto\",\"runtime_advanced\":{\"attention_backend\":\"auto\",\"head_chunks\":0,\"ffn_chunks\":0,\"ffn_sequence_threshold\":4096}}}",
-        "{\"schema_version\":10,\"prompt\":\"Describe the final still image. Upload references here only when they have a specific visual job.\",\"references\":[],\"prompt_options\":{\"enhance_mode\":\"compile_only\",\"analyze_images\":true,\"deep_enhancement\":true,\"analyzer_resolution\":512,\"adherence\":0.85,\"detail_level\":\"detailed\",\"preserve_user_text\":true,\"infer_roles\":true,\"system_instruction\":\"\",\"analyzer_model\":\"\",\"analyzer_device\":\"auto\",\"analyzer_quantization\":\"auto\",\"analyzer_max_tokens\":1800,\"analyzer_keep_loaded\":false},\"generation\":{\"mode\":\"auto\",\"route\":\"auto\",\"seed\":42,\"seed_locked\":false,\"seed_queue_reservations\":0,\"aspect_ratio\":\"1:1\",\"megapixels\":1,\"custom_width\":1024,\"custom_height\":1024,\"cap_native_resolution\":true,\"sampling_profile\":\"base_quality_20\",\"frame_profile\":\"recommended_5\",\"frame_selection\":\"decode_recommended\",\"reference_short_edge\":2048,\"source_image_ordinal\":1},\"ui\":{\"advanced_open\":false,\"comparison_enabled\":false,\"reference_details\":{},\"director_node_id\":\"10\",\"runtime_optimization\":\"auto\",\"runtime_advanced\":{\"attention_backend\":\"auto\",\"head_chunks\":0,\"ffn_chunks\":0,\"ffn_sequence_threshold\":4096}}}",
-        "",
-        "auto",
-        "attribute_transfer",
-        "",
-        "",
-        "auto",
-        "attribute_transfer",
-        "",
-        "",
-        "auto",
-        "attribute_transfer",
-        "",
-        "",
-        "auto",
-        "attribute_transfer",
-        "",
-        "",
-        "auto",
-        "attribute_transfer",
-        "",
-        "",
-        "auto",
-        "attribute_transfer",
-        "",
-        "",
-        "auto",
-        "attribute_transfer",
-        "",
-        "",
-        "auto",
-        "attribute_transfer",
-        "",
-        "",
-        "auto",
-        "attribute_transfer",
-        "",
-        ""
-      ],
-      "widgets_values_named": {
-        "mode": "image",
-        "prompt": "Describe the final still image. Upload references here only when they have a specific visual job.",
-        "resolution": "Custom",
-        "aspect_ratio": "1:1",
-        "width": 992,
-        "height": 992,
-        "seconds": 5,
-        "advanced": false,
-        "fps": 24,
-        "keyframe_role": "First frame priority",
-        "ref_image_size": "Max 2K Short Edge",
-        "reference_mention_mode": "By index",
-        "megapixels": 1,
-        "seed": 42,
-        "control_after_generate": 42,
-        "enhance_mode": "compile_only",
-        "adherence": 0.85,
-        "route": "auto",
-        "sampling_profile": "base_quality_20",
-        "frame_profile": "recommended_5",
-        "analyzer_model": "",
-        "studio_state": "{\"schema_version\":10,\"prompt\":\"Describe the final still image. Upload references here only when they have a specific visual job.\",\"references\":[],\"prompt_options\":{\"enhance_mode\":\"compile_only\",\"analyze_images\":true,\"deep_enhancement\":true,\"analyzer_resolution\":512,\"adherence\":0.85,\"detail_level\":\"detailed\",\"preserve_user_text\":true,\"infer_roles\":true,\"system_instruction\":\"\",\"analyzer_model\":\"\",\"analyzer_device\":\"auto\",\"analyzer_quantization\":\"auto\",\"analyzer_max_tokens\":1800,\"analyzer_keep_loaded\":false},\"generation\":{\"mode\":\"auto\",\"route\":\"auto\",\"seed\":42,\"seed_locked\":false,\"seed_queue_reservations\":0,\"aspect_ratio\":\"1:1\",\"megapixels\":1,\"custom_width\":1024,\"custom_height\":1024,\"cap_native_resolution\":true,\"sampling_profile\":\"base_quality_20\",\"frame_profile\":\"recommended_5\",\"frame_selection\":\"decode_recommended\",\"reference_short_edge\":2048,\"source_image_ordinal\":1},\"ui\":{\"advanced_open\":false,\"comparison_enabled\":false,\"reference_details\":{},\"director_node_id\":\"10\",\"runtime_optimization\":\"auto\",\"runtime_advanced\":{\"attention_backend\":\"auto\",\"head_chunks\":0,\"ffn_chunks\":0,\"ffn_sequence_threshold\":4096}}}",
-        "media_filename": "{\"schema_version\":10,\"prompt\":\"Describe the final still image. Upload references here only when they have a specific visual job.\",\"references\":[],\"prompt_options\":{\"enhance_mode\":\"compile_only\",\"analyze_images\":true,\"deep_enhancement\":true,\"analyzer_resolution\":512,\"adherence\":0.85,\"detail_level\":\"detailed\",\"preserve_user_text\":true,\"infer_roles\":true,\"system_instruction\":\"\",\"analyzer_model\":\"\",\"analyzer_device\":\"auto\",\"analyzer_quantization\":\"auto\",\"analyzer_max_tokens\":1800,\"analyzer_keep_loaded\":false},\"generation\":{\"mode\":\"auto\",\"route\":\"auto\",\"seed\":42,\"seed_locked\":false,\"seed_queue_reservations\":0,\"aspect_ratio\":\"1:1\",\"megapixels\":1,\"custom_width\":1024,\"custom_height\":1024,\"cap_native_resolution\":true,\"sampling_profile\":\"base_quality_20\",\"frame_profile\":\"recommended_5\",\"frame_selection\":\"decode_recommended\",\"reference_short_edge\":2048,\"source_image_ordinal\":1},\"ui\":{\"advanced_open\":false,\"comparison_enabled\":false,\"reference_details\":{},\"director_node_id\":\"10\",\"runtime_optimization\":\"auto\",\"runtime_advanced\":{\"attention_backend\":\"auto\",\"head_chunks\":0,\"ffn_chunks\":0,\"ffn_sequence_threshold\":4096}}}",
-        "media_filename_1": "",
-        "role_1": "auto",
-        "retention_1": "attribute_transfer",
-        "description_1": "",
-        "media_filename_2": "",
-        "role_2": "auto",
-        "retention_2": "attribute_transfer",
-        "description_2": "",
-        "media_filename_3": "",
-        "role_3": "auto",
-        "retention_3": "attribute_transfer",
-        "description_3": "",
-        "media_filename_4": "",
-        "role_4": "auto",
-        "retention_4": "attribute_transfer",
-        "description_4": "",
-        "media_filename_5": "",
-        "role_5": "auto",
-        "retention_5": "attribute_transfer",
-        "description_5": "",
-        "media_filename_6": "",
-        "role_6": "auto",
-        "retention_6": "attribute_transfer",
-        "description_6": "",
-        "media_filename_7": "",
-        "role_7": "auto",
-        "retention_7": "attribute_transfer",
-        "description_7": "",
-        "media_filename_8": "",
-        "role_8": "auto",
-        "retention_8": "attribute_transfer",
-        "description_8": "",
-        "media_filename_9": "",
-        "role_9": "auto",
-        "retention_9": "attribute_transfer",
-        "description_9": "",
-        "h3studio_controls": ""
-      },
-      "color": "#255049",
-      "bgcolor": "#172d29"
-    },
-    {
       "id": 12,
       "type": "H3StudioCondition",
       "pos": [
@@ -671,92 +454,6 @@
       "bgcolor": "#17211f"
     },
     {
-      "id": 107,
-      "type": "H3StudioSmartBenchmark",
-      "pos": [
-        -435.3893411169458,
-        1769.9111928467726
-      ],
-      "size": [
-        612.9186264311282,
-        585.7509454869294
-      ],
-      "flags": {},
-      "order": 13,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "h3_bundle",
-          "type": "H3_STUDIO_BUNDLE",
-          "link": 24
-        },
-        {
-          "name": "studio_context",
-          "type": "H3_STUDIO_CONTEXT",
-          "link": 25
-        }
-      ],
-      "outputs": [
-        {
-          "name": "comparison_grid",
-          "type": "IMAGE",
-          "links": [
-            26
-          ]
-        },
-        {
-          "name": "benchmark_report",
-          "type": "STRING",
-          "links": null
-        }
-      ],
-      "title": "Benchmark",
-      "properties": {
-        "Node name for S&R": "H3StudioSmartBenchmark",
-        "h3studio_migrated_from_legacy_benchmark": true,
-        "h3studio_benchmark_v8_initialized": true,
-        "h3studio_benchmark_preset": "quality-lightx"
-      },
-      "widgets_values": [
-        "[{\"model_name\":\"minimax_h3_fl2va_pruned_w4a8_mixed.safetensors\",\"runtime_preset\":\"auto\",\"runtime_advanced\":{\"attention_backend\":\"auto\",\"head_chunks\":0,\"ffn_chunks\":0,\"ffn_sequence_threshold\":4096},\"megapixels\":1,\"custom_loras\":[],\"name\":\"Base · 20 steps\",\"sampling_profile\":\"base_quality_20\"},{\"model_name\":\"minimax_h3_fl2va_pruned_w4a8_mixed.safetensors\",\"runtime_preset\":\"auto\",\"runtime_advanced\":{\"attention_backend\":\"auto\",\"head_chunks\":0,\"ffn_chunks\":0,\"ffn_sequence_threshold\":4096},\"megapixels\":1,\"custom_loras\":[],\"name\":\"LightX · 8 steps\",\"sampling_profile\":\"lightx_v1_fl2v_8\"}]",
-        4,
-        640,
-        "Unified",
-        "",
-        "",
-        1,
-        "Same seed for all - fair comparison",
-        1,
-        24,
-        false,
-        true,
-        true,
-        true,
-        false,
-        ""
-      ],
-      "widgets_values_named": {
-        "scenarios_json": "[{\"model_name\":\"minimax_h3_fl2va_pruned_w4a8_mixed.safetensors\",\"runtime_preset\":\"auto\",\"runtime_advanced\":{\"attention_backend\":\"auto\",\"head_chunks\":0,\"ffn_chunks\":0,\"ffn_sequence_threshold\":4096},\"megapixels\":1,\"custom_loras\":[],\"name\":\"Base · 20 steps\",\"sampling_profile\":\"base_quality_20\"},{\"model_name\":\"minimax_h3_fl2va_pruned_w4a8_mixed.safetensors\",\"runtime_preset\":\"auto\",\"runtime_advanced\":{\"attention_backend\":\"auto\",\"head_chunks\":0,\"ffn_chunks\":0,\"ffn_sequence_threshold\":4096},\"megapixels\":1,\"custom_loras\":[],\"name\":\"LightX · 8 steps\",\"sampling_profile\":\"lightx_v1_fl2v_8\"}]",
-        "max_scenarios": 4,
-        "grid_cell_size": 640,
-        "benchmark_mode": "Unified",
-        "profiles": "",
-        "matrix_megapixels": "",
-        "repeats": 1,
-        "seed_strategy": "Same seed for all - fair comparison",
-        "seed_step": 1,
-        "max_generations": 24,
-        "allow_large_matrix": false,
-        "include_reference_context": true,
-        "include_original_prompt": true,
-        "live_cell_previews": true,
-        "compare_vae": false,
-        "h3studio_smart_benchmark": ""
-      },
-      "color": "#3a3e45",
-      "bgcolor": "#272a2f"
-    },
-    {
       "id": 25,
       "type": "H3StudioWorkflowNote",
       "pos": [
@@ -1135,6 +832,310 @@
       "widgets_values_named": {
         "h3_model_setup": ""
       }
+    },
+    {
+      "id": 107,
+      "type": "H3StudioSmartBenchmark",
+      "pos": [
+        -454.375837128033,
+        1840.8606678753263
+      ],
+      "size": [
+        690.0498077146909,
+        509.90470717106746
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "h3_bundle",
+          "type": "H3_STUDIO_BUNDLE",
+          "link": 24
+        },
+        {
+          "name": "studio_context",
+          "type": "H3_STUDIO_CONTEXT",
+          "link": 25
+        }
+      ],
+      "outputs": [
+        {
+          "name": "comparison_grid",
+          "type": "IMAGE",
+          "links": [
+            26
+          ]
+        },
+        {
+          "name": "benchmark_report",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "Benchmark",
+      "properties": {
+        "Node name for S&R": "H3StudioSmartBenchmark",
+        "h3studio_migrated_from_legacy_benchmark": true,
+        "h3studio_benchmark_v8_initialized": true,
+        "h3studio_benchmark_preset": "quality-lightx"
+      },
+      "widgets_values": [
+        "[{\"model_name\":\"minimax_h3_fl2va_pruned_w4a8_mixed.safetensors\",\"runtime_preset\":\"auto\",\"runtime_advanced\":{\"attention_backend\":\"auto\",\"head_chunks\":0,\"ffn_chunks\":0,\"ffn_sequence_threshold\":4096},\"megapixels\":1,\"custom_loras\":[],\"name\":\"Base · 20 steps\",\"sampling_profile\":\"base_quality_20\"},{\"model_name\":\"minimax_h3_fl2va_pruned_w4a8_mixed.safetensors\",\"runtime_preset\":\"auto\",\"runtime_advanced\":{\"attention_backend\":\"auto\",\"head_chunks\":0,\"ffn_chunks\":0,\"ffn_sequence_threshold\":4096},\"megapixels\":1,\"custom_loras\":[],\"name\":\"LightX · 8 steps\",\"sampling_profile\":\"lightx_v1_fl2v_8\"}]",
+        4,
+        640,
+        "Unified",
+        "",
+        "",
+        1,
+        "Same seed for all - fair comparison",
+        1,
+        24,
+        false,
+        true,
+        true,
+        true,
+        false,
+        ""
+      ],
+      "widgets_values_named": {
+        "scenarios_json": "[{\"model_name\":\"minimax_h3_fl2va_pruned_w4a8_mixed.safetensors\",\"runtime_preset\":\"auto\",\"runtime_advanced\":{\"attention_backend\":\"auto\",\"head_chunks\":0,\"ffn_chunks\":0,\"ffn_sequence_threshold\":4096},\"megapixels\":1,\"custom_loras\":[],\"name\":\"Base · 20 steps\",\"sampling_profile\":\"base_quality_20\"},{\"model_name\":\"minimax_h3_fl2va_pruned_w4a8_mixed.safetensors\",\"runtime_preset\":\"auto\",\"runtime_advanced\":{\"attention_backend\":\"auto\",\"head_chunks\":0,\"ffn_chunks\":0,\"ffn_sequence_threshold\":4096},\"megapixels\":1,\"custom_loras\":[],\"name\":\"LightX · 8 steps\",\"sampling_profile\":\"lightx_v1_fl2v_8\"}]",
+        "max_scenarios": 4,
+        "grid_cell_size": 640,
+        "benchmark_mode": "Unified",
+        "profiles": "",
+        "matrix_megapixels": "",
+        "repeats": 1,
+        "seed_strategy": "Same seed for all - fair comparison",
+        "seed_step": 1,
+        "max_generations": 24,
+        "allow_large_matrix": false,
+        "include_reference_context": true,
+        "include_original_prompt": true,
+        "live_cell_previews": true,
+        "compare_vae": false,
+        "h3studio_smart_benchmark": ""
+      },
+      "color": "#3a3e45",
+      "bgcolor": "#272a2f"
+    },
+    {
+      "id": 10,
+      "type": "H3StudioDirector",
+      "pos": [
+        -1428.7229723339021,
+        291.9832003294935
+      ],
+      "size": [
+        755.0159422628965,
+        980
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "Media",
+          "name": "media",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        },
+        {
+          "label": "H3 model bundle",
+          "name": "h3_bundle",
+          "shape": 7,
+          "type": "H3_STUDIO_BUNDLE",
+          "link": 3
+        }
+      ],
+      "outputs": [
+        {
+          "name": "studio_context",
+          "type": "H3_STUDIO_CONTEXT",
+          "links": [
+            1,
+            10,
+            14,
+            15,
+            25
+          ]
+        },
+        {
+          "name": "compiled_prompt",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "state_json",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "width",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "name": "seed",
+          "type": "INT",
+          "links": [
+            9
+          ]
+        },
+        {
+          "name": "diagnostics",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "H3StudioDirector",
+        "h3studio_virtual_media_links": [],
+        "h3studio_state": "{\"schema_version\":10,\"prompt\":\"summary:\\r\\n[image generation] A classic 16:9 wide-angle 2D anime broadcast still, replicating a nostalgic, comedic downtime scene of Team 7 waiting for their sensei in an early-2000s \\\"Naruto\\\" episode.\\r\\n\\r\\ndetailed_description:\\r\\nThe target image is an authentic early-2000s TV broadcast anime still, perfectly capturing the classic Studio Pierrot 2D cel-animation style. The aesthetic features crisp, thin ink linework, flat cel shading without modern digital gradients, slightly soft DVD-era image quality, and a highly detailed, hand-painted watercolor background. \\r\\n\\r\\nThe camera provides a wide, deep-focus establishing shot of the iconic red arched wooden bridge in the Hidden Leaf Village. A calm, stylized blue river flows beneath it, surrounded by lush green trees and traditional wooden village architecture in the hazy, warm light of early morning. The composition spreads the three young genin across the wide frame to highlight their differing personalities.\\r\\n\\r\\nIn the dead center of the wooden bridge planks, 12-year-old Naruto Uzumaki (in his bright orange and blue jumpsuit) is lying completely flat on his back in a starfish pose, fast asleep. A classic, translucent anime snot-bubble is expanding from his nose. \\r\\n\\r\\nOn the far left, Sakura Haruno (in her red qipao dress) is slumped heavily over the red wooden railing, her arms dangling loosely toward the water. Her head is hung in total exhaustion, with a comical, oversized blue anime sweat-drop graphic painted on her forehead.\\r\\n\\r\\nOn the right side of the frame, Sasuke Uchiha (in his blue high-collar shirt and white shorts) sits precariously on the top of the wooden railing. He has one knee drawn up to his chest, resting his chin on his folded hands, glaring down at the river with a profound, brooding scowl of intense irritation.\\r\\n\\r\\nIn the far background, perfectly centered down the dirt path leading to the bridge, the tiny figure of Kakashi Hatake can be seen slowly strolling toward them. He is completely unbothered, his face buried in his small orange book. \\r\\n\\r\\nSynchronized yellow English subtitles with a crisp black drop-shadow appear centered near the bottom edge, reading: \\\"I can't believe he's three hours late...\\\" The scene evokes the genuine, lighthearted character dynamics and world-building of the classic anime era.\",\"references\":[],\"prompt_options\":{\"enhance_mode\":\"off\",\"analyze_images\":false,\"deep_enhancement\":true,\"analyzer_resolution\":512,\"adherence\":0.85,\"detail_level\":\"detailed\",\"preserve_user_text\":true,\"infer_roles\":true,\"system_instruction\":\"\",\"analyzer_model\":\"\",\"analyzer_device\":\"auto\",\"analyzer_quantization\":\"auto\",\"analyzer_max_tokens\":1800,\"analyzer_keep_loaded\":false},\"generation\":{\"mode\":\"auto\",\"route\":\"auto\",\"seed\":42,\"seed_locked\":false,\"seed_queue_reservations\":0,\"aspect_ratio\":\"1:1\",\"megapixels\":1,\"custom_width\":1024,\"custom_height\":1024,\"cap_native_resolution\":false,\"sampling_profile\":\"base_quality_20\",\"frame_profile\":\"recommended_5\",\"frame_selection\":\"decode_recommended\",\"reference_short_edge\":2048,\"source_image_ordinal\":1},\"ui\":{\"advanced_open\":false,\"comparison_enabled\":false,\"reference_details\":{},\"director_node_id\":\"10\",\"runtime_optimization\":\"auto\",\"runtime_advanced\":{\"attention_backend\":\"auto\",\"head_chunks\":0,\"ffn_chunks\":0,\"ffn_sequence_threshold\":4096}}}",
+        "h3studio_prompt_reference_doc": {
+          "version": 1,
+          "text": "summary:\r\n[image generation] A classic 16:9 wide-angle 2D anime broadcast still, replicating a nostalgic, comedic downtime scene of Team 7 waiting for their sensei in an early-2000s \"Naruto\" episode.\r\n\r\ndetailed_description:\r\nThe target image is an authentic early-2000s TV broadcast anime still, perfectly capturing the classic Studio Pierrot 2D cel-animation style. The aesthetic features crisp, thin ink linework, flat cel shading without modern digital gradients, slightly soft DVD-era image quality, and a highly detailed, hand-painted watercolor background. \r\n\r\nThe camera provides a wide, deep-focus establishing shot of the iconic red arched wooden bridge in the Hidden Leaf Village. A calm, stylized blue river flows beneath it, surrounded by lush green trees and traditional wooden village architecture in the hazy, warm light of early morning. The composition spreads the three young genin across the wide frame to highlight their differing personalities.\r\n\r\nIn the dead center of the wooden bridge planks, 12-year-old Naruto Uzumaki (in his bright orange and blue jumpsuit) is lying completely flat on his back in a starfish pose, fast asleep. A classic, translucent anime snot-bubble is expanding from his nose. \r\n\r\nOn the far left, Sakura Haruno (in her red qipao dress) is slumped heavily over the red wooden railing, her arms dangling loosely toward the water. Her head is hung in total exhaustion, with a comical, oversized blue anime sweat-drop graphic painted on her forehead.\r\n\r\nOn the right side of the frame, Sasuke Uchiha (in his blue high-collar shirt and white shorts) sits precariously on the top of the wooden railing. He has one knee drawn up to his chest, resting his chin on his folded hands, glaring down at the river with a profound, brooding scowl of intense irritation.\r\n\r\nIn the far background, perfectly centered down the dirt path leading to the bridge, the tiny figure of Kakashi Hatake can be seen slowly strolling toward them. He is completely unbothered, his face buried in his small orange book. \r\n\r\nSynchronized yellow English subtitles with a crisp black drop-shadow appear centered near the bottom edge, reading: \"I can't believe he's three hours late...\" The scene evokes the genuine, lighthearted character dynamics and world-building of the classic anime era.",
+          "parts": [
+            {
+              "type": "text",
+              "text": "summary:\r\n[image generation] A classic 16:9 wide-angle 2D anime broadcast still, replicating a nostalgic, comedic downtime scene of Team 7 waiting for their sensei in an early-2000s \"Naruto\" episode.\r\n\r\ndetailed_description:\r\nThe target image is an authentic early-2000s TV broadcast anime still, perfectly capturing the classic Studio Pierrot 2D cel-animation style. The aesthetic features crisp, thin ink linework, flat cel shading without modern digital gradients, slightly soft DVD-era image quality, and a highly detailed, hand-painted watercolor background. \r\n\r\nThe camera provides a wide, deep-focus establishing shot of the iconic red arched wooden bridge in the Hidden Leaf Village. A calm, stylized blue river flows beneath it, surrounded by lush green trees and traditional wooden village architecture in the hazy, warm light of early morning. The composition spreads the three young genin across the wide frame to highlight their differing personalities.\r\n\r\nIn the dead center of the wooden bridge planks, 12-year-old Naruto Uzumaki (in his bright orange and blue jumpsuit) is lying completely flat on his back in a starfish pose, fast asleep. A classic, translucent anime snot-bubble is expanding from his nose. \r\n\r\nOn the far left, Sakura Haruno (in her red qipao dress) is slumped heavily over the red wooden railing, her arms dangling loosely toward the water. Her head is hung in total exhaustion, with a comical, oversized blue anime sweat-drop graphic painted on her forehead.\r\n\r\nOn the right side of the frame, Sasuke Uchiha (in his blue high-collar shirt and white shorts) sits precariously on the top of the wooden railing. He has one knee drawn up to his chest, resting his chin on his folded hands, glaring down at the river with a profound, brooding scowl of intense irritation.\r\n\r\nIn the far background, perfectly centered down the dirt path leading to the bridge, the tiny figure of Kakashi Hatake can be seen slowly strolling toward them. He is completely unbothered, his face buried in his small orange book. \r\n\r\nSynchronized yellow English subtitles with a crisp black drop-shadow appear centered near the bottom edge, reading: \"I can't believe he's three hours late...\" The scene evokes the genuine, lighthearted character dynamics and world-building of the classic anime era."
+            }
+          ]
+        }
+      },
+      "widgets_values": [
+        "image",
+        "summary:\r\n[image generation] A classic 16:9 wide-angle 2D anime broadcast still, replicating a nostalgic, comedic downtime scene of Team 7 waiting for their sensei in an early-2000s \"Naruto\" episode.\r\n\r\ndetailed_description:\r\nThe target image is an authentic early-2000s TV broadcast anime still, perfectly capturing the classic Studio Pierrot 2D cel-animation style. The aesthetic features crisp, thin ink linework, flat cel shading without modern digital gradients, slightly soft DVD-era image quality, and a highly detailed, hand-painted watercolor background. \r\n\r\nThe camera provides a wide, deep-focus establishing shot of the iconic red arched wooden bridge in the Hidden Leaf Village. A calm, stylized blue river flows beneath it, surrounded by lush green trees and traditional wooden village architecture in the hazy, warm light of early morning. The composition spreads the three young genin across the wide frame to highlight their differing personalities.\r\n\r\nIn the dead center of the wooden bridge planks, 12-year-old Naruto Uzumaki (in his bright orange and blue jumpsuit) is lying completely flat on his back in a starfish pose, fast asleep. A classic, translucent anime snot-bubble is expanding from his nose. \r\n\r\nOn the far left, Sakura Haruno (in her red qipao dress) is slumped heavily over the red wooden railing, her arms dangling loosely toward the water. Her head is hung in total exhaustion, with a comical, oversized blue anime sweat-drop graphic painted on her forehead.\r\n\r\nOn the right side of the frame, Sasuke Uchiha (in his blue high-collar shirt and white shorts) sits precariously on the top of the wooden railing. He has one knee drawn up to his chest, resting his chin on his folded hands, glaring down at the river with a profound, brooding scowl of intense irritation.\r\n\r\nIn the far background, perfectly centered down the dirt path leading to the bridge, the tiny figure of Kakashi Hatake can be seen slowly strolling toward them. He is completely unbothered, his face buried in his small orange book. \r\n\r\nSynchronized yellow English subtitles with a crisp black drop-shadow appear centered near the bottom edge, reading: \"I can't believe he's three hours late...\" The scene evokes the genuine, lighthearted character dynamics and world-building of the classic anime era.",
+        null,
+        "Custom",
+        "1:1",
+        992,
+        992,
+        5,
+        false,
+        24,
+        "First frame priority",
+        "Max 2K Short Edge",
+        "By index",
+        1,
+        42,
+        42,
+        "off",
+        0.85,
+        "auto",
+        "base_quality_20",
+        "recommended_5",
+        "",
+        "{\"schema_version\":10,\"prompt\":\"summary:\\r\\n[image generation] A classic 16:9 wide-angle 2D anime broadcast still, replicating a nostalgic, comedic downtime scene of Team 7 waiting for their sensei in an early-2000s \\\"Naruto\\\" episode.\\r\\n\\r\\ndetailed_description:\\r\\nThe target image is an authentic early-2000s TV broadcast anime still, perfectly capturing the classic Studio Pierrot 2D cel-animation style. The aesthetic features crisp, thin ink linework, flat cel shading without modern digital gradients, slightly soft DVD-era image quality, and a highly detailed, hand-painted watercolor background. \\r\\n\\r\\nThe camera provides a wide, deep-focus establishing shot of the iconic red arched wooden bridge in the Hidden Leaf Village. A calm, stylized blue river flows beneath it, surrounded by lush green trees and traditional wooden village architecture in the hazy, warm light of early morning. The composition spreads the three young genin across the wide frame to highlight their differing personalities.\\r\\n\\r\\nIn the dead center of the wooden bridge planks, 12-year-old Naruto Uzumaki (in his bright orange and blue jumpsuit) is lying completely flat on his back in a starfish pose, fast asleep. A classic, translucent anime snot-bubble is expanding from his nose. \\r\\n\\r\\nOn the far left, Sakura Haruno (in her red qipao dress) is slumped heavily over the red wooden railing, her arms dangling loosely toward the water. Her head is hung in total exhaustion, with a comical, oversized blue anime sweat-drop graphic painted on her forehead.\\r\\n\\r\\nOn the right side of the frame, Sasuke Uchiha (in his blue high-collar shirt and white shorts) sits precariously on the top of the wooden railing. He has one knee drawn up to his chest, resting his chin on his folded hands, glaring down at the river with a profound, brooding scowl of intense irritation.\\r\\n\\r\\nIn the far background, perfectly centered down the dirt path leading to the bridge, the tiny figure of Kakashi Hatake can be seen slowly strolling toward them. He is completely unbothered, his face buried in his small orange book. \\r\\n\\r\\nSynchronized yellow English subtitles with a crisp black drop-shadow appear centered near the bottom edge, reading: \\\"I can't believe he's three hours late...\\\" The scene evokes the genuine, lighthearted character dynamics and world-building of the classic anime era.\",\"references\":[],\"prompt_options\":{\"enhance_mode\":\"off\",\"analyze_images\":false,\"deep_enhancement\":true,\"analyzer_resolution\":512,\"adherence\":0.85,\"detail_level\":\"detailed\",\"preserve_user_text\":true,\"infer_roles\":true,\"system_instruction\":\"\",\"analyzer_model\":\"\",\"analyzer_device\":\"auto\",\"analyzer_quantization\":\"auto\",\"analyzer_max_tokens\":1800,\"analyzer_keep_loaded\":false},\"generation\":{\"mode\":\"auto\",\"route\":\"auto\",\"seed\":42,\"seed_locked\":false,\"seed_queue_reservations\":0,\"aspect_ratio\":\"1:1\",\"megapixels\":1,\"custom_width\":1024,\"custom_height\":1024,\"cap_native_resolution\":false,\"sampling_profile\":\"base_quality_20\",\"frame_profile\":\"recommended_5\",\"frame_selection\":\"decode_recommended\",\"reference_short_edge\":2048,\"source_image_ordinal\":1},\"ui\":{\"advanced_open\":false,\"comparison_enabled\":false,\"reference_details\":{},\"director_node_id\":\"10\",\"runtime_optimization\":\"auto\",\"runtime_advanced\":{\"attention_backend\":\"auto\",\"head_chunks\":0,\"ffn_chunks\":0,\"ffn_sequence_threshold\":4096}}}",
+        "{\"schema_version\":10,\"prompt\":\"Describe the final still image.\",\"references\":[],\"prompt_options\":{\"enhance_mode\":\"off\",\"analyze_images\":false,\"deep_enhancement\":true,\"analyzer_resolution\":512,\"adherence\":0.85,\"detail_level\":\"detailed\",\"preserve_user_text\":true,\"infer_roles\":true,\"system_instruction\":\"\",\"analyzer_model\":\"\",\"analyzer_device\":\"auto\",\"analyzer_quantization\":\"auto\",\"analyzer_max_tokens\":1800,\"analyzer_keep_loaded\":false},\"generation\":{\"mode\":\"auto\",\"route\":\"auto\",\"seed\":42,\"seed_locked\":false,\"seed_queue_reservations\":0,\"aspect_ratio\":\"1:1\",\"megapixels\":1,\"custom_width\":1024,\"custom_height\":1024,\"cap_native_resolution\":true,\"sampling_profile\":\"base_quality_20\",\"frame_profile\":\"recommended_5\",\"frame_selection\":\"decode_recommended\",\"reference_short_edge\":2048,\"source_image_ordinal\":1},\"ui\":{\"advanced_open\":false,\"comparison_enabled\":false,\"reference_details\":{},\"director_node_id\":\"10\",\"runtime_optimization\":\"auto\",\"runtime_advanced\":{\"attention_backend\":\"auto\",\"head_chunks\":0,\"ffn_chunks\":0,\"ffn_sequence_threshold\":4096}}}",
+        "",
+        "auto",
+        "attribute_transfer",
+        "",
+        "",
+        "auto",
+        "attribute_transfer",
+        "",
+        "",
+        "auto",
+        "attribute_transfer",
+        "",
+        "",
+        "auto",
+        "attribute_transfer",
+        "",
+        "",
+        "auto",
+        "attribute_transfer",
+        "",
+        "",
+        "auto",
+        "attribute_transfer",
+        "",
+        "",
+        "auto",
+        "attribute_transfer",
+        "",
+        "",
+        "auto",
+        "attribute_transfer",
+        "",
+        "",
+        "auto",
+        "attribute_transfer",
+        "",
+        ""
+      ],
+      "widgets_values_named": {
+        "mode": "image",
+        "prompt": "summary:\r\n[image generation] A classic 16:9 wide-angle 2D anime broadcast still, replicating a nostalgic, comedic downtime scene of Team 7 waiting for their sensei in an early-2000s \"Naruto\" episode.\r\n\r\ndetailed_description:\r\nThe target image is an authentic early-2000s TV broadcast anime still, perfectly capturing the classic Studio Pierrot 2D cel-animation style. The aesthetic features crisp, thin ink linework, flat cel shading without modern digital gradients, slightly soft DVD-era image quality, and a highly detailed, hand-painted watercolor background. \r\n\r\nThe camera provides a wide, deep-focus establishing shot of the iconic red arched wooden bridge in the Hidden Leaf Village. A calm, stylized blue river flows beneath it, surrounded by lush green trees and traditional wooden village architecture in the hazy, warm light of early morning. The composition spreads the three young genin across the wide frame to highlight their differing personalities.\r\n\r\nIn the dead center of the wooden bridge planks, 12-year-old Naruto Uzumaki (in his bright orange and blue jumpsuit) is lying completely flat on his back in a starfish pose, fast asleep. A classic, translucent anime snot-bubble is expanding from his nose. \r\n\r\nOn the far left, Sakura Haruno (in her red qipao dress) is slumped heavily over the red wooden railing, her arms dangling loosely toward the water. Her head is hung in total exhaustion, with a comical, oversized blue anime sweat-drop graphic painted on her forehead.\r\n\r\nOn the right side of the frame, Sasuke Uchiha (in his blue high-collar shirt and white shorts) sits precariously on the top of the wooden railing. He has one knee drawn up to his chest, resting his chin on his folded hands, glaring down at the river with a profound, brooding scowl of intense irritation.\r\n\r\nIn the far background, perfectly centered down the dirt path leading to the bridge, the tiny figure of Kakashi Hatake can be seen slowly strolling toward them. He is completely unbothered, his face buried in his small orange book. \r\n\r\nSynchronized yellow English subtitles with a crisp black drop-shadow appear centered near the bottom edge, reading: \"I can't believe he's three hours late...\" The scene evokes the genuine, lighthearted character dynamics and world-building of the classic anime era.",
+        "resolution": "Custom",
+        "aspect_ratio": "1:1",
+        "width": 992,
+        "height": 992,
+        "seconds": 5,
+        "advanced": false,
+        "fps": 24,
+        "keyframe_role": "First frame priority",
+        "ref_image_size": "Max 2K Short Edge",
+        "reference_mention_mode": "By index",
+        "megapixels": 1,
+        "seed": 42,
+        "control_after_generate": 42,
+        "enhance_mode": "off",
+        "adherence": 0.85,
+        "route": "auto",
+        "sampling_profile": "base_quality_20",
+        "frame_profile": "recommended_5",
+        "analyzer_model": "",
+        "studio_state": "{\"schema_version\":10,\"prompt\":\"summary:\\r\\n[image generation] A classic 16:9 wide-angle 2D anime broadcast still, replicating a nostalgic, comedic downtime scene of Team 7 waiting for their sensei in an early-2000s \\\"Naruto\\\" episode.\\r\\n\\r\\ndetailed_description:\\r\\nThe target image is an authentic early-2000s TV broadcast anime still, perfectly capturing the classic Studio Pierrot 2D cel-animation style. The aesthetic features crisp, thin ink linework, flat cel shading without modern digital gradients, slightly soft DVD-era image quality, and a highly detailed, hand-painted watercolor background. \\r\\n\\r\\nThe camera provides a wide, deep-focus establishing shot of the iconic red arched wooden bridge in the Hidden Leaf Village. A calm, stylized blue river flows beneath it, surrounded by lush green trees and traditional wooden village architecture in the hazy, warm light of early morning. The composition spreads the three young genin across the wide frame to highlight their differing personalities.\\r\\n\\r\\nIn the dead center of the wooden bridge planks, 12-year-old Naruto Uzumaki (in his bright orange and blue jumpsuit) is lying completely flat on his back in a starfish pose, fast asleep. A classic, translucent anime snot-bubble is expanding from his nose. \\r\\n\\r\\nOn the far left, Sakura Haruno (in her red qipao dress) is slumped heavily over the red wooden railing, her arms dangling loosely toward the water. Her head is hung in total exhaustion, with a comical, oversized blue anime sweat-drop graphic painted on her forehead.\\r\\n\\r\\nOn the right side of the frame, Sasuke Uchiha (in his blue high-collar shirt and white shorts) sits precariously on the top of the wooden railing. He has one knee drawn up to his chest, resting his chin on his folded hands, glaring down at the river with a profound, brooding scowl of intense irritation.\\r\\n\\r\\nIn the far background, perfectly centered down the dirt path leading to the bridge, the tiny figure of Kakashi Hatake can be seen slowly strolling toward them. He is completely unbothered, his face buried in his small orange book. \\r\\n\\r\\nSynchronized yellow English subtitles with a crisp black drop-shadow appear centered near the bottom edge, reading: \\\"I can't believe he's three hours late...\\\" The scene evokes the genuine, lighthearted character dynamics and world-building of the classic anime era.\",\"references\":[],\"prompt_options\":{\"enhance_mode\":\"off\",\"analyze_images\":false,\"deep_enhancement\":true,\"analyzer_resolution\":512,\"adherence\":0.85,\"detail_level\":\"detailed\",\"preserve_user_text\":true,\"infer_roles\":true,\"system_instruction\":\"\",\"analyzer_model\":\"\",\"analyzer_device\":\"auto\",\"analyzer_quantization\":\"auto\",\"analyzer_max_tokens\":1800,\"analyzer_keep_loaded\":false},\"generation\":{\"mode\":\"auto\",\"route\":\"auto\",\"seed\":42,\"seed_locked\":false,\"seed_queue_reservations\":0,\"aspect_ratio\":\"1:1\",\"megapixels\":1,\"custom_width\":1024,\"custom_height\":1024,\"cap_native_resolution\":false,\"sampling_profile\":\"base_quality_20\",\"frame_profile\":\"recommended_5\",\"frame_selection\":\"decode_recommended\",\"reference_short_edge\":2048,\"source_image_ordinal\":1},\"ui\":{\"advanced_open\":false,\"comparison_enabled\":false,\"reference_details\":{},\"director_node_id\":\"10\",\"runtime_optimization\":\"auto\",\"runtime_advanced\":{\"attention_backend\":\"auto\",\"head_chunks\":0,\"ffn_chunks\":0,\"ffn_sequence_threshold\":4096}}}",
+        "media_filename": "{\"schema_version\":10,\"prompt\":\"Describe the final still image.\",\"references\":[],\"prompt_options\":{\"enhance_mode\":\"off\",\"analyze_images\":false,\"deep_enhancement\":true,\"analyzer_resolution\":512,\"adherence\":0.85,\"detail_level\":\"detailed\",\"preserve_user_text\":true,\"infer_roles\":true,\"system_instruction\":\"\",\"analyzer_model\":\"\",\"analyzer_device\":\"auto\",\"analyzer_quantization\":\"auto\",\"analyzer_max_tokens\":1800,\"analyzer_keep_loaded\":false},\"generation\":{\"mode\":\"auto\",\"route\":\"auto\",\"seed\":42,\"seed_locked\":false,\"seed_queue_reservations\":0,\"aspect_ratio\":\"1:1\",\"megapixels\":1,\"custom_width\":1024,\"custom_height\":1024,\"cap_native_resolution\":true,\"sampling_profile\":\"base_quality_20\",\"frame_profile\":\"recommended_5\",\"frame_selection\":\"decode_recommended\",\"reference_short_edge\":2048,\"source_image_ordinal\":1},\"ui\":{\"advanced_open\":false,\"comparison_enabled\":false,\"reference_details\":{},\"director_node_id\":\"10\",\"runtime_optimization\":\"auto\",\"runtime_advanced\":{\"attention_backend\":\"auto\",\"head_chunks\":0,\"ffn_chunks\":0,\"ffn_sequence_threshold\":4096}}}",
+        "media_filename_1": "",
+        "role_1": "auto",
+        "retention_1": "attribute_transfer",
+        "description_1": "",
+        "media_filename_2": "",
+        "role_2": "auto",
+        "retention_2": "attribute_transfer",
+        "description_2": "",
+        "media_filename_3": "",
+        "role_3": "auto",
+        "retention_3": "attribute_transfer",
+        "description_3": "",
+        "media_filename_4": "",
+        "role_4": "auto",
+        "retention_4": "attribute_transfer",
+        "description_4": "",
+        "media_filename_5": "",
+        "role_5": "auto",
+        "retention_5": "attribute_transfer",
+        "description_5": "",
+        "media_filename_6": "",
+        "role_6": "auto",
+        "retention_6": "attribute_transfer",
+        "description_6": "",
+        "media_filename_7": "",
+        "role_7": "auto",
+        "retention_7": "attribute_transfer",
+        "description_7": "",
+        "media_filename_8": "",
+        "role_8": "auto",
+        "retention_8": "attribute_transfer",
+        "description_8": "",
+        "media_filename_9": "",
+        "role_9": "auto",
+        "retention_9": "attribute_transfer",
+        "description_9": "",
+        "h3studio_controls": ""
+      },
+      "color": "#255049",
+      "bgcolor": "#172d29"
     }
   ],
   "links": [
@@ -1298,8 +1299,8 @@
       "bounding": [
         -1456.6205858181177,
         216.73116712140035,
-        800,
-        1010
+        798.8847124837448,
+        1070.2264193331027
       ],
       "color": "#355b54",
       "flags": {}
@@ -2246,10 +2247,10 @@
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.5030457997981501,
+      "scale": 0.7172928785707945,
       "offset": [
-        2160.2008748934295,
-        -620.9613407416856
+        1956.2890793589509,
+        -412.5507216736933
       ]
     },
     "frontendVersion": "1.50.1",
