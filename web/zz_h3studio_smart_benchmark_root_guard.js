@@ -2,6 +2,28 @@ import { app } from "../../scripts/app.js";
 
 const TARGET = "H3StudioSmartBenchmark";
 const WIDGET_NAME = "h3studio_smart_benchmark";
+const STYLE_ID = "h3studio-smart-benchmark-container-fix";
+
+function installResponsiveStyles() {
+  if (document.getElementById(STYLE_ID)) return;
+  const style = document.createElement("style");
+  style.id = STYLE_ID;
+  style.textContent = `
+    .h3b4{container-type:inline-size;min-width:0;box-sizing:border-box}
+    @container (max-width:680px){
+      .h3b4-presets{grid-template-columns:1fr 1fr}
+      .h3b4-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+      .h3b4-grid>.h3b4-field:last-child{grid-column:1/-1}
+    }
+    @container (max-width:500px){
+      .h3b4-head{align-items:flex-start;flex-direction:column}
+      .h3b4-presets,.h3b4-grid{grid-template-columns:1fr}
+      .h3b4-grid>.h3b4-field:last-child{grid-column:auto}
+      .h3b4-summary{flex-direction:column}
+    }
+  `;
+  document.head.append(style);
+}
 
 function isBenchmarkWidget(item) {
   return item?.name === WIDGET_NAME
@@ -13,17 +35,44 @@ function benchmarkWidgets(node) {
   return (node?.widgets || []).filter(isBenchmarkWidget);
 }
 
+function copyComfyGeometry(from, to) {
+  if (!from || !to || from === to) return;
+  // addDOMWidget owns these inline values. The v4 renderer replaces its root,
+  // so carry the canvas-overlay geometry forward immediately instead of letting
+  // a fresh `width:100%` root size itself against the browser viewport.
+  for (const property of [
+    "position", "left", "top", "right", "bottom", "width", "height",
+    "transform", "transform-origin", "z-index", "display", "visibility",
+    "pointer-events", "opacity",
+  ]) {
+    const value = from.style?.getPropertyValue?.(property);
+    if (!value) continue;
+    to.style.setProperty(property, value, from.style.getPropertyPriority(property));
+  }
+}
+
 function boundRoot(root, node) {
   if (!root) return;
+  installResponsiveStyles();
   root.dataset.h3BenchmarkUi = "v4";
   root.dataset.h3BenchmarkNode = String(node.id ?? "");
-  // The benchmark is deliberately one bounded scroll surface.  Never let DOM
-  // content decide the LiteGraph node height or spill over neighbouring nodes.
-  root.style.setProperty("width", "100%", "important");
-  root.style.setProperty("max-width", "100%", "important");
+
+  // IMPORTANT: never force width/max-width here. ComfyUI positions DOM widgets
+  // in a canvas overlay and writes the exact pixel width onto the widget element.
+  // PR #49's old `width:100%!important` made 100% mean the overlay/viewport,
+  // which is exactly the giant right-side overflow seen in real workflows.
+  if (root.style.getPropertyPriority("width") === "important" && root.style.getPropertyValue("width") === "100%") {
+    root.style.removeProperty("width");
+  }
+  if (root.style.getPropertyPriority("max-width") === "important" && root.style.getPropertyValue("max-width") === "100%") {
+    root.style.removeProperty("max-width");
+  }
+  root.style.setProperty("min-width", "0", "important");
+  root.style.setProperty("box-sizing", "border-box", "important");
   root.style.setProperty("max-height", "560px", "important");
   root.style.setProperty("overflow-y", "auto", "important");
   root.style.setProperty("overflow-x", "hidden", "important");
+  root.style.setProperty("overscroll-behavior", "contain", "important");
   root.style.setProperty("contain", "layout paint", "important");
 }
 
@@ -44,8 +93,6 @@ function dedupe(node, preferred = null) {
 
   for (const extra of matches) {
     if (extra === keep) continue;
-    // DOM widgets are transient and never serialized. Removing stale widget
-    // records is safe; after a restart the node reconstructs exactly one root.
     extra.element?.remove?.();
     extra.inputEl?.remove?.();
     const index = node.widgets.indexOf(extra);
@@ -63,11 +110,12 @@ function install(node) {
     return;
   }
   node.__h3bRootGuardInstalled = true;
+  installResponsiveStyles();
 
-  // PR #48's v4 renderer replaces the DOM element when it redraws. ComfyUI's
-  // DOM-widget object keeps its original `.element` reference, so a later
-  // configure pass incorrectly thinks the widget is disconnected and adds a
-  // second complete benchmark. Bind that reference to every new live root.
+  // The benchmark renderer redraws by replacing its root. Preserve ComfyUI's
+  // overlay geometry from the previous root and rebind the DOM-widget handle to
+  // the new root immediately. This fixes both duplicate roots and viewport-width
+  // overflow without fighting ComfyUI's own node-layout system.
   let rootValue = node.__h3bRoot || null;
   try {
     Object.defineProperty(node, "__h3bRoot", {
@@ -75,6 +123,8 @@ function install(node) {
       enumerable: true,
       get() { return rootValue; },
       set(value) {
+        const previous = rootValue;
+        if (previous && value && previous !== value) copyComfyGeometry(previous, value);
         rootValue = value;
         boundRoot(value, node);
         const existing = benchmarkWidgets(node)[0];
@@ -93,6 +143,7 @@ function install(node) {
         const existing = dedupe(node, rootValue);
         if (existing) {
           if (element && element !== existing.element) {
+            copyComfyGeometry(existing.element, element);
             boundRoot(element, node);
             if (existing.element?.isConnected && !element.isConnected) existing.element.replaceWith(element);
             existing.element = element;
