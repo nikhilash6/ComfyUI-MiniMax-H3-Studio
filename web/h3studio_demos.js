@@ -48,7 +48,8 @@ function installStyles() {
     .h3s-demo-thumb-box{position:relative;width:100%;height:105px;background:#0d0f11;overflow:hidden}
     .h3s-demo-thumb{width:100%;height:100%;object-fit:cover;transition:transform .25s ease;display:block}
     .h3s-demo-card:hover .h3s-demo-thumb{transform:scale(1.04)}
-    .h3s-demo-category-tag{position:absolute;top:6px;left:6px;font-size:7.5px;font-weight:750;padding:1.5px 5px;border-radius:3px;text-transform:uppercase;letter-spacing:.05em;backdrop-filter:blur(4px)}
+    .h3s-demo-category-tag{position:absolute;top:6px;left:6px;font-size:7.5px;font-weight:750;padding:1.5px 5px;border-radius:3px;text-transform:uppercase;letter-spacing:.05em;backdrop-filter:blur(4px);background:rgba(20,24,30,.85);color:#cbd5e1;border:1px solid rgba(255,255,255,.15)}
+    .h3s-demo-category-tag.cat-cinematic{background:rgba(45,30,12,.88);color:#fcd34d;border:1px solid rgba(245,158,11,.45)}
     .h3s-demo-category-tag.cat-anime{background:rgba(28,22,45,.85);color:#c4b5fd;border:1px solid rgba(139,92,246,.4)}
     .h3s-demo-category-tag.cat-realistic{background:rgba(16,32,24,.85);color:#6ee7b7;border:1px solid rgba(16,185,129,.4)}
     .h3s-demo-category-tag.cat-history{background:rgba(24,30,40,.85);color:#93c5fd;border:1px solid rgba(59,130,246,.4)}
@@ -381,7 +382,8 @@ async function buildDemoShelf(node, selectedId = null) {
   function refreshSubControls() {
     subControls.innerHTML = "";
     if (activeTab === "demos") {
-      const categories = ["ALL", "ANIME", "REALISTIC"];
+      const distinctCats = Array.from(new Set(demos.map((d) => d.category).filter(Boolean)));
+      const categories = ["ALL", ...distinctCats];
       for (const cat of categories) {
         const pill = document.createElement("button");
         pill.type = "button";
@@ -395,7 +397,7 @@ async function buildDemoShelf(node, selectedId = null) {
             p.classList.remove("is-active");
           }
           pill.classList.add("is-active");
-          renderCards(shelf, body, node, demos, getSessionHistory(), selectedId);
+          renderShelfContent(node, shelf, demos);
         });
         subControls.appendChild(pill);
       }
@@ -410,7 +412,7 @@ async function buildDemoShelf(node, selectedId = null) {
           e.stopPropagation();
           saveSessionHistory([]);
           historyTab.innerHTML = `<span>⏱</span> History (0)`;
-          renderCards(shelf, body, node, demos, [], selectedId);
+          renderShelfContent(node, shelf, demos);
           refreshSubControls();
         });
         subControls.appendChild(clearBtn);
@@ -424,7 +426,7 @@ async function buildDemoShelf(node, selectedId = null) {
     demosTab.classList.add("is-active");
     historyTab.classList.remove("is-active");
     refreshSubControls();
-    renderCards(shelf, body, node, demos, getSessionHistory(), selectedId);
+    renderShelfContent(node, shelf, demos);
   });
 
   historyTab.addEventListener("click", (e) => {
@@ -433,7 +435,7 @@ async function buildDemoShelf(node, selectedId = null) {
     historyTab.classList.add("is-active");
     demosTab.classList.remove("is-active");
     refreshSubControls();
-    renderCards(shelf, body, node, demos, getSessionHistory(), selectedId);
+    renderShelfContent(node, shelf, demos);
   });
 
   refreshSubControls();

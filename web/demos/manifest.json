@@ -1,5 +1,47 @@
 [
   {
+    "id": "cinematic_interstellar_miller",
+    "category": "CINEMATIC",
+    "title": "Interstellar · Miller's Water Planet",
+    "subtitle": "Those aren't mountains... they're waves.",
+    "file": "cinematic_interstellar_miller.webp",
+    "aspect": "21:9",
+    "target_mp": 1.0,
+    "route": "auto",
+    "sampling": "lightx_v1_fl2v_8",
+    "summary": "[image generation] A breathtaking 21:9 cinematic 35mm IMAX anamorphic film still from \"Interstellar\" (2014) on Miller's planet, capturing two astronauts in white spacesuits standing in ankle-deep knee-high crystalline ocean water as a colossal, mountain-sized tidal wave rises in the background.",
+    "detailed_description": "A cinematic wide 70mm IMAX still directed by Christopher Nolan with cinematography by Hoyte van Hoytema. In the foreground right, an astronaut in a bulky weathered white NASA Ranger spacesuit wades through clear, calm ankle-deep ocean water under a hazy pale blue sky with scattered clouds. On the left, a second astronaut walks toward the landing craft's mechanical hydraulic landing leg. In the deep background, an incomprehensibly gigantic, mountain-high tidal tsunami wave looms across the horizon, with frothing white crests and deep turquoise wall of water curling upward. Authentic anamorphic lens flare, horizontal streak highlights, fine Kodak Vision3 500T film grain, natural daylight exposure, photorealistic ocean surface ripples, and crisp cinematic color grading with cool oceanic blues and warm sunlight.",
+    "size_kb": 63.9
+  },
+  {
+    "id": "cinematic_interstellar_wormhole",
+    "category": "CINEMATIC",
+    "title": "Interstellar · Saturn Wormhole Approach",
+    "subtitle": "It's a spherical hole. Who put it there?",
+    "file": "cinematic_interstellar_wormhole.webp",
+    "aspect": "21:9",
+    "target_mp": 1.0,
+    "route": "auto",
+    "sampling": "lightx_v1_fl2v_8",
+    "summary": "[image generation] An iconic 21:9 cinematic IMAX film still inside the Endurance cockpit approaching the spherical wormhole distortion near Saturn, with Cooper reaching his gloved hand toward the window.",
+    "detailed_description": "An intimate anamorphic 35mm film still from \"Interstellar\". Inside the dimly lit spacecraft cockpit, pilot Cooper in a detailed white flight suit and harness sits at the flight console, reaching his gloved left hand toward the reinforced cockpit window in quiet awe. Beside him, Dr. Brand watches attentively. Through the window, the majestic golden rings of Saturn stretch across deep space, gravitationally warped and bent into a glowing spherical Einstein-ring wormhole with brilliant swirling light distortions and starfield lensing. Authentic 35mm motion picture texture, subtle warm instrument panel glow, crisp reflections on the glass canopy, rich dynamic range, and Hoyte van Hoytema's naturalistic lighting.",
+    "size_kb": 63.7
+  },
+  {
+    "id": "cinematic_sicario_border",
+    "category": "CINEMATIC",
+    "title": "Sicario · Juarez Bridge Extraction",
+    "subtitle": "Stay in your vehicles. Weapons free.",
+    "file": "cinematic_sicario_border.webp",
+    "aspect": "21:9",
+    "target_mp": 1.0,
+    "route": "auto",
+    "sampling": "lightx_v1_fl2v_8",
+    "summary": "[image generation] A tense 21:9 cinematic 35mm film photograph from \"Sicario\" (2015) at the crowded El Paso-Juarez border highway toll checkpoint during golden hour sunset.",
+    "detailed_description": "A tense, gritty cinematic 35mm film still directed by Denis Villeneuve with Roger Deakins' signature naturalistic lighting. In the foreground left, an armed tactical agent in olive fatigues, black plate carrier vest, and sidearm stands vigilantly beside an unmarked black Chevy Suburban SUV amidst gridlocked traffic at a dusty US-Mexico border toll plaza. In the center lane, a silver commuter sedan contains a mother and young boy looking nervously out the window. Rows of idling vehicles stretch under the heavy green steel canopy of the border crossing into the hazy golden-orange sunset dust. High contrast, atmospheric warm rim light, natural shadow detail, authentic film texture, and palpable tension.",
+    "size_kb": 74.2
+  },
+  {
     "id": "anime_naruto_bridge",
     "category": "ANIME",
     "title": "Naruto · Team 7 on Bridge",
