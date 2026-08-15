@@ -8,15 +8,7 @@ function installStyles() {
   const style = document.createElement("style");
   style.id = STYLE_ID;
   style.textContent = `
-    /* Final classic-nodes Benchmark rule: exactly ONE per-scenario MP slider.
-       v14 owns it; v21/v23 controls stay mounted but are hidden so their
-       observers do not recreate them and fight this final layer. */
-    .h3b7.h3b21 .h3b21-mp,
-    .h3b7.h3b21 .h3b21-mp-help,
-    .h3b7.h3b23 .h3b7-field.h3b24-mp-field > .h3b24-mp,
-    .h3b7.h3b23 .h3b24-mp-original{
-      display:none!important;
-    }
+    /* v14 is the only visible per-scenario MP control. */
     .h3b7 .h3b14-mp{
       display:grid!important;
       width:100%!important;
@@ -31,7 +23,7 @@ function installStyles() {
     }
     .h3b7 .h3b14-mp-field>.h3b7-input{display:none!important}
 
-    /* Keep the final native surface even if older benchmark decorators rerun. */
+    /* Keep the native Benchmark surface even if older decorators rerun. */
     .h3b7.h3b23,
     .h3b7.h3b21.h3b23{
       background:transparent!important;
@@ -54,17 +46,43 @@ function installStyles() {
   document.head.append(style);
 }
 
+function forceHide(element) {
+  if (!element) return;
+  element.hidden = true;
+  element.setAttribute("aria-hidden", "true");
+  element.tabIndex = -1;
+  element.style.setProperty("display", "none", "important");
+  element.style.setProperty("visibility", "hidden", "important");
+  element.style.setProperty("width", "0", "important");
+  element.style.setProperty("height", "0", "important");
+  element.style.setProperty("min-width", "0", "important");
+  element.style.setProperty("min-height", "0", "important");
+  element.style.setProperty("margin", "0", "important");
+  element.style.setProperty("padding", "0", "important");
+  element.style.setProperty("border", "0", "important");
+  element.style.setProperty("overflow", "hidden", "important");
+}
+
 function clean(node) {
   const root = node?.__h3bRoot;
   if (!root?.isConnected) return;
   root.classList.add("h3b23");
 
-  /* Do NOT remove v21/v23 MP controls here. Their own MutationObservers will
-     recreate missing controls. Keeping them mounted-but-hidden prevents the
-     observer loop and leaves v14 as the only visible scenario MP slider. */
+  /* v21 and v23 both create obsolete MP widgets. Leave them mounted so their
+     observers do not recreate them, but hide them inline with !important so
+     no stylesheet specificity can make them visible again. */
+  root.querySelectorAll(".h3b21-mp,.h3b21-mp-help,.h3b24-mp").forEach(forceHide);
+
   for (const field of root.querySelectorAll(".h3b14-mp-field")) {
     const slider = field.querySelector(":scope > .h3b14-mp");
-    if (slider) slider.style.removeProperty("display");
+    if (slider) {
+      slider.hidden = false;
+      slider.removeAttribute("aria-hidden");
+      slider.style.setProperty("display", "grid", "important");
+      slider.style.removeProperty("visibility");
+      slider.style.removeProperty("width");
+      slider.style.removeProperty("height");
+    }
   }
 }
 
@@ -76,6 +94,7 @@ function observe(node) {
   }
   clean(node);
   if (root.__h3BenchmarkFinalV27Observer) return;
+
   let queued = false;
   const observer = new MutationObserver(() => {
     if (queued) return;
@@ -85,7 +104,7 @@ function observe(node) {
       if (root.isConnected) clean(node);
     });
   });
-  observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
+  observer.observe(root, { childList: true, subtree: true });
   root.__h3BenchmarkFinalV27Observer = observer;
 }
 
@@ -95,17 +114,23 @@ function sweep() {
   }
 }
 
+function scheduleSweep() {
+  for (const delay of [0, 120, 360, 800, 1500]) setTimeout(sweep, delay);
+}
+
 app.registerExtension({
   name: "H3Studio.BenchmarkFinalV27",
   setup() {
     installStyles();
-    setTimeout(sweep, 560);
+    scheduleSweep();
   },
   nodeCreated(node) {
-    if (node?.comfyClass === BENCHMARK) setTimeout(() => observe(node), 560);
+    if (node?.comfyClass === BENCHMARK) {
+      for (const delay of [80, 300, 700, 1400]) setTimeout(() => observe(node), delay);
+    }
   },
   afterConfigureGraph() {
     installStyles();
-    setTimeout(sweep, 620);
+    scheduleSweep();
   },
 });
