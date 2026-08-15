@@ -5,6 +5,7 @@ import test from "node:test";
 import {
   STUDIO_NODE_HEIGHT,
   STUDIO_NODE_MAX_HEIGHT,
+  STUDIO_NODE_MIN_HEIGHT,
   STUDIO_NODE_WIDTH,
   STUDIO_PANEL_HEIGHT,
   clampStudioNodeSize,
@@ -20,7 +21,7 @@ test("Studio panel height stays fixed while width follows Comfy allocation", () 
 });
 
 test("Director cannot shrink below its maintained minimum size", () => {
-  assert.deepEqual(clampStudioNodeSize([400, 600]), [STUDIO_NODE_WIDTH, STUDIO_NODE_HEIGHT]);
+  assert.deepEqual(clampStudioNodeSize([400, 400]), [STUDIO_NODE_WIDTH, STUDIO_NODE_MIN_HEIGHT]);
   assert.deepEqual(clampStudioNodeSize([760, 920]), [760, 920]);
 });
 
@@ -31,7 +32,7 @@ test("Director preserves accepted user sizes but caps runaway automatic height",
 });
 
 test("initial Director normalization still resets runaway serialized height", () => {
-  assert.deepEqual(initialStudioNodeSize([760, 4000]), [760, STUDIO_NODE_HEIGHT]);
+  assert.deepEqual(initialStudioNodeSize([760, 4000]), [760, STUDIO_NODE_MAX_HEIGHT]);
 });
 
 test("canvas redraws do not rewrite already-hidden reactive widgets", () => {

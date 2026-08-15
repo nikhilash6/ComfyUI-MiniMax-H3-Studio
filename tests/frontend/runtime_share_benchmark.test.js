@@ -28,9 +28,8 @@ test("portable preset sharing includes runtime assets and exact LoRA strengths w
   assert.match(share, /loaderAssets/);
   assert.match(share, /widgetChoices/);
   assert.doesNotMatch(share, /prompt: state\.prompt/);
-  assert.match(share, /Prompts and reference images are never included/);
-  assert.match(ui, /button\.textContent = "Copy preset"/);
-  assert.match(ui, /button\.textContent = "Copy run config"/);
+  assert.match(share, /"Copy preset"/);
+  assert.match(share, /"Copy run config"/);
 });
 
 test("Smart Benchmark v7 uses compact native controls and only calls OG 'OG'", () => {

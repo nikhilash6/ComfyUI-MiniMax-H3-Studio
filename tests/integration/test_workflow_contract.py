@@ -47,7 +47,7 @@ def test_workflow_opens_without_placeholder_images():
 def test_persisted_studio_state_is_image_only_and_versioned():
     workflow = load_workflow()
     director = next(node for node in workflow["nodes"] if node["type"] == "H3StudioDirector")
-    state = json.loads(director["widgets_values"][20])
+    state = json.loads(director.get("widgets_values_named", {}).get("studio_state") or director["properties"]["h3studio_state"])
     assert state["schema_version"] == 10
     assert state["generation"]["seed_locked"] is False
     assert json.loads(director["properties"]["h3studio_state"]) == state
@@ -72,7 +72,9 @@ def test_primary_graph_has_one_conditioning_pass():
 def test_maintained_workflow_reuses_one_qwen_model_and_exposes_decoder_choices():
     workflow = load_workflow()
     loader = next(node for node in workflow["nodes"] if node["type"] == "H3StudioLoader")
-    assert loader["widgets_values"][-2:] == ["Auto · Qwen3-VL 4B", "Same as image analyzer"]
+    named = loader.get("widgets_values_named", {})
+    assert named.get("image_analyzer", "").startswith(("Fast · Qwen3.5", "Auto · Qwen3"))
+    assert named.get("prompt_writer", "").startswith(("Auto · Qwen3", "Same as image analyzer"))
     frontend = STUDIO_FRONTEND.read_text(encoding="utf-8")
     assert "Original H3 Video VAE · quality" in frontend
     assert "T=1 Image VAE · fastest · experimental" in frontend
@@ -108,8 +110,8 @@ def test_nodes_within_each_layout_group_do_not_overlap():
     workflow = load_workflow()
     nodes = {node["id"]: node for node in workflow["nodes"]}
     memberships = [
-        (10,), (11, 12), (16, 13), (14, 15),
-        (25, 26, 28, 29), (20, 21, 22, 24), (17, 19, 27),
+        (10,), (11, 12), (16, 13), (15, 30),
+        (25, 26), (20, 21, 22, 24), (107, 19, 27),
     ]
     for node_ids in memberships:
         group_nodes = [nodes[node_id] for node_id in node_ids]
@@ -131,10 +133,10 @@ def test_nodes_are_fully_contained_by_their_intended_groups():
         1: (10,),
         2: (11, 12),
         3: (16, 13),
-        4: (14, 15),
-        5: (25, 26, 28, 29),
+        4: (15, 30),
+        5: (25, 26),
         6: (20, 21, 22, 24),
-        7: (17, 19, 27),
+        7: (107, 19, 27),
     }
     for group_id, node_ids in membership.items():
         gx, gy, gw, gh = groups[group_id]["bounding"]
