@@ -10,9 +10,9 @@ def test_prebuilt_runtime_supports_linux_and_windows_nvidia_without_default_sour
     assert '("windows", "amd64")' in SOURCE
     assert "micromamba-linux-64" in SOURCE
     assert "micromamba-win-64.exe" in SOURCE
-    assert 'mode == "prebuilt"' in SOURCE
-    assert 'mode == "source"' in SOURCE
     assert 'mode = str((payload or {}).get("mode") or "prebuilt")' in SOURCE
+    assert 'mode not in {"prebuilt", "source"}' in SOURCE
+    assert 'installer = _install_prebuilt_runtime if mode == "prebuilt" else _build_source_runtime' in SOURCE
 
 
 def test_private_runtime_is_checksum_pinned_atomic_and_does_not_require_windows_symlinks():
