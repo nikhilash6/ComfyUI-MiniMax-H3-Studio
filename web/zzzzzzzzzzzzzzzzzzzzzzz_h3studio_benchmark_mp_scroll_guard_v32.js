@@ -2,48 +2,86 @@ import { app } from "../../scripts/app.js";
 
 const ROOT_SELECTOR = ".h3b7.h3final-benchmark";
 const MP_SELECTOR = "[data-h3-director-mp='1']";
+const LEGACY_MP_SELECTOR = ".h3final-target-field > input[type='number'], .h3final-target-field > .h3b7-input[type='number']";
 let restoreToken = 0;
+let activeObserver = null;
 
-function snapshot(root) {
-  if (!root) return null;
-  const body = root.querySelector(".h3b7-body");
-  return {
-    root,
-    rootTop: root.scrollTop,
-    body,
-    bodyTop: body?.scrollTop || 0,
-  };
+function isScrollable(element) {
+  if (!(element instanceof HTMLElement)) return false;
+  if (element.scrollHeight <= element.clientHeight + 1) return false;
+  const style = getComputedStyle(element);
+  return /(auto|scroll|overlay)/.test(`${style.overflowY} ${style.overflow}`);
 }
 
-function restore(state, token) {
-  if (!state || token !== restoreToken) return;
-  const root = state.root?.isConnected ? state.root : null;
-  if (!root) return;
-  root.scrollTop = state.rootTop;
-  const body = state.body?.isConnected ? state.body : root.querySelector(".h3b7-body");
-  if (body) body.scrollTop = state.bodyTop;
+function snapshot(root) {
+  if (!(root instanceof HTMLElement)) return null;
+  const entries = [];
+  const seen = new Set();
+  const add = (element) => {
+    if (!(element instanceof HTMLElement) || seen.has(element)) return;
+    seen.add(element);
+    entries.push({ element, top: element.scrollTop, left: element.scrollLeft });
+  };
+
+  // .h3b7 is normally the scroller, but ComfyUI DOMWidget layouts can put
+  // scrolling on a wrapper. Preserve both the Benchmark root and every
+  // scrollable ancestor so a scenario rerender cannot jump either layer.
+  add(root);
+  add(root.querySelector(".h3b7-body"));
+  let parent = root.parentElement;
+  while (parent && parent !== document.body) {
+    if (isScrollable(parent)) add(parent);
+    parent = parent.parentElement;
+  }
+  return entries;
+}
+
+function restore(entries, token) {
+  if (!entries || token !== restoreToken) return;
+  for (const state of entries) {
+    if (!state.element?.isConnected) continue;
+    state.element.scrollTop = state.top;
+    state.element.scrollLeft = state.left;
+  }
 }
 
 function preserveScroll(root) {
-  const state = snapshot(root);
-  if (!state) return;
+  const entries = snapshot(root);
+  if (!entries?.length) return;
   const token = ++restoreToken;
-  const apply = () => restore(state, token);
+  activeObserver?.disconnect();
 
-  // Benchmark's legacy scenario callback may rebuild its inner DOM synchronously
-  // and again on queued UI work. Reapply the exact scroll position across those
-  // frames so MP changes behave like Director controls instead of jumping upward.
+  const apply = () => restore(entries, token);
+
+  // The hidden legacy MP input fires the synchronous Benchmark render. Observe
+  // the root itself so every replaceChildren/mutation gets its scroll restored
+  // on the following frame, not before the rerender like the old guard did.
+  activeObserver = new MutationObserver(() => requestAnimationFrame(apply));
+  activeObserver.observe(root, { childList: true, subtree: true });
+
   queueMicrotask(apply);
   requestAnimationFrame(() => {
     apply();
     requestAnimationFrame(apply);
   });
-  for (const delay of [24, 60, 120, 220]) setTimeout(apply, delay);
+  for (const delay of [16, 40, 80, 140, 220, 360, 520]) setTimeout(apply, delay);
+  setTimeout(() => {
+    if (token !== restoreToken) return;
+    apply();
+    activeObserver?.disconnect();
+    activeObserver = null;
+  }, 650);
 }
 
 function targetRoot(event) {
   const target = event.target instanceof Element ? event.target : null;
-  if (!target?.closest(MP_SELECTOR)) return null;
+  if (!target) return null;
+
+  // Catch both the visible Director control and, critically, the hidden legacy
+  // number input whose change listener calls patchScenario() -> render().
+  const isMpControl = Boolean(target.closest(MP_SELECTOR));
+  const isLegacyMpCommit = target.matches?.(LEGACY_MP_SELECTOR);
+  if (!isMpControl && !isLegacyMpCommit) return null;
   return target.closest(ROOT_SELECTOR);
 }
 
@@ -53,9 +91,8 @@ function guard(event) {
 }
 
 app.registerExtension({
-  name: "H3Studio.BenchmarkMPScrollGuardV32",
+  name: "H3Studio.BenchmarkMPScrollGuardV33",
   setup() {
-    // change catches slider commits; click catches the Director preset buttons.
     document.addEventListener("change", guard, true);
     document.addEventListener("click", guard, true);
   },
