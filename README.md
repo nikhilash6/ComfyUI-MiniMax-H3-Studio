@@ -21,6 +21,9 @@ Build text-to-image, anchored edits, multi-reference compositions, and controlle
 > [!IMPORTANT]
 > H3 Studio is alpha software built around an evolving audio-video model. Keep working workflow copies when updating ComfyUI, checkpoints, or acceleration nodes. High-resolution generation is experimental; more pixels do not guarantee more learned detail.
 
+> [!WARNING]
+> **ComfyUI Nodes 2.0 is not supported yet.** H3 Studio's custom Image Director and Smart Benchmark interfaces currently target classic Nodes 1.0. Nodes 2.0 has active DOM-widget layout/resizing differences that can cause stretched nodes, bottom-anchored panels, or incorrect overflow with these interfaces. **Use classic Nodes 1.0 for H3 Studio for now.** Proper Nodes 2.0 support is planned for an upcoming update.
+
 
 <img width="1032" height="478" alt="chrome_Qq5N3IDeDL" src="https://github.com/user-attachments/assets/64b62853-aa77-4932-a57f-5801b503a5e9" />
 <img width="1032" height="478" alt="chrome_nKGRTNd8ri" src="https://github.com/user-attachments/assets/b50b4cc1-b8c0-4a7a-85b2-0e16a528edd2" />
@@ -74,7 +77,6 @@ Auto selects the valid route from your requested mode and enabled references. Im
 <img width="1888" height="1056" alt="ComfyUI_temp_svkjp_00001_" src="https://github.com/user-attachments/assets/d023316b-c141-4b8b-b6b5-5d52822c6295" />
 <img width="3264" height="1408" alt="ComfyUI_temp_krtgv_00013_" src="https://github.com/user-attachments/assets/fb332f8c-619e-4a97-bf94-ac7d1e9eb307" />
 <img width="1600" height="1000" alt="H3StudioComparison_temp_acpja_00002_" src="https://github.com/user-attachments/assets/b080a12a-4abb-41a8-93b5-7a0b90fb4ded" />
-
 
 
 
@@ -157,7 +159,6 @@ The Director offers two explicit planning modes:
 - **Direct:** sends the aligned target canvas to H3 from 0.2 MP through approximately 8.5 MP.
 
 The slider labels draft, recommended, extended, experimental, and extreme ranges and always shows the real aligned dimensions. Direct 2/4/8 MP generation is available for experimentation, but H3 Base is not a dedicated super-resolution model. Very large canvases can raise attention cost, decode time, RAM, VRAM, and failure risk without proportional detail gains.
-
 ## Decode choices
 
 The Director exposes the decoder separately from sampling speed:

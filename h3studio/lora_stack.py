@@ -9,7 +9,12 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Any
 
-from .acceleration import PDDBackendError, _load_model_lora
+from .acceleration import (
+    LIGHTX_PROFILES,
+    PDD_PROFILES,
+    PDDBackendError,
+    _load_model_lora,
+)
 
 LOGGER = logging.getLogger(__name__)
 MAX_CUSTOM_LORAS = 6
@@ -58,6 +63,23 @@ def normalize_custom_loras(value: Any) -> tuple[CustomLoraSpec, ...]:
 
 def _basename(value: str) -> str:
     return PurePosixPath(str(value).replace("\\", "/")).name.lower()
+
+
+def _managed_acceleration_artifacts() -> dict[str, str]:
+    """Return LoRAs that are recipes, not ordinary user-stack adapters.
+
+    LightX and PDD artifacts carry a verified scheduler/step/shift contract.
+    Treating a PDD student LoRA as a generic custom LoRA is particularly unsafe:
+    it omits the matching heads and scheduler and can repeatedly wrap ComfyUI's
+    bypass-forward path when a cached LightX model is reused.
+    """
+
+    managed: dict[str, str] = {}
+    for profile in LIGHTX_PROFILES.values():
+        managed[_basename(profile.lora_filename)] = "LightX Speed profile"
+    for profile in PDD_PROFILES.values():
+        managed[_basename(profile.lora_filename)] = "PDD Speed profile with matching heads"
+    return managed
 
 
 def resolve_custom_lora(choices: Iterable[str], requested: str) -> str:
@@ -112,6 +134,18 @@ def apply_custom_lora_stack(
     active = tuple(spec for spec in specs if spec.enabled and abs(spec.strength) >= 1e-8)
     if not active:
         return model, "custom_loras=none"
+
+    managed = _managed_acceleration_artifacts()
+    managed_hits = [(spec.name, managed.get(_basename(spec.name))) for spec in active]
+    managed_hits = [(name, owner) for name, owner in managed_hits if owner]
+    if managed_hits:
+        joined = ", ".join(name for name, _owner in managed_hits)
+        owners = ", ".join(sorted({owner for _name, owner in managed_hits}))
+        raise PDDBackendError(
+            f"{joined} is a managed acceleration adapter, not a generic custom LoRA. "
+            f"Select its matching {owners} in Speed instead of Add LoRA. PDD artifacts also require their matching "
+            "heads/scheduler; stacking them manually can create an invalid bypass-forward chain."
+        )
 
     reserved = {_basename(value) for value in reserved_artifacts if str(value).strip()}
     duplicates = [spec.name for spec in active if _basename(spec.name) in reserved]
