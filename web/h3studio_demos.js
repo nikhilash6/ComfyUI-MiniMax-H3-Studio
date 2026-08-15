@@ -183,10 +183,36 @@ function timeAgo(timestamp) {
   return `${hours}h ago`;
 }
 
-function renderCards(shelf, body, node, demos, history, selectedId) {
+function formatSamplingBadge(profile) {
+  if (!profile) return "LightX 8";
+  const s = String(profile).toLowerCase();
+  if (s.includes("lightx") || s.includes("turbo")) {
+    if (s.includes("8") || s.includes("fl2v_8") || s.includes("v1")) return "LightX 8";
+    if (s.includes("sa_solver") || s.includes("sa")) return "LightX SA-4";
+    if (s.includes("er_sde") || s.includes("sde")) return "LightX SDE-4";
+    return "LightX 8";
+  }
+  if (s.includes("pdd")) {
+    if (s.includes("600")) return "PDD 600";
+    return "PDD 900";
+  }
+  if (s.includes("12") || s.includes("balanced")) return "Base 12";
+  if (s.includes("20") || s.includes("quality")) return "Base 20";
+  return "LightX 8";
+}
+
+function renderShelfContent(node, shelf, manifest) {
+  const body = shelf.querySelector(".h3s-demos-body");
+  if (!body) return;
+
+  const demos = manifest || [];
+  const selectedId = shelf.dataset.selectedId || activeSelectedId;
+
   body.innerHTML = "";
 
+  // History Tab
   if (activeTab === "history") {
+    const history = getSessionHistory();
     if (!history.length) {
       body.innerHTML = `<div class="h3s-empty-history">No session generations yet. Queue a prompt to see previous outputs here.</div>`;
       return;
@@ -215,7 +241,8 @@ function renderCards(shelf, body, node, demos, history, selectedId) {
       const specs = document.createElement("div");
       specs.className = "h3s-demo-badge-specs";
       const seedLabel = item.seed != null ? `Seed ${item.seed}` : "Auto";
-      specs.textContent = `${item.aspect || "16:9"} · ${seedLabel}`;
+      const profileShort = formatSamplingBadge(item.sampling);
+      specs.textContent = `${item.aspect || "16:9"} · ${profileShort} · ${seedLabel}`;
       thumbBox.appendChild(specs);
 
       const content = document.createElement("div");
@@ -277,7 +304,7 @@ function renderCards(shelf, body, node, demos, history, selectedId) {
 
     const specs = document.createElement("div");
     specs.className = "h3s-demo-badge-specs";
-    const profileShort = demo.sampling === "lightx_v1_fl2v_8" ? "LightX 8" : "Base 20";
+    const profileShort = formatSamplingBadge(demo.sampling);
     specs.textContent = `${demo.aspect} · ${demo.target_mp}MP · ${profileShort}`;
     thumbBox.appendChild(specs);
 
