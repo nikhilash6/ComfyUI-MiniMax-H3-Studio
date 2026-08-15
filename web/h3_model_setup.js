@@ -146,7 +146,16 @@ function installUI(node) {
     root.querySelectorAll('button[data-blocking="1"]').forEach(button=>button.disabled=busy);
   };
 
+  const updateSelectedStats = () => {
+    const selected = ASSETS.filter(a=>state.selected.has(a.id));
+    const selectedBytes = selected.reduce((sum,a)=>sum+(Number(state.metadata.get(a.id)?.size_bytes)||0),0);
+    const el = root.querySelector('[data-stat="selected"]');
+    if (el) el.textContent = `${selected.length} · ${bytesLabel(selectedBytes)}`;
+  };
+
   const render = () => {
+    const prevScrollTop = Number(root.scrollTop || 0);
+    const prevScrollLeft = Number(root.scrollLeft || 0);
     const selected = ASSETS.filter(a=>state.selected.has(a.id));
     const selectedBytes = selected.reduce((sum,a)=>sum+(Number(state.metadata.get(a.id)?.size_bytes)||0),0);
     const knownBytes = ASSETS.reduce((sum,a)=>sum+(Number(state.metadata.get(a.id)?.size_bytes)||0),0);
@@ -163,7 +172,7 @@ function installUI(node) {
     }
 
     body += `<div class="h3ms-actions"><button class="h3ms-btn" data-action="required">Select required</button><button class="h3ms-btn" data-action="recommended">Select recommended setup</button><button class="h3ms-btn" data-action="metadata" data-blocking="1" ${uadReady?'':'disabled title="Requires Universal Asset Downloader"'}>${state.metadataLoading?'Loading sizes…':'Refresh sizes'}</button><button class="h3ms-btn" data-action="verify" data-blocking="1" ${uadReady?'':'disabled title="Requires Universal Asset Downloader"'}>Verify all</button><button class="h3ms-btn h3ms-primary" data-action="download" data-blocking="1" ${uadReady?'':'disabled title="Requires Universal Asset Downloader"'}>Download selected missing</button><button class="h3ms-btn" data-action="repair" data-blocking="1" ${uadReady?'':'disabled title="Requires Universal Asset Downloader"'}>Repair selected</button></div>`;
-    body += `<div class="h3ms-stats"><div class="h3ms-stat"><small>Selected</small><strong>${selected.length} · ${bytesLabel(selectedBytes)}</strong></div><div class="h3ms-stat"><small>Known total</small><strong>${bytesLabel(knownBytes)}</strong></div><div class="h3ms-stat"><small>Verified</small><strong>${verifiedCount}/${ASSETS.length}</strong></div><div class="h3ms-stat"><small>Missing</small><strong>${state.verification.size?missingCount:'not checked'}</strong></div></div>`;
+    body += `<div class="h3ms-stats"><div class="h3ms-stat"><small>Selected</small><strong data-stat="selected">${selected.length} · ${bytesLabel(selectedBytes)}</strong></div><div class="h3ms-stat"><small>Known total</small><strong>${bytesLabel(knownBytes)}</strong></div><div class="h3ms-stat"><small>Verified</small><strong>${verifiedCount}/${ASSETS.length}</strong></div><div class="h3ms-stat"><small>Missing</small><strong>${state.verification.size?missingCount:'not checked'}</strong></div></div>`;
 
     for (const group of GROUPS) {
       const groupAssets=ASSETS.filter(asset=>asset.group===group.key);
@@ -184,6 +193,14 @@ function installUI(node) {
     root.innerHTML = body;
     bind();
     setBusy(state.busy);
+    root.scrollTop = prevScrollTop;
+    root.scrollLeft = prevScrollLeft;
+    queueMicrotask(() => {
+      if (root.isConnected) {
+        root.scrollTop = prevScrollTop;
+        root.scrollLeft = prevScrollLeft;
+      }
+    });
   };
 
   async function detect() {
@@ -316,13 +333,16 @@ function installUI(node) {
 
   function selectBy(predicate) {
     state.selected=new Set(ASSETS.filter(predicate).map(asset=>asset.id));
-    render();
+    root.querySelectorAll('[data-select]').forEach(input=>{
+      input.checked=state.selected.has(input.dataset.select);
+    });
+    updateSelectedStats();
   }
 
   function bind() {
     root.querySelectorAll('[data-select]').forEach(input=>input.addEventListener('change',()=>{
       input.checked?state.selected.add(input.dataset.select):state.selected.delete(input.dataset.select);
-      render();
+      updateSelectedStats();
     }));
     root.querySelector('[data-action="recheck"]')?.addEventListener('click',detect);
     root.querySelector('[data-action="install-uad"]')?.addEventListener('click',installUad);

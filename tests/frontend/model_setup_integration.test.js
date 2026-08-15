@@ -60,3 +60,9 @@ test("Model Setup renders full model groups and Hugging Face links even when UAD
   assert.ok(!uadBlock.includes("return;"), "UAD block must not return early");
   assert.match(source, /for\s*\(const group of GROUPS\)/);
 });
+
+test("Model Setup checkbox toggles update selection in place without rebuilding DOM or resetting scroll", () => {
+  assert.match(source, /const updateSelectedStats = \(\) =>/);
+  assert.match(source, /root\.querySelectorAll\('\[data-select\]'\)\.forEach\(input=>input\.addEventListener\('change',\(\)=>\{[\s\S]*updateSelectedStats\(\);/);
+  assert.match(source, /root\.scrollTop\s*=\s*prevScrollTop/);
+});
