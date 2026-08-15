@@ -8,6 +8,7 @@ from .comfy_attention_compat import install as install_comfy_attention_compat
 from .comfy_compat import register_routes as register_comfy_compat_routes
 from .dependency_web import register_dependency_routes
 from .face_refine.integration import install as install_face_refine_integration
+from .face_refine.sampling_bridge import install as install_face_refine_sampling_bridge
 from .llama_cpp_dependency import register_routes as register_llama_cpp_routes
 from .llama_existing_runtime import adopt_existing_runtime
 from .nodes.benchmark import NODE_CLASS_MAPPINGS as BENCHMARK_NODE_CLASS_MAPPINGS
@@ -93,6 +94,10 @@ install_runtime_contract_fixes()
 # Repair PackedLayout probing across ComfyUI versions and make runtime preset
 # semantics truthful: Fast is speed-oriented, Low/Extreme are memory-oriented.
 install_runtime_policy_fixes()
+# Replace the provisional face sampler before the selected-still integration
+# captures it. The bridge injects the real source crop into H3's VIDEO latent,
+# keeps audio locked, and uses low-denoise sampling as genuine img2img.
+install_face_refine_sampling_bridge()
 # Face Refine captures the final patched H3 sampling objects, suppresses the
 # obsolete decode-stage packet pass, and rerenders only the still chosen by
 # H3StudioFrameSelector. It installs after runtime policy patches so it observes
