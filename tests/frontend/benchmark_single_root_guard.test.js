@@ -10,11 +10,15 @@ test("Smart Benchmark keeps ComfyUI's DOM widget handle bound to the live render
   assert.match(guard, /existing\.element = value/);
   assert.match(guard, /SmartBenchmarkSingleRootGuard/);
   assert.match(guard, /duplicate DOM widget/);
+  assert.match(guard, /copyComfyGeometry/);
 });
 
-test("Smart Benchmark is bounded to one internal scroll surface", () => {
+test("Smart Benchmark is bounded to one internal scroll surface without viewport-width overflow", () => {
   assert.match(guard, /max-height", "560px"/);
   assert.match(guard, /overflow-y", "auto"/);
   assert.match(guard, /overflow-x", "hidden"/);
+  assert.match(guard, /container-type:inline-size/);
+  assert.match(guard, /never force width\/max-width here/i);
+  assert.match(guard, /root\.style\.removeProperty\("width"\)/);
   assert.match(benchmark, /const WIDGET_NAME = "h3studio_smart_benchmark"/);
 });
