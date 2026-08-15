@@ -60,7 +60,6 @@ class FaceRefineConfig:
         if px >= 120.0:
             return large
         t = (px - 32.0) / (120.0 - 32.0)
-        # Smoothstep avoids an abrupt strength change around either threshold.
         t = t * t * (3.0 - 2.0 * t)
         return tiny + (large - tiny) * t
 
@@ -69,13 +68,17 @@ class FaceRefineConfig:
 class FaceRefineResult:
     image: Any
     faces_detected: int = 0
+    faces_selected: int = 0
     faces_refined: int = 0
     duration_ms: float = 0.0
     status_message: str = ""
     bounding_boxes: List[BoundingBox] = field(default_factory=list)
+    selected_boxes: List[BoundingBox] = field(default_factory=list)
+    failures: List[str] = field(default_factory=list)
+    mask_modes: List[str] = field(default_factory=list)
+    detector_name: str = ""
 
 
-MaskFn = Callable[[Any, CropRegion, FaceRefineConfig], Any]
 SamplerFn = Callable[[Any, CropRegion, FaceRefineConfig], Any]
 
 
@@ -111,8 +114,8 @@ class H3FaceRefinePipeline:
             return sorted(boxes, key=lambda b: b.confidence, reverse=True)[: config.max_faces]
 
         # A pure canvas-area threshold treated surprisingly large portrait faces as
-        # "distant" on 4 MP images. Use the original pack's source-pixel insight,
-        # with a proportional cap so the rule scales down on native 768p canvases.
+        # "distant" on 4 MP images. Use source-pixel head size with a proportional
+        # cap so the rule scales down on native 768p canvases.
         short_edge_cap = max(48, int(round(min(canvas_width, canvas_height) * 0.14)))
         max_px = min(max(48, int(config.auto_max_face_px)), short_edge_cap)
         selected = [box for box in boxes if box.max_dim <= max_px]
@@ -152,12 +155,14 @@ class H3FaceRefinePipeline:
 
         _batch, h, w, _channels = image_tensor.shape
         detected_boxes = self.detector.detect(image_tensor[0], min_face_size=config.min_face_size)
+        detector_name = self.detector.name
         if not detected_boxes:
             elapsed = (time.perf_counter() - start_time) * 1000.0
             return FaceRefineResult(
                 image=image_tensor,
                 duration_ms=elapsed,
-                status_message=f"No faces detected ({self.detector.name}).",
+                status_message=f"No faces detected ({detector_name}).",
+                detector_name=detector_name,
             )
 
         faces_to_refine = self.filter_faces(detected_boxes, w, h, config)
@@ -168,9 +173,10 @@ class H3FaceRefinePipeline:
                 faces_detected=len(detected_boxes),
                 duration_ms=elapsed,
                 status_message=(
-                    f"Detected {len(detected_boxes)} face(s) with {self.detector.name}; none are small enough for Auto."
+                    f"Detected {len(detected_boxes)} face(s) with {detector_name}; none are small enough for Auto."
                 ),
                 bounding_boxes=detected_boxes,
+                detector_name=detector_name,
             )
 
         current_canvas = image_tensor.clone()
@@ -219,15 +225,20 @@ class H3FaceRefinePipeline:
         mask_summary = ",".join(sorted(set(mask_modes))) if mask_modes else "n/a"
         message = (
             f"Face Refine: detected={len(detected_boxes)}, selected={len(faces_to_refine)}, "
-            f"refined={refined_count}, detector={self.detector.name}, mask={mask_summary}, {elapsed:.0f}ms."
+            f"refined={refined_count}, detector={detector_name}, mask={mask_summary}, {elapsed:.0f}ms."
         )
         if failures:
             message += f" {len(failures)} failure(s); failed faces were preserved unchanged."
         return FaceRefineResult(
             image=current_canvas,
             faces_detected=len(detected_boxes),
+            faces_selected=len(faces_to_refine),
             faces_refined=refined_count,
             duration_ms=elapsed,
             status_message=message,
             bounding_boxes=detected_boxes,
+            selected_boxes=faces_to_refine,
+            failures=failures,
+            mask_modes=mask_modes,
+            detector_name=detector_name,
         )
