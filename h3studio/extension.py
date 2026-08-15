@@ -45,6 +45,7 @@ from .runtime_contract_fixes import install as install_runtime_contract_fixes
 from .runtime_guards import install_runtime_guards
 from .runtime_policy_fixes import install as install_runtime_policy_fixes
 from .runtime_web import register_runtime_routes
+from .seed_safety import install as install_seed_safety
 from .smart_benchmark_restore import install as install_smart_benchmark_restore
 from .web_routes import register_routes
 
@@ -87,6 +88,9 @@ install_prompt_mode_guard()
 # New nodes default to the preferred production setup without rewriting values
 # already serialized in existing workflows.
 install_product_defaults()
+# Clamp every manual/API Director seed to ComfyUI's safe <2^50 range and return
+# the exact executed seed to the frontend/history UI.
+install_seed_safety()
 # The compiler's resolved generation mode is the final conditioning contract.
 # Install this after prompt-prep patches but before the runtime node subclasses
 # invoke H3StudioCondition.condition via super().
