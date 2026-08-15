@@ -2,7 +2,7 @@ export const STUDIO_PANEL_HEIGHT = 640;
 export const STUDIO_NODE_WIDTH = 680;
 export const STUDIO_NODE_HEIGHT = 780;
 export const STUDIO_NODE_MIN_HEIGHT = 520;
-export const STUDIO_NODE_MAX_HEIGHT = 1280;
+export const STUDIO_NODE_MAX_HEIGHT = 980;
 export const STUDIO_PANEL_CHROME_HEIGHT = 140;
 
 export function studioPanelSize(width) {
