@@ -95,6 +95,27 @@ function predictedPath(state, asset) {
   return state.modelsDir ? `${String(state.modelsDir).replace(/[\\/]$/, "")}/${asset.destination}/${asset.filename}` : relative;
 }
 
+const MODEL_SETUP_NODE_CHROME = 54;
+const MODEL_SETUP_MIN_VIEWPORT = 320;
+const MODEL_SETUP_MIN_WIDTH = 480;
+const MODEL_SETUP_DEFAULT_NODE_WIDTH = 820;
+const MODEL_SETUP_DEFAULT_NODE_HEIGHT = 860;
+
+function modelSetupViewportHeight(nodeHeight) {
+  const height = Number(nodeHeight);
+  const resolved = Number.isFinite(height) && height > 0 ? height : MODEL_SETUP_DEFAULT_NODE_HEIGHT;
+  return Math.max(MODEL_SETUP_MIN_VIEWPORT, Math.round(resolved) - MODEL_SETUP_NODE_CHROME);
+}
+
+function modelSetupWidgetSizing(node) {
+  const height = () => modelSetupViewportHeight(node?.size?.[1]);
+  return {
+    getMinHeight: height,
+    getMaxHeight: height,
+    getHeight: height,
+  };
+}
+
 function installUI(node) {
   if (node.__h3ModelSetup || typeof node.addDOMWidget !== "function") return;
   injectStyles();
@@ -125,7 +146,16 @@ function installUI(node) {
     root.querySelectorAll('button[data-blocking="1"]').forEach(button=>button.disabled=busy);
   };
 
+  const updateSelectedStats = () => {
+    const selected = ASSETS.filter(a=>state.selected.has(a.id));
+    const selectedBytes = selected.reduce((sum,a)=>sum+(Number(state.metadata.get(a.id)?.size_bytes)||0),0);
+    const el = root.querySelector('[data-stat="selected"]');
+    if (el) el.textContent = `${selected.length} · ${bytesLabel(selectedBytes)}`;
+  };
+
   const render = () => {
+    const prevScrollTop = Number(root.scrollTop || 0);
+    const prevScrollLeft = Number(root.scrollLeft || 0);
     const selected = ASSETS.filter(a=>state.selected.has(a.id));
     const selectedBytes = selected.reduce((sum,a)=>sum+(Number(state.metadata.get(a.id)?.size_bytes)||0),0);
     const knownBytes = ASSETS.reduce((sum,a)=>sum+(Number(state.metadata.get(a.id)?.size_bytes)||0),0);
@@ -137,16 +167,12 @@ function installUI(node) {
     if (!uadReady) {
       const old = state.managerHasUad
         ? `<b>Universal Asset Downloader is installed, but this integration needs the current UAD v2.</b><div class="h3ms-note">Update UAD in ComfyUI-Manager, restart ComfyUI, then press R or hard refresh this page.</div>`
-        : `<b>Universal Asset Downloader is not loaded.</b><div class="h3ms-note">It stays a separate package so H3 Studio and the downloader can update independently.</div>`;
+        : `<b>Universal Asset Downloader is not loaded.</b><div class="h3ms-note">It stays a separate package so H3 Studio and the downloader can update independently. Direct Hugging Face links and exact model directories are listed below for manual installation.</div>`;
       body += `<div class="h3ms-card h3ms-missing">${old}<div class="h3ms-actions" style="margin-top:9px">${state.manager&&!state.managerHasUad?'<button class="h3ms-btn h3ms-primary" data-action="install-uad" data-blocking="1">Install UAD with Manager</button>':''}<a class="h3ms-btn" href="${UAD_PAGE}" target="_blank" rel="noopener noreferrer">Open UAD repo ↗</a><button class="h3ms-btn" data-action="recheck" data-blocking="1">Recheck</button></div>${state.manager?'':'<div class="h3ms-note">ComfyUI-Manager was not detected, so automatic installation is unavailable.</div>'}</div>`;
-      body += `<div class="h3ms-log" data-log>${state.managerHasUad?'Waiting for UAD after update + restart.':'Install UAD, restart ComfyUI, then reload the browser.'}</div>`;
-      root.innerHTML = body;
-      bind();
-      return;
     }
 
-    body += `<div class="h3ms-actions"><button class="h3ms-btn" data-action="required">Select required</button><button class="h3ms-btn" data-action="recommended">Select recommended setup</button><button class="h3ms-btn" data-action="metadata" data-blocking="1">${state.metadataLoading?'Loading sizes…':'Refresh sizes'}</button><button class="h3ms-btn" data-action="verify" data-blocking="1">Verify all</button><button class="h3ms-btn h3ms-primary" data-action="download" data-blocking="1">Download selected missing</button><button class="h3ms-btn" data-action="repair" data-blocking="1">Repair selected</button></div>`;
-    body += `<div class="h3ms-stats"><div class="h3ms-stat"><small>Selected</small><strong>${selected.length} · ${bytesLabel(selectedBytes)}</strong></div><div class="h3ms-stat"><small>Known total</small><strong>${bytesLabel(knownBytes)}</strong></div><div class="h3ms-stat"><small>Verified</small><strong>${verifiedCount}/${ASSETS.length}</strong></div><div class="h3ms-stat"><small>Missing</small><strong>${state.verification.size?missingCount:'not checked'}</strong></div></div>`;
+    body += `<div class="h3ms-actions"><button class="h3ms-btn" data-action="required">Select required</button><button class="h3ms-btn" data-action="recommended">Select recommended setup</button><button class="h3ms-btn" data-action="metadata" data-blocking="1" ${uadReady?'':'disabled title="Requires Universal Asset Downloader"'}>${state.metadataLoading?'Loading sizes…':'Refresh sizes'}</button><button class="h3ms-btn" data-action="verify" data-blocking="1" ${uadReady?'':'disabled title="Requires Universal Asset Downloader"'}>Verify all</button><button class="h3ms-btn h3ms-primary" data-action="download" data-blocking="1" ${uadReady?'':'disabled title="Requires Universal Asset Downloader"'}>Download selected missing</button><button class="h3ms-btn" data-action="repair" data-blocking="1" ${uadReady?'':'disabled title="Requires Universal Asset Downloader"'}>Repair selected</button></div>`;
+    body += `<div class="h3ms-stats"><div class="h3ms-stat"><small>Selected</small><strong data-stat="selected">${selected.length} · ${bytesLabel(selectedBytes)}</strong></div><div class="h3ms-stat"><small>Known total</small><strong>${bytesLabel(knownBytes)}</strong></div><div class="h3ms-stat"><small>Verified</small><strong>${verifiedCount}/${ASSETS.length}</strong></div><div class="h3ms-stat"><small>Missing</small><strong>${state.verification.size?missingCount:'not checked'}</strong></div></div>`;
 
     for (const group of GROUPS) {
       const groupAssets=ASSETS.filter(asset=>asset.group===group.key);
@@ -163,10 +189,18 @@ function installUI(node) {
     }
 
     body += `<div class="h3ms-card"><b>PDD · optional REF2VA acceleration</b><div class="h3ms-note">PDD is separate from the LightX LoRA groups above and uses its own LoRA + heads pair.</div><div style="margin-top:5px"><a href="https://github.com/mamad8c/ComfyUI-MiniMaxH3-PDD-Mamad8" target="_blank" rel="noopener noreferrer" style="color:#7dd3fc">Open MiniMax H3 PDD ↗</a></div></div>`;
-    body += `<div class="h3ms-log" data-log>${state.metadataLoading?'Loading provider sizes and hashes in background workers. The rest of ComfyUI remains usable.':'Ready. Verify checks exact paths; downloads use UAD atomic install + provider verification.'}</div><div class="h3ms-progress"><div style="width:${state.progress}%"></div></div><div class="h3ms-footer">Downloader integration: <a href="${UAD_PAGE}" target="_blank" rel="noopener noreferrer">Universal Asset Downloader ↗</a></div>`;
+    body += `<div class="h3ms-log" data-log>${!uadReady ? 'UAD is not connected. Install UAD for automatic atomic downloads and verification, or download models manually from the links above.' : state.metadataLoading ? 'Loading provider sizes and hashes in background workers. The rest of ComfyUI remains usable.' : 'Ready. Verify checks exact paths; downloads use UAD atomic install + provider verification.'}</div><div class="h3ms-progress"><div style="width:${state.progress}%"></div></div><div class="h3ms-footer">Downloader integration: <a href="${UAD_PAGE}" target="_blank" rel="noopener noreferrer">Universal Asset Downloader ↗</a></div>`;
     root.innerHTML = body;
     bind();
     setBusy(state.busy);
+    root.scrollTop = prevScrollTop;
+    root.scrollLeft = prevScrollLeft;
+    queueMicrotask(() => {
+      if (root.isConnected) {
+        root.scrollTop = prevScrollTop;
+        root.scrollLeft = prevScrollLeft;
+      }
+    });
   };
 
   async function detect() {
@@ -299,13 +333,16 @@ function installUI(node) {
 
   function selectBy(predicate) {
     state.selected=new Set(ASSETS.filter(predicate).map(asset=>asset.id));
-    render();
+    root.querySelectorAll('[data-select]').forEach(input=>{
+      input.checked=state.selected.has(input.dataset.select);
+    });
+    updateSelectedStats();
   }
 
   function bind() {
     root.querySelectorAll('[data-select]').forEach(input=>input.addEventListener('change',()=>{
       input.checked?state.selected.add(input.dataset.select):state.selected.delete(input.dataset.select);
-      render();
+      updateSelectedStats();
     }));
     root.querySelector('[data-action="recheck"]')?.addEventListener('click',detect);
     root.querySelector('[data-action="install-uad"]')?.addEventListener('click',installUad);
@@ -317,9 +354,38 @@ function installUI(node) {
     root.querySelector('[data-action="repair"]')?.addEventListener('click',()=>downloadSelected(true));
   }
 
-  const widget=node.addDOMWidget('h3_model_setup','h3_model_setup',root,{serialize:false,hideOnZoom:false});
-  widget.computeSize=(width)=>[width,Math.max(780,(node.size?.[1]||860)-30)];
-  node.setSize?.([Math.max(node.size?.[0]||820,820),Math.max(node.size?.[1]||860,860)]);
+  node.computeSize = function h3ModelSetupComputeSize() {
+    return [MODEL_SETUP_MIN_WIDTH, MODEL_SETUP_MIN_VIEWPORT + MODEL_SETUP_NODE_CHROME];
+  };
+
+  const widget = node.addDOMWidget("h3_model_setup", "h3_model_setup", root, {
+    serialize: false,
+    hideOnZoom: false,
+    getValue: () => undefined,
+    ...modelSetupWidgetSizing(node),
+  });
+  widget.computeSize = (width) => [
+    Math.max(MODEL_SETUP_MIN_WIDTH, Number(width) || MODEL_SETUP_DEFAULT_NODE_WIDTH),
+    modelSetupViewportHeight(node.size?.[1]),
+  ];
+  node.setSize?.([
+    Math.max(node.size?.[0] || MODEL_SETUP_DEFAULT_NODE_WIDTH, MODEL_SETUP_MIN_WIDTH),
+    Math.max(node.size?.[1] || MODEL_SETUP_DEFAULT_NODE_HEIGHT, MODEL_SETUP_MIN_VIEWPORT + MODEL_SETUP_NODE_CHROME),
+  ]);
+
+  const originalOnResize = node.onResize;
+  node.onResize = function h3ModelSetupOnResize(size) {
+    originalOnResize?.apply(this, arguments);
+    if (root && size) {
+      const height = modelSetupViewportHeight(size[1]);
+      root.style.height = `${height}px`;
+      const wrapper = root.parentElement;
+      if (wrapper) {
+        wrapper.style.height = `${height}px`;
+        wrapper.style.width = `${Math.max(MODEL_SETUP_MIN_WIDTH, size[0] - 20)}px`;
+      }
+    }
+  };
   render();
   detect();
 }

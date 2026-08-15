@@ -42,3 +42,27 @@ test("manifest includes H3 role-aware destinations and current LightX profiles",
   assert.match(source, /minimax_h3_ref2v_lightx2v_turbo_4step_v0\.1_resized_avg_rank_20_bf16\.safetensors/);
   assert.match(source, /destination:"vae_approx"/);
 });
+
+test("Model Setup node computeSize is static to prevent runaway expansion while widget fills node height", () => {
+  assert.match(source, /node\.computeSize\s*=\s*function h3ModelSetupComputeSize/);
+  assert.match(source, /widget\.computeSize\s*=\s*\(width\)\s*=>/);
+  assert.match(source, /node\.onResize\s*=\s*function h3ModelSetupOnResize/);
+});
+
+test("Model Setup dynamically adapts widget viewport height to node height without empty space", () => {
+  assert.match(source, /function modelSetupViewportHeight\(nodeHeight\)/);
+  assert.match(source, /function modelSetupWidgetSizing\(node\)/);
+  assert.match(source, /\.\.\.modelSetupWidgetSizing\(node\)/);
+});
+
+test("Model Setup renders full model groups and Hugging Face links even when UAD is missing", () => {
+  const uadBlock = source.slice(source.indexOf("if (!uadReady)"), source.indexOf("body += `<div class=\"h3ms-actions\">"));
+  assert.ok(!uadBlock.includes("return;"), "UAD block must not return early");
+  assert.match(source, /for\s*\(const group of GROUPS\)/);
+});
+
+test("Model Setup checkbox toggles update selection in place without rebuilding DOM or resetting scroll", () => {
+  assert.match(source, /const updateSelectedStats = \(\) =>/);
+  assert.match(source, /root\.querySelectorAll\('\[data-select\]'\)\.forEach\(input=>input\.addEventListener\('change',\(\)=>\{[\s\S]*updateSelectedStats\(\);/);
+  assert.match(source, /root\.scrollTop\s*=\s*prevScrollTop/);
+});

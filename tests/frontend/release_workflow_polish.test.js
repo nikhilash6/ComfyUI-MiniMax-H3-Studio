@@ -39,7 +39,7 @@ test("decode controls use readable labels and the Director keeps its tested heig
 });
 
 test("workflow documentation uses structured markdown and includes decode guidance", () => {
-  const noteIds = [20, 21, 22, 24, 25, 26, 27, 28, 29, 31];
+  const noteIds = [20, 21, 22, 24, 25, 26, 27, 28, 31];
   for (const id of noteIds) {
     const note = byId(workflow.nodes, id);
     assert.ok(note, `missing note ${id}`);

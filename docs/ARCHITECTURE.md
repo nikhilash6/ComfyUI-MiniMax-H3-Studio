@@ -2,7 +2,7 @@
 
 ## Product boundary
 
-H3 Studio owns still-image direction, reference metadata, prompt compilation, H3 conditioning preparation, route selection, sampling recipes, temporal-packet decode, still selection, and workflow templates. It does not own model acquisition, H3 Hub, Lightning process management, cloud storage, App Mode, video delivery, or audio delivery.
+H3 Studio owns still-image direction, reference metadata, prompt compilation, H3 conditioning preparation, route selection, sampling recipes, temporal-packet decode, still selection, and workflow templates. It does not own model acquisition, H3 Hub, cloud process management, cloud storage, App Mode, video delivery, or audio delivery.
 
 ## Data flow
 

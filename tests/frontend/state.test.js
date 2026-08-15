@@ -45,6 +45,7 @@ test("unrecoverable persisted state reports the failure and preserves the raw va
 });
 import {
   STUDIO_NODE_HEIGHT,
+  STUDIO_NODE_MAX_HEIGHT,
   STUDIO_PANEL_HEIGHT,
   initialStudioNodeSize,
   studioPanelSize,
@@ -321,7 +322,7 @@ test("resolution tiers label safe and experimental direct ranges honestly", () =
 test("studio layout cannot feed total node height back into panel height", () => {
   assert.deepEqual(studioPanelSize(640), [640, STUDIO_PANEL_HEIGHT]);
   assert.deepEqual(studioPanelSize(640), studioPanelSize(640));
-  assert.deepEqual(initialStudioNodeSize([700, 50000]), [700, STUDIO_NODE_HEIGHT]);
+  assert.deepEqual(initialStudioNodeSize([700, 50000]), [700, STUDIO_NODE_MAX_HEIGHT]);
 });
 
 test("custom dimensions determine custom aspect while area follows megapixels", () => {

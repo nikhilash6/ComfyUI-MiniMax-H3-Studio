@@ -36,10 +36,10 @@ function injectStyles() {
   const style = document.createElement("style");
   style.id = STYLE_ID;
   style.textContent = `
-    .${CARD_CLASS}{margin-top:10px;padding:10px;border:1px solid rgba(45,212,191,.25);border-radius:9px;background:linear-gradient(145deg,rgba(45,212,191,.055),rgba(0,0,0,.08));font:11px/1.45 ui-sans-serif,system-ui;color:#e8eeef}
-    .${CARD_CLASS} *{box-sizing:border-box}.h3pf-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.h3pf-title{font-weight:850;color:#bdf8ed}.h3pf-sub{margin-top:2px;opacity:.63;font-size:9px;max-width:590px}.h3pf-badge{flex:none;padding:3px 7px;border:1px solid rgba(255,255,255,.12);border-radius:999px;font-size:8.5px}.h3pf-badge.ok{border-color:rgba(52,211,153,.45);color:#a7f3d0}.h3pf-badge.warn{border-color:rgba(245,158,11,.45);color:#fde68a}
-    .h3pf-assets{margin-top:8px;border-top:1px solid rgba(255,255,255,.07)}.h3pf-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:7px 2px;border-bottom:1px solid rgba(255,255,255,.055)}.h3pf-name{font-weight:680}.h3pf-meta{margin-top:2px;font:8.5px/1.35 ui-monospace,SFMono-Regular,Consolas,monospace;opacity:.52;overflow-wrap:anywhere}.h3pf-status{font-size:9px;white-space:nowrap;align-self:center}.h3pf-status.ok{color:#86efac}.h3pf-status.bad{color:#fca5a5}.h3pf-status.wait{opacity:.52}
-    .h3pf-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.h3pf-btn{padding:6px 8px;border:1px solid rgba(255,255,255,.13);border-radius:7px;background:rgba(255,255,255,.07);color:inherit;cursor:pointer;font-weight:680}.h3pf-btn:hover{background:rgba(255,255,255,.12)}.h3pf-btn.primary{border-color:rgba(45,212,191,.42);background:rgba(45,212,191,.13)}.h3pf-btn:disabled{opacity:.38;cursor:not-allowed}.h3pf-log{margin-top:7px;padding:6px 7px;border:1px solid rgba(255,255,255,.07);border-radius:6px;background:rgba(0,0,0,.17);font-size:9px;white-space:pre-wrap;overflow-wrap:anywhere}.h3pf-note{margin-top:6px;font-size:8.8px;opacity:.58}
+    .${CARD_CLASS}{margin-top:6px;padding:8px 10px;border:1px solid rgba(56,189,248,.18);border-radius:8px;background:rgba(0,0,0,.22);font:10px/1.4 ui-sans-serif,system-ui;color:#e8eeef}
+    .${CARD_CLASS} *{box-sizing:border-box}.h3pf-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.h3pf-title{font-size:9.5px;font-weight:800;color:#99f6e4;text-transform:uppercase;letter-spacing:.05em}.h3pf-sub{margin-top:1px;opacity:.55;font-size:8px;max-width:560px;line-height:1.35}.h3pf-badge{flex:none;padding:2px 5px;border:1px solid rgba(255,255,255,.1);border-radius:999px;font-size:7.5px}.h3pf-badge.ok{border-color:rgba(52,211,153,.4);color:#a7f3d0}.h3pf-badge.warn{border-color:rgba(245,158,11,.4);color:#fde68a}
+    .h3pf-assets{margin-top:5px;border-top:1px solid rgba(255,255,255,.06)}.h3pf-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;padding:3px 1px;border-bottom:1px solid rgba(255,255,255,.045)}.h3pf-name{font-weight:650;font-size:8.5px}.h3pf-meta{margin-top:1px;font:7.5px/1.3 ui-monospace,SFMono-Regular,Consolas,monospace;opacity:.48;overflow-wrap:anywhere}.h3pf-status{font-size:8px;white-space:nowrap;align-self:center}.h3pf-status.ok{color:#86efac}.h3pf-status.bad{color:#fca5a5}.h3pf-status.wait{opacity:.48}
+    .h3pf-actions{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}.h3pf-btn{padding:3px 6px;border:1px solid rgba(255,255,255,.12);border-radius:4px;background:rgba(255,255,255,.05);color:inherit;cursor:pointer;font-size:8px;font-weight:600}.h3pf-btn:hover{background:rgba(255,255,255,.1)}.h3pf-btn.primary{border-color:rgba(45,212,191,.38);background:rgba(45,212,191,.1)}.h3pf-btn:disabled{opacity:.35;cursor:not-allowed}.h3pf-log{margin-top:5px;padding:4px 6px;border:1px solid rgba(255,255,255,.06);border-radius:4px;background:rgba(0,0,0,.15);font-size:8px;white-space:pre-wrap;overflow-wrap:anywhere}.h3pf-note{margin-top:4px;font-size:7.5px;opacity:.5;line-height:1.35}
   `;
   document.head.append(style);
 }
@@ -104,8 +104,13 @@ function render(node) {
   if (!card) {
     card = document.createElement("section");
     card.className = CARD_CLASS;
-    const anchor = root.querySelector(".h3ms-stats") || root.querySelector(".h3ms-actions") || root.querySelector(".h3ms-head");
-    if (anchor?.parentNode) anchor.insertAdjacentElement("afterend", card); else root.prepend(card);
+    const promptModels = root.querySelector(":scope > .h3pm");
+    if (promptModels) promptModels.after(card);
+    else {
+      const footer = root.querySelector(":scope > .h3ms-log") || root.querySelector(":scope > .h3ms-footer") || root.querySelector(":scope > .h3ms-progress");
+      if (footer) footer.before(card);
+      else root.append(card);
+    }
   }
   const runtime = state.runtime?.runtime || state.runtime || {};
   const runtimeReady = Boolean(runtime.available);
