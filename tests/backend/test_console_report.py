@@ -26,7 +26,7 @@ def test_console_report_includes_config_references_and_both_prompts() -> None:
     assert "H3 STUDIO EXECUTION" in report
     assert "Seed          : 42" in report
     assert (
-        "Prompt shaping: compile_only | image analysis off | detailed second pass off | reference priority 85%"
+        "Prompt shaping: compile_only | image analysis off | detailed second pass off | prompt strictness 85%"
         in report
     )
     assert "@Image1: face.png | role=identity | retention=fully_preserved" in report

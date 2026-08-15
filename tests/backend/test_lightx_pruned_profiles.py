@@ -43,7 +43,7 @@ def test_lightx_profile_routes_reject_wrong_model_family() -> None:
     validate_generation_contract("text_to_image", "auto", "lightx_v1_fl2v_4_pruned", 0)
     validate_generation_contract("reference_edit", "auto", "lightx_v01_ref2v_er_sde_4_pruned", 1)
 
-    with pytest.raises(RouteError, match="FL2V/FL2VA-only"):
+    with pytest.raises(RouteError, match="incompatible with text to image"):
         validate_generation_contract("text_to_image", "ref2va", "lightx_v1_fl2v_8_pruned", 0)
 
     with pytest.raises(RouteError, match="REF2V/REF2VA-only"):

@@ -1137,6 +1137,7 @@ function advancedSection(node, state, refresh) {
 function renderPanel(node) {
   const root = node.__h3studioPanel;
   if (!root) return;
+  const existingShelf = root.querySelector(".h3s-demos-shelf");
   const state = applyState(node, stateFromNode(node), false);
   root.replaceChildren();
   const refresh = () => renderPanel(node);
@@ -1146,6 +1147,7 @@ function renderPanel(node) {
       element("div", { className: "h3s-studio-brand" }, [element("span", { className: "h3s-studio-mark" }), element("span", { className: "h3s-studio-title", text: "MiniMax H3 Studio" })]),
       element("span", { className: "h3s-status-pill", text: resolvedMode }),
     ]),
+    existingShelf,
     node.__h3studioStateError ? element("div", {
       className: "h3s-state-warning",
       text: `${node.__h3studioStateError} The original value was preserved for recovery.`,
@@ -1331,4 +1333,4 @@ app.registerExtension({
   },
 });
 
-export { applyState, linkSignature, normalizedLinks, stateFromNode };
+export { applyState, linkSignature, normalizedLinks, renderPanel, stateFromNode };

@@ -54,12 +54,9 @@ def test_lightx_v1_build_uses_eight_step_6_3_euler_recipe(monkeypatch) -> None:
     assert "route=FL2VA" in info
 
 
-def test_lightx_fl2v_rejects_reference_mix_before_model_work() -> None:
-    with pytest.raises(RouteError, match="FL2V adapter"):
-        validate_generation_contract("reference_edit", "auto", "lightx_v1_fl2v_8", 2)
-
-    with pytest.raises(RouteError, match="FL2V/FL2VA-only"):
-        validate_generation_contract("auto", "ref2va", "lightx_v1_fl2v_8", 1)
+def test_lightx_fl2v_allows_experimental_reference_mix() -> None:
+    validate_generation_contract("reference_edit", "auto", "lightx_v1_fl2v_8", 2)
+    validate_generation_contract("auto", "ref2va", "lightx_v1_fl2v_8", 2)
 
 
 def test_lightx_v1_allows_t2i_and_single_source_fl2va() -> None:
