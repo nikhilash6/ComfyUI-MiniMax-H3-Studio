@@ -109,7 +109,6 @@ function render(node) {
   }
   const runtime = state.runtime?.runtime || state.runtime || {};
   const runtimeReady = Boolean(runtime.available);
-  const pairReady = Boolean(runtime.model_present && runtime.mmproj_present);
   const autoReady = Boolean(runtime.ready);
   const badge = autoReady ? "GGUF Auto ready" : runtimeReady ? "runtime ready · models missing" : "llama.cpp missing";
   const badgeClass = autoReady ? "ok" : "warn";
@@ -125,11 +124,11 @@ function render(node) {
     <div class="h3pf-actions">
       <button class="h3pf-btn" data-h3pf="check" ${state.busy?"disabled":""}>Verify speed pack</button>
       <button class="h3pf-btn primary" data-h3pf="models" ${state.busy?"disabled":""}>Install missing models</button>
-      <button class="h3pf-btn" data-h3pf="runtime" ${state.busy?"disabled":""}>${runtimeReady?"Repair/update llama.cpp":"Build llama.cpp runtime"}</button>
+      <button class="h3pf-btn" data-h3pf="runtime" ${state.busy?"disabled":""}>${runtimeReady?"Repair/update fast runtime":"Install fast runtime"}</button>
       <button class="h3pf-btn" data-h3pf="refresh" ${state.busy?"disabled":""}>Refresh</button>
     </div>
     <div class="h3pf-log">${state.log}</div>
-    <div class="h3pf-note">GGUF pair: Qwen3.5-4B Q4_K_XL + its matching BF16 mmproj. On a cold run H3 Studio frees previous Comfy residency first; on completion the stage-scoped llama.cpp helper is stopped so H3 gets the VRAM back.</div>`;
+    <div class="h3pf-note">GGUF pair: Qwen3.5-4B Q4_K_XL + its matching BF16 mmproj. Supported Linux/Windows NVIDIA machines use a private prebuilt llama.cpp CUDA runtime; no source compile. The helper is stopped before H3 conditioning so H3 gets the VRAM back.</div>`;
   card.querySelector('[data-h3pf="check"]')?.addEventListener("click", () => verify(node));
   card.querySelector('[data-h3pf="models"]')?.addEventListener("click", () => installModels(node));
   card.querySelector('[data-h3pf="runtime"]')?.addEventListener("click", () => installRuntime(node));
@@ -205,14 +204,17 @@ async function installModels(node) {
 
 async function installRuntime(node) {
   const state = stateFor(node);
-  if (!window.confirm("Build the pinned official llama.cpp runtime for H3 Studio prompt prep? On Linux/CUDA this compiles llama-server + llama-mtmd-cli and can take a few minutes.")) return;
-  state.busy = true; state.log = "Building pinned llama.cpp runtime… this can take a few minutes; ComfyUI's web server remains responsive."; render(node);
+  if (!window.confirm("Install H3 Studio's private prebuilt llama.cpp GPU runtime? Supported Linux/Windows NVIDIA systems download a pinned CUDA package; this does not compile llama.cpp or modify your ComfyUI Python environment.")) return;
+  state.busy = true;
+  state.log = "Installing private prebuilt llama.cpp CUDA runtime… downloading and verifying the pinned package, then running a multimodal smoke test.";
+  render(node);
   try {
-    const result = await postJson("/h3studio/dependencies/llama/install", {});
+    const result = await postJson("/h3studio/dependencies/llama/install", { mode: "prebuilt" });
     state.runtime = { runtime: result.runtime, ...result };
-    state.log = `llama.cpp ready${result.cuda ? ` with CUDA SM${result.cuda_arch}` : " (CPU build)"}. No ComfyUI restart required.`;
+    const backend = result.cuda ? `CUDA ${result.cuda_version || ""}${result.cuda_arch ? ` · SM${result.cuda_arch}` : ""}`.trim() : "GPU runtime";
+    state.log = `llama.cpp fast runtime ready · ${result.provider || "prebuilt"} · ${backend}. No ComfyUI restart required.`;
   } catch (error) {
-    state.log = `llama.cpp setup failed: ${error.message}`;
+    state.log = `Fast runtime install failed: ${error.message}`;
   } finally {
     state.busy = false; await refresh(node); render(node);
   }
