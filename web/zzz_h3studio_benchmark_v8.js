@@ -86,13 +86,8 @@ function ensureDefault(node) {
   if (!Array.isArray(scenarios) || !scenarios.length) saveScenarios(node, qualityVsLightX(node));
 }
 
-function fitNode(node) {
-  const root = node?.__h3bRoot;
-  if (!root?.isConnected || node.__h3bUserSized) return;
-  requestAnimationFrame(() => {
-    const desired = Math.max(300, Math.min(650, Math.min(520, Math.max(220, root.scrollHeight)) + 92));
-    if (Math.abs(Number(node.size?.[1] || 0) - desired) > 24) node.setSize?.([Math.max(540, Number(node.size?.[0] || 640)), desired]);
-  });
+function fitNode(_node) {
+  // Respect user-set and saved node dimensions on canvas.
 }
 
 function decorate(node) {

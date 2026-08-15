@@ -517,9 +517,9 @@ function install(node) {
     });
     if (domWidget) { domWidget.hideOnZoom = true; domWidget.options ||= {}; domWidget.options.hideOnZoom = true; }
   }
-  const width = Math.max(760, Number(node.size?.[0]) || 760);
-  const height = Math.max(540, Math.min(680, Number(node.size?.[1]) || 600));
-  node.setSize?.([width, height]);
+  if (!node.size || !Number(node.size[0]) || !Number(node.size[1])) {
+    node.setSize?.([680, 520]);
+  }
   loadCatalog().then(() => { node.__h3b7AssetError = ""; render(node); }).catch((error) => { node.__h3b7AssetError = String(error?.message || error); render(node); });
 }
 
