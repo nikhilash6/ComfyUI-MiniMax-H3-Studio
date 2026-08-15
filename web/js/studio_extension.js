@@ -1318,16 +1318,37 @@ function installPanel(node) {
       });
     }
   };
+  if (Array.isArray(node.inputs)) {
+    node.inputs = node.inputs.filter((inp) => {
+      if (!inp) return false;
+      if (/^media_\d+$/.test(inp.name) && inp.link == null) {
+        return false;
+      }
+      return true;
+    });
+  }
+
   // Reset any runaway height already serialized into an existing workflow,
   // while preserving a deliberately wider node.
   node.size = initialStudioNodeSize(node.size);
   renderPanel(node);
 }
 
+function pruneDirectorTransportInputs(nodeData) {
+  const optional = nodeData?.input?.optional;
+  if (!optional) return;
+  for (const name of Object.keys(optional)) {
+    if (/^media_\d+$/.test(name) || /^media_type_\d+$/.test(name) || /^media_filename_\d+$/.test(name) || /^role_\d+$/.test(name) || /^retention_\d+$/.test(name) || /^description_\d+$/.test(name)) {
+      delete optional[name];
+    }
+  }
+}
+
 app.registerExtension({
   name: "H3Studio.Controls",
   beforeRegisterNodeDef(nodeType, nodeData) {
     if (nodeData.name !== TARGET) return;
+    pruneDirectorTransportInputs(nodeData);
     const originalCreated = nodeType.prototype.onNodeCreated;
     nodeType.prototype.onNodeCreated = function h3studioCreated() {
       const result = originalCreated?.apply(this, arguments);

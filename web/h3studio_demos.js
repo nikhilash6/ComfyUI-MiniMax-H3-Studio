@@ -354,12 +354,7 @@ async function buildDemoShelf(node, selectedId = null) {
   const history = getSessionHistory();
 
   const shelf = document.createElement("div");
-  shelf.className = "h3s-demos-shelf";
-
-  const isExpanded = localStorage.getItem(STORAGE_EXPANDED_KEY) !== "false";
-  if (isExpanded) {
-    shelf.classList.add("is-open");
-  }
+  shelf.className = "h3s-demos-shelf is-open";
 
   const header = document.createElement("div");
   header.className = "h3s-demos-header";
