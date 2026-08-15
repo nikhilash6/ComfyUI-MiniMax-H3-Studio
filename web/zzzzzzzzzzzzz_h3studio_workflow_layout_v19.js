@@ -42,23 +42,8 @@ function isUnifiedWorkflow(graphData) {
     && nodes.some((node) => Number(node?.id) === 28 && String(node?.type || "") === "H3StudioWorkflowNote");
 }
 
-function applyLayout(graphData) {
-  if (!isUnifiedWorkflow(graphData)) return;
-  for (const [id, layout] of NODE_LAYOUT) {
-    const node = (graphData.nodes || []).find((entry) => Number(entry?.id) === id);
-    if (!node) continue;
-    node.pos = [...layout.pos];
-    node.size = [...layout.size];
-  }
-  for (const group of graphData.groups || []) {
-    const layout = GROUP_LAYOUT.get(Number(group?.id));
-    if (!layout) continue;
-    group.title = layout.title;
-    group.bounding = [...layout.bounding];
-  }
-  graphData.extra ||= {};
-  graphData.extra.h3studio ||= {};
-  graphData.extra.h3studio.design_source = "H3 Studio clean grouped layout v19";
+function applyLayout(_graphData) {
+  // Respect user-saved node positions and group bounds on canvas reload.
 }
 
 app.registerExtension({

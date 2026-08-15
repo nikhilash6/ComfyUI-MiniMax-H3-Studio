@@ -57,9 +57,6 @@ function ensureSerializedSetup(graphData) {
     nodes.push(node);
     graphData.last_node_id = id;
   }
-  node.pos = [-2380,220];
-  node.size = [820,860];
-  node.title = "Model setup · verify & install";
 }
 
 async function jsonFetch(path, options = {}) {
