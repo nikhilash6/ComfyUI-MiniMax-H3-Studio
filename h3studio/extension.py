@@ -36,6 +36,7 @@ from .product_defaults import install as install_product_defaults
 from .prompt_mode_guard import install as install_prompt_mode_guard
 from .prompt_pipeline_fixes import install as install_prompt_pipeline_fixes
 from .prompt_prep_hotfix_v2 import install as install_prompt_prep_hotfix_v2
+from .prompt_writer_passthrough import install as install_prompt_writer_passthrough
 from .qwen35_gguf import install as install_qwen35_gguf
 from .qwen35_gguf_text_fallback import install as install_qwen35_gguf_text_fallback
 from .runtime_contract_fixes import install as install_runtime_contract_fixes
@@ -75,6 +76,9 @@ install_qwen35_gguf_text_fallback()
 # When analyzer + writer share one Qwen checkpoint, fresh references and prompt
 # direction are produced in one validated multimodal generation instead of two.
 install_prompt_pipeline_fixes()
+# A missing/invalid optional writer must never silently replace the user's
+# prompt with a generic deterministic production brief. Preserve it verbatim.
+install_prompt_writer_passthrough()
 # "Keep my prompt" is authoritative even for workflows saved with a stale
 # deep_enhancement=true bit from older Director UI builds.
 install_prompt_mode_guard()
