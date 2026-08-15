@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 from .constants import (
@@ -14,6 +15,14 @@ from .constants import (
     SAMPLING_PROFILES,
 )
 from .errors import RouteError
+
+
+LOGGER = logging.getLogger(__name__)
+EXPERIMENTAL_FL2V_REF2VA_WARNING = (
+    "Experimental LightX cross-route: this FL2V/FL2VA adapter is being used with REF2VA reference mixing. "
+    "This unofficial combination is allowed, but reference adherence, fine detail, hands, and overall stability "
+    "may be less consistent than with a dedicated REF2VA adapter."
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,8 +85,11 @@ def validate_generation_contract(
         raise RouteError("PDD REF2VA supports reference mix/edit; use Auto or Reference mix/edit mode.")
     if is_pdd and requested_route == ROUTE_FL2VA:
         raise RouteError("PDD is trained for REF2VA and cannot run on a forced FL2VA route.")
-    if is_lightx and profile_route == ROUTE_FL2VA and requested_route == ROUTE_REF2VA:
-        raise RouteError("The selected LightX profile is FL2V/FL2VA-only and cannot run on a forced REF2VA route.")
+    # FL2V LightX adapters are officially FL2VA-oriented, but community testing
+    # has shown that they can be applied to the REF2VA model as an experimental
+    # cross-route acceleration path. Allow that direction and warn below once
+    # the effective mode is known. The inverse REF2V-on-FL2VA mismatch remains
+    # blocked because it is not part of the supported workaround.
     if is_lightx and profile_route == ROUTE_REF2VA and requested_route == ROUTE_FL2VA:
         raise RouteError("The selected LightX profile is REF2V/REF2VA-only and cannot run on a forced FL2VA route.")
 
@@ -90,11 +102,8 @@ def validate_generation_contract(
         else:
             effective_mode = MODE_REFERENCE_EDIT
     expected_route = ROUTE_REF2VA if effective_mode == MODE_REFERENCE_EDIT else ROUTE_FL2VA
-    if is_lightx and profile_route == ROUTE_FL2VA and expected_route != ROUTE_FL2VA:
-        raise RouteError(
-            "The selected LightX profile uses an FL2V adapter. Use text-to-image or a single-source FL2VA edit, "
-            "or choose a REF2VA profile for reference mixing."
-        )
+    if is_lightx and profile_route == ROUTE_FL2VA and expected_route == ROUTE_REF2VA:
+        LOGGER.warning("[H3 Studio] %s", EXPERIMENTAL_FL2V_REF2VA_WARNING)
     if is_lightx and profile_route == ROUTE_REF2VA and expected_route != ROUTE_REF2VA:
         raise RouteError(
             "The selected LightX profile uses a REF2V adapter. Use Reference mix/edit with at least one reference "
