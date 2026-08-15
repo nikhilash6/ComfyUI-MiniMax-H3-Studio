@@ -37,9 +37,6 @@ function benchmarkWidgets(node) {
 
 function copyComfyGeometry(from, to) {
   if (!from || !to || from === to) return;
-  // addDOMWidget owns these inline values. The v4 renderer replaces its root,
-  // so carry the canvas-overlay geometry forward immediately instead of letting
-  // a fresh `width:100%` root size itself against the browser viewport.
   for (const property of [
     "position", "left", "top", "right", "bottom", "width", "height",
     "transform", "transform-origin", "z-index", "display", "visibility",
@@ -51,16 +48,25 @@ function copyComfyGeometry(from, to) {
   }
 }
 
+function absorbRenderedRoot(stableRoot, renderedRoot) {
+  if (!stableRoot || !renderedRoot || stableRoot === renderedRoot) return stableRoot;
+  stableRoot.className = renderedRoot.className;
+  for (const attribute of Array.from(renderedRoot.attributes || [])) {
+    if (attribute.name === "style" || attribute.name === "class") continue;
+    stableRoot.setAttribute(attribute.name, attribute.value);
+  }
+  stableRoot.replaceChildren(...Array.from(renderedRoot.childNodes || []));
+  return stableRoot;
+}
+
 function boundRoot(root, node) {
   if (!root) return;
   installResponsiveStyles();
   root.dataset.h3BenchmarkUi = "v4";
   root.dataset.h3BenchmarkNode = String(node.id ?? "");
 
-  // IMPORTANT: never force width/max-width here. ComfyUI positions DOM widgets
-  // in a canvas overlay and writes the exact pixel width onto the widget element.
-  // PR #49's old `width:100%!important` made 100% mean the overlay/viewport,
-  // which is exactly the giant right-side overflow seen in real workflows.
+  // ComfyUI owns exact overlay width/transform for canvas zoom. Never replace
+  // those values with viewport-relative sizing.
   if (root.style.getPropertyPriority("width") === "important" && root.style.getPropertyValue("width") === "100%") {
     root.style.removeProperty("width");
   }
@@ -112,42 +118,59 @@ function install(node) {
   node.__h3bRootGuardInstalled = true;
   installResponsiveStyles();
 
-  // The benchmark renderer redraws by replacing its root. Preserve ComfyUI's
-  // overlay geometry from the previous root and rebind the DOM-widget handle to
-  // the new root immediately. This fixes both duplicate roots and viewport-width
-  // overflow without fighting ComfyUI's own node-layout system.
-  let rootValue = node.__h3bRoot || null;
+  // IMPORTANT: the renderer rebuilds with `oldRoot.replaceWith(newRoot)`. A
+  // ComfyUI DOM widget is positioned/scaled by mutating the original HTMLElement.
+  // Replacing that HTMLElement loses ComfyUI's live canvas transform at non-1x
+  // zoom. Keep the first tracked element forever and absorb every redraw into it.
+  let stableRoot = node.__h3bRoot || null;
   try {
     Object.defineProperty(node, "__h3bRoot", {
       configurable: true,
       enumerable: true,
-      get() { return rootValue; },
+      get() { return stableRoot; },
       set(value) {
-        const previous = rootValue;
-        if (previous && value && previous !== value) copyComfyGeometry(previous, value);
-        rootValue = value;
-        boundRoot(value, node);
+        if (!value) {
+          stableRoot = value;
+          return;
+        }
+        if (!stableRoot) {
+          stableRoot = value;
+          boundRoot(stableRoot, node);
+          return;
+        }
+        if (value === stableRoot) {
+          boundRoot(stableRoot, node);
+          return;
+        }
+
+        // `replaceWith(value)` has already happened when this setter runs. Move
+        // the new renderer's children/listeners into the old tracked root, then
+        // restore that old root exactly where the new one was inserted.
+        copyComfyGeometry(stableRoot, value);
+        absorbRenderedRoot(stableRoot, value);
+        if (value.isConnected) value.replaceWith(stableRoot);
+        boundRoot(stableRoot, node);
+
         const existing = benchmarkWidgets(node)[0];
-        if (existing && value) existing.element = value;
-        queueMicrotask(() => dedupe(node, value));
+        if (existing) existing.element = stableRoot;
+        queueMicrotask(() => dedupe(node, stableRoot));
       },
     });
   } catch (error) {
-    console.warn("[H3 Studio] Could not bind Smart Benchmark root", error);
+    console.warn("[H3 Studio] Could not bind Smart Benchmark stable root", error);
   }
 
   const originalAdd = typeof node.addDOMWidget === "function" ? node.addDOMWidget.bind(node) : null;
   if (originalAdd) {
     node.addDOMWidget = function guardedAddDOMWidget(name, type, element, options = {}) {
       if (name === WIDGET_NAME) {
-        const existing = dedupe(node, rootValue);
+        const existing = dedupe(node, stableRoot);
         if (existing) {
-          if (element && element !== existing.element) {
-            copyComfyGeometry(existing.element, element);
-            boundRoot(element, node);
-            if (existing.element?.isConnected && !element.isConnected) existing.element.replaceWith(element);
-            existing.element = element;
-            rootValue = element;
+          if (element && element !== stableRoot) {
+            if (!stableRoot) stableRoot = element;
+            else absorbRenderedRoot(stableRoot, element);
+            boundRoot(stableRoot, node);
+            existing.element = stableRoot;
           }
           existing.getMinHeight = () => 300;
           existing.getMaxHeight = () => 560;
@@ -156,26 +179,26 @@ function install(node) {
       }
       const created = originalAdd(name, type, element, options);
       if (name === WIDGET_NAME) {
-        rootValue = element || rootValue;
-        boundRoot(rootValue, node);
+        stableRoot = element || stableRoot;
+        boundRoot(stableRoot, node);
         const target = created || benchmarkWidgets(node)[0];
         if (target) {
-          target.element = rootValue;
+          target.element = stableRoot;
           target.getMinHeight = () => 300;
           target.getMaxHeight = () => 560;
         }
-        dedupe(node, rootValue);
+        dedupe(node, stableRoot);
       }
       return created;
     };
   }
 
-  if (rootValue) boundRoot(rootValue, node);
-  dedupe(node, rootValue);
+  if (stableRoot) boundRoot(stableRoot, node);
+  dedupe(node, stableRoot);
 }
 
 app.registerExtension({
-  name: "H3Studio.SmartBenchmarkSingleRootGuard",
+  name: "H3Studio.SmartBenchmarkStableRootGuard",
   beforeRegisterNodeDef(nodeType, nodeData) {
     if (nodeData.name !== TARGET) return;
     const created = nodeType.prototype.onNodeCreated;
