@@ -40,6 +40,7 @@ import {
   previewUrlForStorage,
   uploadImages,
 } from "./features/image_upload.js";
+import { createFaceRefineSection } from "../h3studio_face_refine.js";
 
 const TARGET = "H3StudioDirector";
 const LINKS_PROPERTY = "h3studio_virtual_media_links";
@@ -781,7 +782,10 @@ function generationSection(node, state, refresh) {
   const validation = validationMessage
     ? element("p", { className: "h3s-validation-error", text: validationMessage, attrs: { role: "alert" } })
     : null;
-  return section("Generation", element("div", { className: "h3s-section-stack" }, [grid, resolutionModes, validation, modeDescription, sizeHelp, preview, help, decodeHelp].filter(Boolean)));
+  const faceRefineBlock = createFaceRefineSection(node, state, () => {
+    applyState(node, state);
+  });
+  return section("Generation", element("div", { className: "h3s-section-stack" }, [grid, faceRefineBlock, resolutionModes, validation, modeDescription, sizeHelp, preview, help, decodeHelp].filter(Boolean)));
 }
 
 function promptSection(node, state, refresh) {

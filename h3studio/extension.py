@@ -104,6 +104,8 @@ register_dependency_routes()
 register_comfy_compat_routes()
 register_llama_cpp_routes()
 
+from .nodes.face_refine_node import H3StudioFaceRefine
+
 NODE_CLASS_MAPPINGS = {
     "H3StudioLoader": H3StudioLoader,
     "H3StudioDirector": H3StudioDirector,
@@ -113,6 +115,7 @@ NODE_CLASS_MAPPINGS = {
     "H3StudioContextSamplingPreset": H3StudioRuntimeSamplingPreset,
     "H3StudioTAEH3Preview": H3StudioTAEH3Preview,
     "H3StudioModelSetup": H3StudioModelSetup,
+    "H3StudioFaceRefine": H3StudioFaceRefine,
     **BENCHMARK_NODE_CLASS_MAPPINGS,
     **SMART_BENCHMARK_NODE_CLASS_MAPPINGS,
     **PROMPT_BENCHMARK_NODE_CLASS_MAPPINGS,
@@ -131,6 +134,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "H3StudioContextSamplingPreset": "H3 Studio · Director Sampling Preset",
     "H3StudioTAEH3Preview": "H3 Studio · Live Preview (TAEH3)",
     "H3StudioModelSetup": "H3 Studio · Model Setup",
+    "H3StudioFaceRefine": "H3 Studio · Face Refine (Distant & Wide)",
     **BENCHMARK_NODE_DISPLAY_NAME_MAPPINGS,
     **SMART_BENCHMARK_NODE_DISPLAY_NAME_MAPPINGS,
     **PROMPT_BENCHMARK_NODE_DISPLAY_NAME_MAPPINGS,

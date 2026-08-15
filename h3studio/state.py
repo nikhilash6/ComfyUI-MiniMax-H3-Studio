@@ -126,6 +126,10 @@ class GenerationOptions:
     frame_selection: str = "decode_recommended"
     reference_short_edge: int = 2048
     source_image_ordinal: int = 1
+    face_refine_mode: str = "off"
+    face_refine_crop_factor: float = 2.5
+    face_refine_guide_size: int = 768
+    face_refine_denoise: float = 0.22
 
     def resolution(self) -> ResolutionPlan:
         return plan_resolution(
@@ -152,6 +156,10 @@ class GenerationOptions:
             "frame_selection": self.frame_selection,
             "reference_short_edge": self.reference_short_edge,
             "source_image_ordinal": self.source_image_ordinal,
+            "face_refine_mode": self.face_refine_mode,
+            "face_refine_crop_factor": self.face_refine_crop_factor,
+            "face_refine_guide_size": self.face_refine_guide_size,
+            "face_refine_denoise": self.face_refine_denoise,
         }
 
     @classmethod
@@ -170,6 +178,9 @@ class GenerationOptions:
         frame_selection = str(value.get("frame_selection") or "decode_recommended")
         if frame_selection not in {"decode_recommended", "first", "middle", "last", "automatic_quality", "fixed"}:
             frame_selection = "decode_recommended"
+        fr_mode = str(value.get("face_refine_mode") or "off").strip().lower()
+        if fr_mode not in {"off", "auto", "strong"}:
+            fr_mode = "off"
         return cls(
             mode=_choice(value.get("mode"), MODES, MODE_AUTO),
             route=_choice(value.get("route"), ROUTES, ROUTE_AUTO),
@@ -185,6 +196,10 @@ class GenerationOptions:
             frame_selection=frame_selection,
             reference_short_edge=_int(value.get("reference_short_edge"), 2048, 256, 4096),
             source_image_ordinal=_int(value.get("source_image_ordinal"), 1, 1, 9),
+            face_refine_mode=fr_mode,
+            face_refine_crop_factor=_float(value.get("face_refine_crop_factor"), 2.5, 1.2, 5.0),
+            face_refine_guide_size=_int(value.get("face_refine_guide_size"), 768, 256, 1536),
+            face_refine_denoise=_float(value.get("face_refine_denoise"), 0.22, 0.05, 0.8),
         )
 
 
