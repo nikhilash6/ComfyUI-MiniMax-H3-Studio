@@ -63,27 +63,52 @@ function forceHide(element) {
   element.style.setProperty("overflow", "hidden", "important");
 }
 
+function directChildContaining(field, element) {
+  let current = element;
+  while (current?.parentElement && current.parentElement !== field) current = current.parentElement;
+  return current?.parentElement === field ? current : element;
+}
+
+function enforceSingleMpSlider(field) {
+  const primary = field.querySelector(":scope > .h3b14-mp");
+  if (!primary) return;
+
+  /* Several retired Benchmark decorators can still append their own range
+     controls to this exact field. Do not depend on their versioned class names:
+     keep v14 and collapse every other direct child that owns a range input. */
+  for (const range of field.querySelectorAll("input[type='range']")) {
+    if (primary.contains(range)) continue;
+    const wrapper = directChildContaining(field, range);
+    if (wrapper !== primary) forceHide(wrapper);
+  }
+
+  /* Known legacy controls are also hidden before/after their range exists. */
+  field.querySelectorAll(":scope > .h3b21-mp,:scope > .h3b21-mp-help,:scope > .h3b22-mp,:scope > .h3b24-mp").forEach(forceHide);
+
+  primary.hidden = false;
+  primary.removeAttribute("aria-hidden");
+  primary.style.setProperty("display", "grid", "important");
+  primary.style.removeProperty("visibility");
+  primary.style.removeProperty("width");
+  primary.style.removeProperty("height");
+  primary.style.removeProperty("min-width");
+  primary.style.removeProperty("min-height");
+  primary.style.removeProperty("margin");
+  primary.style.removeProperty("padding");
+  primary.style.removeProperty("border");
+  primary.style.removeProperty("overflow");
+}
+
 function clean(node) {
   const root = node?.__h3bRoot;
   if (!root?.isConnected) return;
   root.classList.add("h3b23");
 
-  /* v21 and v23 both create obsolete MP widgets. Leave them mounted so their
-     observers do not recreate them, but hide them inline with !important so
-     no stylesheet specificity can make them visible again. */
-  root.querySelectorAll(".h3b21-mp,.h3b21-mp-help,.h3b24-mp").forEach(forceHide);
+  /* Hide already-known retired controls anywhere in the Benchmark without
+     removing them; their old observers therefore have nothing to recreate. */
+  root.querySelectorAll(".h3b21-mp,.h3b21-mp-help,.h3b22-mp,.h3b24-mp").forEach(forceHide);
 
-  for (const field of root.querySelectorAll(".h3b14-mp-field")) {
-    const slider = field.querySelector(":scope > .h3b14-mp");
-    if (slider) {
-      slider.hidden = false;
-      slider.removeAttribute("aria-hidden");
-      slider.style.setProperty("display", "grid", "important");
-      slider.style.removeProperty("visibility");
-      slider.style.removeProperty("width");
-      slider.style.removeProperty("height");
-    }
-  }
+  for (const field of root.querySelectorAll(".h3b14-mp-field")) enforceSingleMpSlider(field);
 }
 
 function observe(node) {
