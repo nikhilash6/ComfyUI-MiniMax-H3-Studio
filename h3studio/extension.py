@@ -41,9 +41,9 @@ from .runtime_web import register_runtime_routes
 from .smart_benchmark_restore import install as install_smart_benchmark_restore
 from .web_routes import register_routes
 
-# Re-bind the historical private conda runtime used by our manual Lightning
-# installer command before GGUF backend detection. The shell exports from that
-# installer do not survive a later ComfyUI restart, but the runtime itself does.
+# Re-bind a known existing local llama.cpp runtime before GGUF backend detection.
+# Explicit runtime bindings always win; this compatibility hook only adopts a
+# complete local runtime when all required binaries are present.
 adopt_existing_runtime()
 
 # Patch only the optional analyzer/prompt-director surface. MiniMax H3's own
