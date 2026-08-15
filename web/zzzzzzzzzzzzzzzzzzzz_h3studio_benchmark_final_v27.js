@@ -9,11 +9,12 @@ function installStyles() {
   style.id = STYLE_ID;
   style.textContent = `
     /* Final classic-nodes Benchmark rule: exactly ONE per-scenario MP slider.
-       v14 owns it; later v21/v23 fallback sliders are obsolete and hidden. */
-    .h3b7 .h3b21-mp,
-    .h3b7 .h3b21-mp-help,
-    .h3b7 .h3b24-mp,
-    .h3b7 .h3b24-mp-original{
+       v14 owns it; v21/v23 controls stay mounted but are hidden so their
+       observers do not recreate them and fight this final layer. */
+    .h3b7.h3b21 .h3b21-mp,
+    .h3b7.h3b21 .h3b21-mp-help,
+    .h3b7.h3b23 .h3b7-field.h3b24-mp-field > .h3b24-mp,
+    .h3b7.h3b23 .h3b24-mp-original{
       display:none!important;
     }
     .h3b7 .h3b14-mp{
@@ -58,10 +59,9 @@ function clean(node) {
   if (!root?.isConnected) return;
   root.classList.add("h3b23");
 
-  /* Removing the obsolete controls avoids hidden focus targets and prevents
-     old rerenders from adding layout height. v14 is the sole visible MP UI. */
-  root.querySelectorAll(".h3b21-mp,.h3b21-mp-help,.h3b24-mp").forEach((el) => el.remove());
-
+  /* Do NOT remove v21/v23 MP controls here. Their own MutationObservers will
+     recreate missing controls. Keeping them mounted-but-hidden prevents the
+     observer loop and leaves v14 as the only visible scenario MP slider. */
   for (const field of root.querySelectorAll(".h3b14-mp-field")) {
     const slider = field.querySelector(":scope > .h3b14-mp");
     if (slider) slider.style.removeProperty("display");
@@ -85,7 +85,7 @@ function observe(node) {
       if (root.isConnected) clean(node);
     });
   });
-  observer.observe(root, { childList: true, subtree: true });
+  observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
   root.__h3BenchmarkFinalV27Observer = observer;
 }
 
