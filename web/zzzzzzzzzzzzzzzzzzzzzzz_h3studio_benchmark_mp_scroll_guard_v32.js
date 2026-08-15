@@ -73,20 +73,12 @@ function preserveScroll(root) {
   }, 650);
 }
 
-function targetRoot(event) {
-  const target = event.target instanceof Element ? event.target : null;
-  if (!target) return null;
-
-  // Catch both the visible Director control and, critically, the hidden legacy
-  // number input whose change listener calls patchScenario() -> render().
-  const isMpControl = Boolean(target.closest(MP_SELECTOR));
-  const isLegacyMpCommit = target.matches?.(LEGACY_MP_SELECTOR);
-  if (!isMpControl && !isLegacyMpCommit) return null;
-  return target.closest(ROOT_SELECTOR);
-}
-
 function guard(event) {
-  const root = targetRoot(event);
+  const target = event.target instanceof Element ? event.target : null;
+  if (!target) return;
+  const isLegacyMpCommit = target.matches?.(LEGACY_MP_SELECTOR);
+  if (!isLegacyMpCommit) return;
+  const root = target.closest(ROOT_SELECTOR);
   if (root) preserveScroll(root);
 }
 
