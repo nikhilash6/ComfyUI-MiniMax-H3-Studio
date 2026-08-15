@@ -6,16 +6,13 @@ const ui = readFileSync(new URL("../../web/zzzzzzzz_h3studio_benchmark_lab_v14.j
 const backend = readFileSync(new URL("../../h3studio/smart_benchmark_restore.py", import.meta.url), "utf8");
 const extension = readFileSync(new URL("../../h3studio/extension.py", import.meta.url), "utf8");
 
-test("Smart Benchmark restores scenario, matrix and VAE comparison modes", () => {
-  assert.match(backend, /SCENARIO_MODE = "Scenario lab"/);
-  assert.match(backend, /MATRIX_MODE = "Matrix A\/B"/);
-  assert.match(backend, /VAE_MODE = "VAE decode A\/B"/);
+test("Smart Benchmark restores unified comparison mode and global plan controls", () => {
+  assert.match(backend, /benchmark_mode/);
   assert.match(backend, /seed_strategy/);
   assert.match(backend, /repeats/);
   assert.match(backend, /allow_large_matrix/);
   assert.match(backend, /include_reference_context/);
   assert.match(backend, /live_cell_previews/);
-  assert.match(backend, /H3StudioABComparison\(\)\.compare/);
   assert.match(extension, /install_smart_benchmark_restore\(\)/);
 });
 
