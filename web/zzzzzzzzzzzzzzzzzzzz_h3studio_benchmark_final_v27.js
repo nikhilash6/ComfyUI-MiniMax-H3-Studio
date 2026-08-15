@@ -185,6 +185,7 @@ function syncMp(control, value) {
 function ensureMp(root, field) {
   const label = fieldLabel(field);
   if (!(label === "mp" || label.includes("resolution") || label.includes("target size"))) return;
+  if (field.querySelector("[data-h3-director-mp='1'], .h3s-megapixel-control")) return;
   const original = field.querySelector("input[type='number']");
   if (!original) return;
   field.classList.add("h3final-target-field");

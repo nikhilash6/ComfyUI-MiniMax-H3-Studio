@@ -1,5 +1,13 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
+import { rangeControl } from "./js/core/dom.js";
+import {
+  formatMegapixels,
+  MAX_MEGAPIXELS,
+  MEGAPIXEL_STEP,
+  MIN_MEGAPIXELS,
+  resolutionTier,
+} from "./js/core/state.js";
 import { stateFromNode } from "./js/studio_extension.js";
 
 const TARGET = "H3StudioSmartBenchmark";
@@ -10,6 +18,13 @@ const STYLE_ID = "h3studio-smart-benchmark-v7-style";
 const SHARE_PREFIX = "H3B1:";
 const SHARE_ZIP_PREFIX = "H3B1Z:";
 const WIDGET_NAME = "h3studio_smart_benchmark";
+const RESOLUTION_PRESETS = [
+  [0.4, "Draft"],
+  [1, "Recommended"],
+  [2, "2 MP"],
+  [4, "4 MP"],
+  [8.2944, "4K canvas"],
+];
 
 let catalog = null;
 let catalogPromise = null;
@@ -42,8 +57,27 @@ function installStyles() {
     .h3b7-import{display:none;grid-template-columns:minmax(0,1fr) auto;gap:5px;margin-bottom:7px}.h3b7-import.open{display:grid}.h3b7-import textarea{min-height:54px;resize:vertical;border:1px solid #4b5059;border-radius:6px;background:#34383e;color:#f2f3f5;padding:6px 7px;font:8px/1.35 ui-monospace,SFMono-Regular,Consolas,monospace}
     .h3b7-list{display:flex;flex-direction:column;gap:6px}.h3b7-empty{padding:18px;border:1px dashed #4b5059;border-radius:7px;color:#949ba4;text-align:center;font-size:9px;background:#2e3136}
     .h3b7-scenario{border:1px solid #454a52;border-radius:7px;background:#30343a;overflow:hidden}.h3b7-scenario[open]{border-color:#555c66}.h3b7-scenario>summary{display:grid;grid-template-columns:24px minmax(0,1fr) auto auto auto 22px;align-items:center;gap:6px;min-height:40px;padding:6px 8px;list-style:none;cursor:pointer}.h3b7-scenario>summary::-webkit-details-marker{display:none}.h3b7-index{display:grid;place-items:center;width:22px;height:22px;border-radius:5px;background:#41464d;color:#d7dbe0;font-weight:750;font-size:8.5px}.h3b7-name{height:28px;border:1px solid transparent;border-radius:5px;background:transparent;color:#f2f3f5;padding:4px 6px;font:700 9.5px/1.2 inherit}.h3b7-name:hover,.h3b7-name:focus{outline:none;border-color:#505660;background:#393d43}.h3b7-tag{max-width:125px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:3px 6px;border-radius:4px;background:#3b4047;color:#b9c0c8;font-size:7.5px}.h3b7-caret{color:#969da7;transition:transform .12s}.h3b7-scenario[open] .h3b7-caret{transform:rotate(90deg)}
-    .h3b7-fields{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr) minmax(0,1fr) 86px;gap:7px;padding:9px 9px 8px;border-top:1px solid #40454c;background:#2d3035}.h3b7-field{display:flex;flex-direction:column;gap:3px}.h3b7-label{color:#949ba4;font-size:7.5px;font-weight:650;text-transform:uppercase;letter-spacing:.05em}.h3b7-input,.h3b7-select{width:100%;height:29px;border:1px solid #4b5059;border-radius:5px;background:#383c42;color:#f0f2f4;padding:4px 7px;font:8.5px/1.2 inherit}.h3b7-input:focus,.h3b7-select:focus{outline:none;border-color:#71829a;box-shadow:0 0 0 2px rgba(145,167,199,.09)}
+    .h3b7-fields{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.4fr);gap:7px;padding:9px 9px 8px;border-top:1px solid #40454c;background:#2d3035}.h3b7-field{display:flex;flex-direction:column;gap:3px}.h3b7-label{color:#949ba4;font-size:7.5px;font-weight:650;text-transform:uppercase;letter-spacing:.05em}.h3b7-input,.h3b7-select{width:100%;height:29px;border:1px solid #4b5059;border-radius:5px;background:#383c42;color:#f0f2f4;padding:4px 7px;font:8.5px/1.2 inherit}.h3b7-input:focus,.h3b7-select:focus{outline:none;border-color:#71829a;box-shadow:0 0 0 2px rgba(145,167,199,.09)}
     .h3b7-loras{grid-column:1/-1;margin-top:1px}.h3b7-loras>summary{cursor:pointer;color:#aeb4bd;font-size:8.5px;list-style:none}.h3b7-loras>summary::-webkit-details-marker{display:none}.h3b7-loras>summary::before{content:'›';display:inline-block;width:14px;color:#8e96a0}.h3b7-loras[open]>summary::before{transform:rotate(90deg)}.h3b7-lora-body{display:flex;flex-direction:column;gap:4px;margin-top:6px}.h3b7-lora{display:grid;grid-template-columns:minmax(0,1fr) 70px 24px;gap:5px;align-items:center;padding:5px 6px;border-radius:5px;background:#373b42}.h3b7-lora-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:8px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace}.h3b7-strength{height:25px;border:1px solid #4b5059;border-radius:5px;background:#30343a;color:#f1f2f4;padding:3px 5px;font-size:8px}.h3b7-x{width:24px;height:24px;border:0;border-radius:4px;background:transparent;color:#d99aa0;cursor:pointer}.h3b7-x:hover{background:#4a3a3d}.h3b7-add{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px}
+
+    /* Director Target size component inside Benchmark */
+    .h3b7 .h3s-megapixel-control{display:flex!important;flex-direction:column!important;gap:4px!important;width:100%!important;min-width:0!important;box-sizing:border-box!important}
+    .h3b7 .h3s-megapixel-top{display:grid!important;grid-template-columns:1fr auto 1fr!important;align-items:center!important;gap:5px!important;width:100%!important;color:var(--b-muted2,#828993)!important;font-size:8px!important;font-variant-numeric:tabular-nums!important}
+    .h3b7 .h3s-megapixel-top span:first-child{text-align:left!important}
+    .h3b7 .h3s-megapixel-top span:last-child{text-align:right!important}
+    .h3b7 .h3s-megapixel-value{display:block!important;min-width:50px!important;text-align:center!important;color:var(--b-text,#f2f3f5)!important;font-size:10px!important;font-weight:700!important;font-variant-numeric:tabular-nums!important}
+    .h3b7 .h3s-range{--h3s-range-progress:0%;position:relative!important;display:block!important;width:100%!important;min-width:0!important;height:14px!important;min-height:14px!important;box-sizing:border-box!important;touch-action:none!important}
+    .h3b7 .h3s-range-track{position:absolute!important;left:0!important;right:0!important;top:50%!important;display:block!important;height:3px!important;overflow:hidden!important;border-radius:999px!important;background:var(--b-border,#484d56)!important;transform:translateY(-50%)!important;pointer-events:none!important}
+    .h3b7 .h3s-range-track::before{content:""!important;display:block!important;width:var(--h3s-range-progress)!important;height:100%!important;background:linear-gradient(90deg,#38d6af 0%,#68d391 18%,#e6ad55 48%,#ef7d52 72%,#ef5350 100%)!important}
+    .h3b7 .h3s-range-thumb{position:absolute!important;left:var(--h3s-range-progress)!important;top:50%!important;z-index:0!important;display:block!important;width:13px!important;height:13px!important;border:2px solid var(--b-panel2,#373b42)!important;border-radius:999px!important;background:var(--b-accent,#91a7c7)!important;box-shadow:0 1px 3px rgba(0,0,0,.35)!important;transform:translate(-50%,-50%)!important;pointer-events:none!important}
+    .h3b7 .h3s-range[data-tier="experimental"] .h3s-range-thumb{background:#ef7d52!important}
+    .h3b7 .h3s-range[data-tier="extreme"] .h3s-range-thumb{background:#ef5350!important}
+    .h3b7 .h3s-range-native{appearance:auto!important;-webkit-appearance:auto!important;position:absolute!important;inset:0!important;z-index:1!important;display:block!important;width:100%!important;height:100%!important;min-height:0!important;margin:0!important;padding:0!important;border:0!important;opacity:0!important;background:transparent!important;cursor:pointer!important;pointer-events:auto!important;touch-action:none!important}
+    .h3b7 .h3s-resolution-presets{display:flex!important;flex-wrap:wrap!important;gap:3px!important;width:100%!important;margin:0!important;padding:0!important}
+    .h3b7 .h3s-resolution-preset{flex:1 1 50px!important;min-width:0!important;min-height:22px!important;height:auto!important;margin:0!important;padding:3px 6px!important;border:1px solid var(--b-border,#484d56)!important;border-radius:5px!important;color:var(--b-muted,#aab0b9)!important;background:var(--b-bg,#2a2d32)!important;cursor:pointer!important;font:620 8px/1.2 ui-sans-serif,system-ui!important;white-space:nowrap!important;text-align:center!important}
+    .h3b7 .h3s-resolution-preset:hover{color:var(--b-text,#f2f3f5)!important;border-color:color-mix(in srgb,var(--b-accent,#91a7c7) 45%,var(--b-border,#484d56))!important}
+    .h3b7 .h3s-resolution-preset.is-active{color:var(--b-text,#f2f3f5)!important;border-color:color-mix(in srgb,var(--b-accent,#91a7c7) 65%,var(--b-border,#484d56))!important;background:color-mix(in srgb,var(--b-accent,#91a7c7) 12%,var(--b-bg,#2a2d32))!important}
+
     @container (max-width:650px){.h3b7-fields{grid-template-columns:1fr 1fr}.h3b7-scenario>summary{grid-template-columns:22px minmax(0,1fr) auto 22px}.h3b7-scenario>summary .h3b7-tag:nth-of-type(n+2){display:none}}
     @container (max-width:470px){.h3b7-fields{grid-template-columns:1fr}.h3b7-top{align-items:flex-start;flex-direction:column}.h3b7-toolbar{align-items:flex-start;flex-direction:column}.h3b7-scenario>summary{grid-template-columns:22px minmax(0,1fr) 22px}.h3b7-tag{display:none}}
   `;
@@ -162,11 +196,14 @@ function applyPreset(node, kind) {
   saveScenarios(node, scenarios, kind);
   render(node);
 }
-function patchScenario(node, index, patch) {
+function updateScenarioState(node, index, patch) {
   const scenarios = parseScenarios(node);
   if (!scenarios[index]) return;
   scenarios[index] = { ...scenarios[index], ...patch };
   saveScenarios(node, scenarios, "custom");
+}
+function patchScenario(node, index, patch) {
+  updateScenarioState(node, index, patch);
   render(node);
 }
 function removeScenario(node, index) {
@@ -206,10 +243,16 @@ function loraEditor(node, scenario, index) {
     const name = el("div", "h3b7-lora-name", item.name); name.title = item.name;
     const strength = el("input", "h3b7-strength"); strength.type = "number"; strength.step = "0.05"; strength.min = "-4"; strength.max = "4"; strength.value = String(item.strength ?? 1);
     strength.addEventListener("change", () => {
-      const next = structuredClone(values); next[loraIndex] = { ...next[loraIndex], strength: Number(strength.value) || 0 }; patchScenario(node, index, { custom_loras: next });
+      const next = structuredClone(values); next[loraIndex] = { ...next[loraIndex], strength: Number(strength.value) || 0 };
+      updateScenarioState(node, index, { custom_loras: next });
     });
     const remove = el("button", "h3b7-x", "×"); remove.type = "button"; remove.title = "Remove LoRA";
-    remove.addEventListener("click", (event) => { event.preventDefault(); const next = structuredClone(values); next.splice(loraIndex, 1); patchScenario(node, index, { custom_loras: next }); });
+    remove.addEventListener("click", (event) => {
+      event.preventDefault();
+      const next = structuredClone(values);
+      next.splice(loraIndex, 1);
+      patchScenario(node, index, { custom_loras: next });
+    });
     row.append(name, strength, remove); body.append(row);
   });
   const add = el("div", "h3b7-add");
@@ -230,28 +273,100 @@ function scenarioRow(node, scenario, index, route, scenarioCount) {
   const summary = el("summary");
   const name = el("input", "h3b7-name"); name.value = scenario.name || `Scenario ${index + 1}`; name.setAttribute("aria-label", `Scenario ${index + 1} name`);
   name.addEventListener("click", (event) => event.stopPropagation());
-  name.addEventListener("change", () => patchScenario(node, index, { name: name.value.trim() || `Scenario ${index + 1}` }));
+  name.addEventListener("change", () => updateScenarioState(node, index, { name: name.value.trim() || `Scenario ${index + 1}` }));
   const runtimeLabel = runtimeChoices().find(([key]) => key === String(scenario.runtime_preset || "auto"))?.[1] || String(scenario.runtime_preset || "Auto");
   const samplingLabel = samplingChoices(route).find(([key]) => key === String(scenario.sampling_profile || ""))?.[1] || String(scenario.sampling_profile || "Sampling");
   const remove = el("button", "h3b7-x", "×"); remove.type = "button"; remove.title = "Remove scenario"; remove.addEventListener("click", (event) => { event.preventDefault(); event.stopPropagation(); removeScenario(node, index); });
+
+  const runtimeTag = el("span", "h3b7-tag", runtimeLabel);
+  const samplingTag = el("span", "h3b7-tag", samplingLabel);
+  const mpTag = el("span", "h3b7-tag", `${Number(scenario.megapixels || 1).toFixed(2)} MP`);
+
   summary.append(
     el("span", "h3b7-index", index + 1), name,
-    el("span", "h3b7-tag", runtimeLabel), el("span", "h3b7-tag", samplingLabel),
-    el("span", "h3b7-tag", `${Number(scenario.megapixels || 1).toFixed(2)} MP`),
+    runtimeTag, samplingTag, mpTag,
     remove,
   );
 
   const model = el("input", "h3b7-input"); model.value = scenario.model_name || ""; model.placeholder = "Installed transformer…"; model.setAttribute("list", `h3b7-models-${node.id}-${index}`);
   const models = el("datalist"); models.id = `h3b7-models-${node.id}-${index}`;
   for (const choice of modelChoices(route)) { const option = document.createElement("option"); option.value = choice; models.append(option); }
-  model.addEventListener("change", () => patchScenario(node, index, { model_name: model.value.trim() }));
+  model.addEventListener("change", () => updateScenarioState(node, index, { model_name: model.value.trim() }));
   const modelWrap = field("Transformer", model); modelWrap.append(models);
 
-  const sampling = selectInput(samplingChoices(route), scenario.sampling_profile, (value) => patchScenario(node, index, { sampling_profile: value }), "Sampling profile");
-  const runtime = selectInput(runtimeChoices(), scenario.runtime_preset || "auto", (value) => patchScenario(node, index, { runtime_preset: value }), "Runtime preset");
-  const mp = el("input", "h3b7-input"); mp.type = "number"; mp.min = "0.2"; mp.max = "8.5"; mp.step = "0.05"; mp.value = String(Number(scenario.megapixels || 1)); mp.addEventListener("change", () => patchScenario(node, index, { megapixels: Number(mp.value) || 1 }));
+  const sampling = selectInput(samplingChoices(route), scenario.sampling_profile, (value) => {
+    updateScenarioState(node, index, { sampling_profile: value });
+    samplingTag.textContent = samplingChoices(route).find(([k]) => k === value)?.[1] || value;
+  }, "Sampling profile");
+
+  const runtime = selectInput(runtimeChoices(), scenario.runtime_preset || "auto", (value) => {
+    updateScenarioState(node, index, { runtime_preset: value });
+    runtimeTag.textContent = runtimeChoices().find(([k]) => k === value)?.[1] || value;
+  }, "Runtime preset");
+
+  const currentMp = Number(scenario.megapixels || 1);
+  const mpOutput = el("output", "h3s-megapixel-value", formatMegapixels(currentMp));
+  mpOutput.setAttribute("aria-live", "polite");
+
+  const presetButtons = [];
+  const syncPresetButtons = (val) => {
+    for (let i = 0; i < RESOLUTION_PRESETS.length; i += 1) {
+      presetButtons[i]?.classList.toggle("is-active", Math.abs(val - RESOLUTION_PRESETS[i][0]) < 0.03);
+    }
+  };
+
+  let mpSlider = null;
+  const onMpPreview = (val) => {
+    mpOutput.textContent = formatMegapixels(val);
+    mpTag.textContent = `${Number(val).toFixed(2)} MP`;
+    if (mpSlider) mpSlider.dataset.tier = resolutionTier(val).key;
+    syncPresetButtons(val);
+  };
+  const onMpCommit = (val) => {
+    onMpPreview(val);
+    updateScenarioState(node, index, { megapixels: val });
+  };
+
+  mpSlider = rangeControl(
+    currentMp,
+    { min: MIN_MEGAPIXELS, max: MAX_MEGAPIXELS, step: MEGAPIXEL_STEP },
+    `Target megapixels, minimum ${formatMegapixels(MIN_MEGAPIXELS)}, maximum ${formatMegapixels(MAX_MEGAPIXELS)}`,
+    onMpCommit,
+    onMpPreview,
+  );
+  mpSlider.dataset.tier = resolutionTier(currentMp).key;
+
+  const mpTop = el("div", "h3s-megapixel-top");
+  mpTop.append(el("span", "", formatMegapixels(MIN_MEGAPIXELS)), mpOutput, el("span", "", formatMegapixels(MAX_MEGAPIXELS)));
+
+  const mpPresets = el("div", "h3s-resolution-presets");
+  for (const [val, label] of RESOLUTION_PRESETS) {
+    const button = el("button", `h3s-resolution-preset${Math.abs(currentMp - val) < 0.03 ? " is-active" : ""}`, label);
+    button.type = "button";
+    button.setAttribute("aria-label", `Set ${label}, ${formatMegapixels(val)}`);
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const native = mpSlider.querySelector(".h3s-range-native");
+      if (native) {
+        native.value = String(val);
+        native.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      onMpCommit(val);
+    });
+    presetButtons.push(button);
+    mpPresets.append(button);
+  }
+
+  const mpControl = el("div", "h3final-mp h3s-megapixel-control");
+  mpControl.dataset.h3DirectorMp = "1";
+  mpControl.append(mpTop, mpSlider, mpPresets);
+
+  const targetField = field("Target size", mpControl);
+  targetField.classList.add("h3final-target-field");
+
   const fields = el("div", "h3b7-fields");
-  fields.append(modelWrap, field("Sampling", sampling), field("Runtime", runtime), field("MP", mp), loraEditor(node, scenario, index));
+  fields.append(modelWrap, field("Sampling", sampling), field("Runtime", runtime), targetField, loraEditor(node, scenario, index));
   details.append(summary, fields);
   return details;
 }
@@ -340,10 +455,28 @@ function render(node) {
   hidePlumbing(node);
   const root = node?.__h3bRoot;
   if (!node?.graph || !root?.isConnected) return;
+  const prevScrollTop = Number(root.scrollTop || 0);
+  const prevScrollLeft = Number(root.scrollLeft || 0);
+  const prevOpen = [...root.querySelectorAll(".h3b7-scenario")].map((el) => Boolean(el.open));
+  const prevLorasOpen = [...root.querySelectorAll(".h3b7-scenario")].map((el) => Boolean(el.querySelector(".h3b7-loras[open]")));
   const next = buildRoot(node);
   root.className = next.className;
   root.dataset.h3BenchmarkUi = "v7";
   root.replaceChildren(...Array.from(next.childNodes));
+  const newScenarios = root.querySelectorAll(".h3b7-scenario");
+  newScenarios.forEach((el, i) => {
+    if (prevOpen[i] !== undefined) el.open = prevOpen[i];
+    const loras = el.querySelector(".h3b7-loras");
+    if (loras && prevLorasOpen[i] !== undefined) loras.open = prevLorasOpen[i];
+  });
+  root.scrollTop = prevScrollTop;
+  root.scrollLeft = prevScrollLeft;
+  queueMicrotask(() => {
+    if (root.isConnected) {
+      root.scrollTop = prevScrollTop;
+      root.scrollLeft = prevScrollLeft;
+    }
+  });
   node.setDirtyCanvas?.(true, true);
 }
 
