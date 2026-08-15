@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from .analyzer_runtime_fixes import install as install_analyzer_runtime_fixes
 from .analyzer_stack import install as install_analyzer_stack
+from .comfy_attention_compat import install as install_comfy_attention_compat
 from .dependency_web import register_dependency_routes
 from .llama_cpp_dependency import register_routes as register_llama_cpp_routes
 from .llama_existing_runtime import adopt_existing_runtime
@@ -45,6 +46,11 @@ from .web_routes import register_routes
 # Explicit runtime bindings always win; this compatibility hook only adopts a
 # complete local runtime when all required binaries are present.
 adopt_existing_runtime()
+
+# Older DynamicVRAM ComfyUI pins already support optimized_attention_override
+# but predate ModelPatcher.set_model_optimized_attention(). Backport that exact
+# API only when missing so Auto/Fast can really select CK/PyTorch attention.
+install_comfy_attention_compat()
 
 # Patch only the optional analyzer/prompt-director surface. MiniMax H3's own
 # conditioning encoder, transformer, sampling, VAE and runtime paths remain the
