@@ -5,6 +5,7 @@ from __future__ import annotations
 from .analyzer_runtime_fixes import install as install_analyzer_runtime_fixes
 from .analyzer_stack import install as install_analyzer_stack
 from .comfy_attention_compat import install as install_comfy_attention_compat
+from .comfy_compat import register_routes as register_comfy_compat_routes
 from .dependency_web import register_dependency_routes
 from .llama_cpp_dependency import register_routes as register_llama_cpp_routes
 from .llama_existing_runtime import adopt_existing_runtime
@@ -31,6 +32,7 @@ from .nodes.save import NODE_DISPLAY_NAME_MAPPINGS as SAVE_NODE_DISPLAY_NAME_MAP
 from .nodes.smart_benchmark import NODE_CLASS_MAPPINGS as SMART_BENCHMARK_NODE_CLASS_MAPPINGS
 from .nodes.smart_benchmark import NODE_DISPLAY_NAME_MAPPINGS as SMART_BENCHMARK_NODE_DISPLAY_NAME_MAPPINGS
 from .preview_history_fix import install as install_preview_history_fix
+from .product_defaults import install as install_product_defaults
 from .prompt_mode_guard import install as install_prompt_mode_guard
 from .prompt_pipeline_fixes import install as install_prompt_pipeline_fixes
 from .prompt_prep_hotfix_v2 import install as install_prompt_prep_hotfix_v2
@@ -76,6 +78,9 @@ install_prompt_pipeline_fixes()
 # "Keep my prompt" is authoritative even for workflows saved with a stale
 # deep_enhancement=true bit from older Director UI builds.
 install_prompt_mode_guard()
+# New nodes default to the preferred production setup without rewriting values
+# already serialized in existing workflows.
+install_product_defaults()
 # The compiler's resolved generation mode is the final conditioning contract.
 # Install this after prompt-prep patches but before the runtime node subclasses
 # invoke H3StudioCondition.condition via super().
@@ -92,6 +97,7 @@ install_preview_history_fix()
 register_routes()
 register_runtime_routes()
 register_dependency_routes()
+register_comfy_compat_routes()
 register_llama_cpp_routes()
 
 NODE_CLASS_MAPPINGS = {
