@@ -63,7 +63,12 @@ class OpenCVHaarDetector(FaceDetector):
         try:
             import cv2
 
-            cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+            bundled_path = os.path.join(os.path.dirname(__file__), "data", "haarcascade_frontalface_default.xml")
+            if os.path.exists(bundled_path):
+                cascade_path = bundled_path
+            else:
+                cascade_path = os.path.join(getattr(cv2.data, "haarcascades", ""), "haarcascade_frontalface_default.xml")
+
             if os.path.exists(cascade_path):
                 self._cascade = cv2.CascadeClassifier(cascade_path)
             else:

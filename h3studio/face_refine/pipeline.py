@@ -74,6 +74,22 @@ class H3FaceRefinePipeline:
         self.color_transfer = color_transfer or ReinhardColorTransfer()
         self.blender = blender or FeatherBlender()
 
+    def _detail_enhance(self, patch: Any, denoise: float = 0.22) -> Any:
+        """High-frequency spatial detail enhancement fallback when offline or without sampler."""
+        if torch is None or not isinstance(patch, torch.Tensor):
+            return patch
+        try:
+            import torch.nn.functional as F
+            x = patch.permute(0, 3, 1, 2)
+            k = torch.tensor([[1, 2, 1], [2, 4, 2], [1, 2, 1]], dtype=x.dtype, device=x.device).unsqueeze(0).unsqueeze(0) / 16.0
+            k = k.repeat(x.shape[1], 1, 1, 1)
+            blurred = F.conv2d(x, k, padding=1, groups=x.shape[1])
+            high_pass = x - blurred
+            enhanced = x + high_pass * (1.0 + float(denoise) * 2.5)
+            return enhanced.permute(0, 2, 3, 1).clamp(0.0, 1.0)
+        except Exception:
+            return patch
+
     def filter_faces(
         self,
         boxes: List[BoundingBox],
@@ -176,7 +192,7 @@ class H3FaceRefinePipeline:
                 if sampler_fn is not None:
                     refined_patch = sampler_fn(crop_patch, region, config)
                 else:
-                    refined_patch = crop_patch
+                    refined_patch = self._detail_enhance(crop_patch, denoise=config.denoise)
 
                 # Downsample back to crop size
                 resampled_patch = self.crop_manager.resize_back_to_crop(refined_patch, region)
