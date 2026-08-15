@@ -95,6 +95,27 @@ function predictedPath(state, asset) {
   return state.modelsDir ? `${String(state.modelsDir).replace(/[\\/]$/, "")}/${asset.destination}/${asset.filename}` : relative;
 }
 
+const MODEL_SETUP_NODE_CHROME = 54;
+const MODEL_SETUP_MIN_VIEWPORT = 320;
+const MODEL_SETUP_MIN_WIDTH = 480;
+const MODEL_SETUP_DEFAULT_NODE_WIDTH = 820;
+const MODEL_SETUP_DEFAULT_NODE_HEIGHT = 860;
+
+function modelSetupViewportHeight(nodeHeight) {
+  const height = Number(nodeHeight);
+  const resolved = Number.isFinite(height) && height > 0 ? height : MODEL_SETUP_DEFAULT_NODE_HEIGHT;
+  return Math.max(MODEL_SETUP_MIN_VIEWPORT, Math.round(resolved) - MODEL_SETUP_NODE_CHROME);
+}
+
+function modelSetupWidgetSizing(node) {
+  const height = () => modelSetupViewportHeight(node?.size?.[1]);
+  return {
+    getMinHeight: height,
+    getMaxHeight: height,
+    getHeight: height,
+  };
+}
+
 function installUI(node) {
   if (node.__h3ModelSetup || typeof node.addDOMWidget !== "function") return;
   injectStyles();
@@ -321,14 +342,16 @@ function installUI(node) {
     serialize: false,
     hideOnZoom: false,
     getValue: () => undefined,
-    getMinHeight: () => 480,
-    getMaxHeight: () => 1400,
+    ...modelSetupWidgetSizing(node),
   });
-  // Widget height must not be derived from dynamic node.size[1] to prevent
-  // ComfyUI's computeSize feedback loop from expanding the node downward forever.
-  widget.computeSize = (width) => [Math.max(680, Number(width) || 820), 760];
-  widget.computedHeight = 760;
-  node.setSize?.([Math.max(node.size?.[0] || 820, 680), Math.max(node.size?.[1] || 860, 480)]);
+  widget.computeSize = (width) => [
+    Math.max(MODEL_SETUP_MIN_WIDTH, Number(width) || MODEL_SETUP_DEFAULT_NODE_WIDTH),
+    MODEL_SETUP_MIN_VIEWPORT,
+  ];
+  node.setSize?.([
+    Math.max(node.size?.[0] || MODEL_SETUP_DEFAULT_NODE_WIDTH, MODEL_SETUP_MIN_WIDTH),
+    Math.max(node.size?.[1] || MODEL_SETUP_DEFAULT_NODE_HEIGHT, MODEL_SETUP_MIN_VIEWPORT + MODEL_SETUP_NODE_CHROME),
+  ]);
   render();
   detect();
 }

@@ -47,3 +47,9 @@ test("Model Setup widget computeSize does not couple to dynamic node.size to avo
   assert.doesNotMatch(source, /computeSize\s*=\s*\(width\)\s*=>\s*\[[^\]]*node\.size/);
   assert.match(source, /widget\.computeSize\s*=\s*\(width\)\s*=>/);
 });
+
+test("Model Setup dynamically adapts widget viewport height to node height without empty space", () => {
+  assert.match(source, /function modelSetupViewportHeight\(nodeHeight\)/);
+  assert.match(source, /function modelSetupWidgetSizing\(node\)/);
+  assert.match(source, /\.\.\.modelSetupWidgetSizing\(node\)/);
+});
