@@ -29,6 +29,7 @@ from .nodes.save import NODE_CLASS_MAPPINGS as SAVE_NODE_CLASS_MAPPINGS
 from .nodes.save import NODE_DISPLAY_NAME_MAPPINGS as SAVE_NODE_DISPLAY_NAME_MAPPINGS
 from .nodes.smart_benchmark import NODE_CLASS_MAPPINGS as SMART_BENCHMARK_NODE_CLASS_MAPPINGS
 from .nodes.smart_benchmark import NODE_DISPLAY_NAME_MAPPINGS as SMART_BENCHMARK_NODE_DISPLAY_NAME_MAPPINGS
+from .preview_history_fix import install as install_preview_history_fix
 from .prompt_pipeline_fixes import install as install_prompt_pipeline_fixes
 from .prompt_prep_hotfix_v2 import install as install_prompt_prep_hotfix_v2
 from .qwen35_gguf import install as install_qwen35_gguf
@@ -72,9 +73,12 @@ install_runtime_contract_fixes()
 # Repair PackedLayout probing across ComfyUI versions and make runtime preset
 # semantics truthful: Fast is speed-oriented, Low/Extreme are memory-oriented.
 install_runtime_policy_fixes()
-# Smart Benchmark keeps the scenario lab but also exposes the complete legacy
-# matrix/VAE benchmark contract through the same node and modern UI.
+# Smart Benchmark is one unified scenario surface with the old fairness/sweep
+# controls applied globally; the short-lived Matrix/VAE tab split is gone.
 install_smart_benchmark_restore()
+# Keep every requested TAEH preview page for short sampling runs instead of the
+# old queue-of-one behavior that discarded intermediate/final steps.
+install_preview_history_fix()
 register_routes()
 register_runtime_routes()
 register_dependency_routes()
