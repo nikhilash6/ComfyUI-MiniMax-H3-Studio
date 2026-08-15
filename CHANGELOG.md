@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes are recorded here. The format follows Keep a Changelog; versions use semantic versioning with prerelease identifiers while Lightning GPU validation is incomplete.
+All notable changes are recorded here. The format follows Keep a Changelog; versions use semantic versioning with prerelease identifiers while runtime validation is incomplete.
 
 ## [0.1.0-alpha.16] - 2026-08-14
 
@@ -47,7 +47,7 @@ All notable changes are recorded here. The format follows Keep a Changelog; vers
 ### Added
 
 - Added native MiniMax H3 VAE decode controls with Auto and Manual tiling, curated 256/320/384/512 tile-size presets, 64/96/128 overlap presets, adaptive tile batching, OOM backoff, and live decode progress.
-- Added low-RAM Lightning storage safeguards, swap-aware host-memory pressure telemetry, and recovery for broken text-encoder cache links without taking model residency away from ComfyUI DynamicVRAM.
+- Added low-RAM storage safeguards, swap-aware host-memory pressure telemetry, and recovery for broken text-encoder cache links without taking model residency away from ComfyUI DynamicVRAM.
 - Added exact H3 Studio PNG metadata restoration so generated images reopen with the generation state and seed that actually produced them.
 
 ### Fixed
