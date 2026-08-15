@@ -3,6 +3,12 @@ import { app } from "../../scripts/app.js";
 const DIRECTOR = "H3StudioDirector";
 const BENCHMARK = "H3StudioSmartBenchmark";
 const STYLE_ID = "h3studio-nodes2-natural-geometry-v25-style";
+const BENCHMARK_PLUMBING = new Set([
+  "scenarios_json", "max_scenarios", "grid_cell_size", "benchmark_mode", "profiles",
+  "matrix_megapixels", "repeats", "seed_strategy", "seed_step", "max_generations",
+  "allow_large_matrix", "include_reference_context", "include_original_prompt",
+  "live_cell_previews", "compare_vae",
+]);
 
 function widget(node, name) {
   return (node?.widgets || []).find((item) => item?.name === name) || null;
@@ -13,8 +19,11 @@ function installStyles() {
   const style = document.createElement("style");
   style.id = STYLE_ID;
   style.textContent = `
-    /* Nodes 2.0 owns the widget slot. H3 content should not paint/stretch to fill unused slot height. */
+    /* Nodes 2.0 WidgetDOM uses *:flex-1. Explicitly opt H3 DOM roots out. */
     .h3s-studio-panel,.h3b7{
+      flex:0 0 auto!important;
+      flex-grow:0!important;
+      flex-shrink:0!important;
       height:auto!important;
       min-height:0!important;
       align-self:flex-start!important;
@@ -22,7 +31,6 @@ function installStyles() {
     .h3s-studio-panel{overflow:hidden!important}
     .h3b7{overflow-y:auto!important;overflow-x:hidden!important}
 
-    /* Director keeps its two-column layout natural until the available node height actually constrains it. */
     .h3s-v6-layout,.h3s-v7-layout{
       height:auto!important;
       min-height:0!important;
@@ -35,8 +43,35 @@ function installStyles() {
       overflow-x:hidden!important;
       overscroll-behavior:contain!important;
     }
+
+    /* Native Benchmark surface: inherit the node instead of painting a second app. */
+    .h3b7.h3b23,
+    .h3b7.h3b23>.h3b7-top,
+    .h3b7.h3b23>.h3b7-body,
+    .h3b7.h3b23 .h3b15-plan,
+    .h3b7.h3b23 .h3b7-summary,
+    .h3b7.h3b23 .h3b7-list,
+    .h3b7.h3b23 .h3b7-scenario,
+    .h3b7.h3b23 .h3b7-scenario[open],
+    .h3b7.h3b23 .h3b7-scenario>summary,
+    .h3b7.h3b23 .h3b7-scenario[open]>summary,
+    .h3b7.h3b23 .h3b7-fields{
+      background:transparent!important;
+      background-image:none!important;
+      box-shadow:none!important;
+    }
   `;
   document.head.append(style);
+}
+
+function hideBenchmarkPlumbing(node) {
+  if (node?.comfyClass !== BENCHMARK) return;
+  for (const item of node.widgets || []) {
+    if (!BENCHMARK_PLUMBING.has(item?.name)) continue;
+    item.options ||= {};
+    item.options.hidden = true;
+    item.hidden = true;
+  }
 }
 
 function slotHeight(root) {
@@ -48,12 +83,32 @@ function slotHeight(root) {
 function releaseRoot(root, benchmark = false) {
   if (!root?.isConnected) return;
   const cap = slotHeight(root);
+  root.style.setProperty("flex", "0 0 auto", "important");
+  root.style.setProperty("flex-grow", "0", "important");
+  root.style.setProperty("flex-shrink", "0", "important");
   root.style.setProperty("height", "auto", "important");
   root.style.setProperty("min-height", "0", "important");
   root.style.setProperty("align-self", "flex-start", "important");
   root.style.setProperty("max-height", cap ? `${Math.floor(cap)}px` : "100%", "important");
   root.style.setProperty("overflow-x", "hidden", "important");
   root.style.setProperty("overflow-y", benchmark ? "auto" : "hidden", "important");
+}
+
+function nativeBenchmarkSurface(root) {
+  if (!root?.isConnected) return;
+  root.classList.add("h3b23");
+  const surfaces = [
+    root,
+    root.querySelector(":scope > .h3b7-top"),
+    root.querySelector(":scope > .h3b7-body"),
+    ...root.querySelectorAll(".h3b15-plan,.h3b7-summary,.h3b7-list,.h3b7-scenario,.h3b7-scenario>summary,.h3b7-fields"),
+  ];
+  for (const surface of surfaces) {
+    if (!surface) continue;
+    surface.style.setProperty("background", "transparent", "important");
+    surface.style.setProperty("background-image", "none", "important");
+    surface.style.setProperty("box-shadow", "none", "important");
+  }
 }
 
 function releaseDirector(node) {
@@ -66,28 +121,26 @@ function releaseDirector(node) {
   const inspector = layout?.querySelector(".h3s-v6-inspector,.h3s-v7-inspector");
   if (!layout || !main || !inspector) return;
 
-  const header = root.querySelector(":scope > .h3s-studio-header");
-  const rootCap = slotHeight(root);
-  const available = rootCap ? Math.max(120, rootCap - Number(header?.offsetHeight || 46)) : 0;
-
-  /* v14 used to write an explicit full-slot pixel height here. Remove that fill behavior. */
+  /* v14 writes a full-slot pixel height. Nodes 2.0 already owns the slot. */
   layout.style.setProperty("height", "auto", "important");
   layout.style.setProperty("min-height", "0", "important");
-  layout.style.setProperty("max-height", available ? `${Math.floor(available)}px` : "none", "important");
+  layout.style.setProperty("max-height", "none", "important");
 
   for (const column of [main, inspector]) {
     column.style.setProperty("height", "auto", "important");
     column.style.setProperty("min-height", "0", "important");
-    column.style.setProperty("max-height", available ? `${Math.floor(available)}px` : "none", "important");
+    column.style.setProperty("max-height", "none", "important");
     column.style.setProperty("overflow-y", "auto", "important");
     column.style.setProperty("overflow-x", "hidden", "important");
   }
 }
 
 function releaseBenchmark(node) {
+  hideBenchmarkPlumbing(node);
   const root = node?.__h3bRoot;
   if (!root?.isConnected) return;
   releaseRoot(root, true);
+  nativeBenchmarkSurface(root);
 }
 
 function release(node) {
@@ -97,6 +150,7 @@ function release(node) {
 
 function bind(node) {
   if (!node || ![DIRECTOR, BENCHMARK].includes(node.comfyClass)) return;
+  if (node.comfyClass === BENCHMARK) hideBenchmarkPlumbing(node);
   const root = node.comfyClass === DIRECTOR ? node.__h3studioPanel : node.__h3bRoot;
   if (!root?.isConnected) {
     setTimeout(() => bind(node), 100);
@@ -126,10 +180,9 @@ function bind(node) {
       release(node);
     });
   });
-  observer.observe(root, { childList:true, subtree:true });
+  observer.observe(root, { childList:true, subtree:true, attributes:true, attributeFilter:["class"] });
   root.__h3NaturalGeometryObserver = observer;
 
-  /* Older compatibility observers may run one frame later; win deterministically without a loop. */
   requestAnimationFrame(() => requestAnimationFrame(() => release(node)));
   setTimeout(() => release(node), 90);
 }
@@ -141,6 +194,9 @@ function sweep() {
 app.registerExtension({
   name:"H3Studio.Nodes2NaturalGeometryV25",
   setup(){ installStyles(); setTimeout(sweep, 420); },
-  nodeCreated(node){ if ([DIRECTOR, BENCHMARK].includes(node?.comfyClass)) setTimeout(() => bind(node), 420); },
-  afterConfigureGraph(){ installStyles(); setTimeout(sweep, 480); },
+  nodeCreated(node){
+    if (node?.comfyClass === BENCHMARK) hideBenchmarkPlumbing(node);
+    if ([DIRECTOR, BENCHMARK].includes(node?.comfyClass)) setTimeout(() => bind(node), 120);
+  },
+  afterConfigureGraph(){ installStyles(); setTimeout(sweep, 180); },
 });
