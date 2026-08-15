@@ -72,14 +72,23 @@ function hideForNodes2(node) {
       : null;
   if (!visible) return;
 
+  let changed = false;
   for (const item of node.widgets || []) {
     if (visible.has(item?.name)) continue;
     item.options ||= {};
     /* Nodes 2 visibility comes from widget.options.hidden. widget.hidden alone
        only covers the legacy LiteGraph path. Keep both so the workflow behaves
        correctly in either renderer. */
+    if (item.options.hidden !== true || item.hidden !== true) changed = true;
     item.options.hidden = true;
     item.hidden = true;
+  }
+
+  /* Nodes 2 maps widgets through a shallow-reactive array. Deep option changes
+     made after the initial extraction need an array mutation so Vue recomputes
+     SafeWidgetData and actually removes the hidden rows. */
+  if (changed && Array.isArray(node.widgets)) {
+    try { node.widgets = [...node.widgets]; } catch (_) {}
   }
 }
 
