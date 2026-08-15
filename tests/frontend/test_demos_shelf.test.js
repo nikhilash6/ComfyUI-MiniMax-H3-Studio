@@ -49,11 +49,15 @@ test("formatSamplingBadge distinguishes 4-step and 8-step LightX without false 8
   assert.equal(formatSamplingBadge("base_balanced_12"), "Base 12");
 });
 
-test("Manifest includes cinematic Interstellar and Sicario presets", () => {
+test("Manifest includes cinematic and anime presets", () => {
   const ids = manifestJson.map((d) => d.id);
   assert.ok(ids.includes("cinematic_interstellar_miller"));
   assert.ok(ids.includes("cinematic_interstellar_wormhole"));
   assert.ok(ids.includes("cinematic_sicario_border"));
+  assert.ok(ids.includes("cinematic_nocountry_cointoss"));
+  assert.ok(ids.includes("cinematic_nocountry_motel"));
+  assert.ok(ids.includes("cinematic_1917_ruins_flare"));
+  assert.ok(ids.includes("anime_gits_rainy_overpass"));
 
   const categories = new Set(manifestJson.map((d) => d.category));
   assert.ok(categories.has("CINEMATIC"));
