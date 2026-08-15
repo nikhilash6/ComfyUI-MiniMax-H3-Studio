@@ -461,10 +461,10 @@ async function buildDemoShelf(node, selectedId = null) {
   const body = document.createElement("div");
   body.className = "h3s-demos-body";
 
-  renderShelfContent(node, shelf, demos);
-
   shelf.appendChild(header);
   shelf.appendChild(body);
+
+  renderShelfContent(node, shelf, demos);
   return shelf;
 }
 

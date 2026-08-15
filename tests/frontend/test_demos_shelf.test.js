@@ -11,8 +11,14 @@ test("Demos shelf contains no undefined renderCards calls", () => {
   assert.match(demosJs, /renderShelfContent\(node, shelf, demos\)/);
 });
 
+test("Demos shelf appends body before initial renderShelfContent call", () => {
+  const appendIndex = demosJs.indexOf("shelf.appendChild(body);");
+  const renderIndex = demosJs.indexOf("renderShelfContent(node, shelf, demos);", appendIndex - 50);
+  assert.ok(appendIndex !== -1 && renderIndex !== -1, "Both statements should exist");
+  assert.ok(appendIndex < renderIndex, "shelf.appendChild(body) must precede renderShelfContent so querySelector finds the body");
+});
+
 test("formatSamplingBadge distinguishes 4-step and 8-step LightX without false 8-step matching", () => {
-  // Test function extracted directly
   function formatSamplingBadge(profile) {
     if (!profile) return "LightX 8";
     const s = String(profile).toLowerCase();
