@@ -6,6 +6,7 @@ from .analyzer_runtime_fixes import install as install_analyzer_runtime_fixes
 from .analyzer_stack import install as install_analyzer_stack
 from .dependency_web import register_dependency_routes
 from .llama_cpp_dependency import register_routes as register_llama_cpp_routes
+from .llama_existing_runtime import adopt_existing_runtime
 from .nodes.benchmark import NODE_CLASS_MAPPINGS as BENCHMARK_NODE_CLASS_MAPPINGS
 from .nodes.benchmark import NODE_DISPLAY_NAME_MAPPINGS as BENCHMARK_NODE_DISPLAY_NAME_MAPPINGS
 from .nodes.comparison import NODE_CLASS_MAPPINGS as COMPARISON_NODE_CLASS_MAPPINGS
@@ -34,6 +35,11 @@ from .qwen35_gguf_text_fallback import install as install_qwen35_gguf_text_fallb
 from .runtime_guards import install_runtime_guards
 from .runtime_web import register_runtime_routes
 from .web_routes import register_routes
+
+# Re-bind the historical private conda runtime used by our manual Lightning
+# installer command before GGUF backend detection. The shell exports from that
+# installer do not survive a later ComfyUI restart, but the runtime itself does.
+adopt_existing_runtime()
 
 # Patch only the optional analyzer/prompt-director surface. MiniMax H3's own
 # conditioning encoder, transformer, sampling, VAE and runtime paths remain the
