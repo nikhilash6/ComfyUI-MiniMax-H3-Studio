@@ -31,6 +31,8 @@ test("Smart Benchmark base renderer remains stable and bounded", () => {
   assert.match(benchmark, /\["memory", "Memory"\]/);
   assert.match(benchmark, /Assets unavailable/);
   assert.match(benchmark, /\/h3studio\/assets/);
+  assert.match(benchmark, /w\?\.name === WIDGET_NAME/);
+  assert.match(benchmark, /target\.type = "hidden"/);
 });
 
 test("Director v6 keeps native widgets hidden behind the product UI", () => {
