@@ -111,6 +111,28 @@ function fullPromptText(item) {
   return String(item.prompt || "");
 }
 
+function formatSamplingBadge(profile) {
+  if (!profile) return "LightX 8";
+  const s = String(profile).toLowerCase();
+
+  // Distinguish 4-step vs 8-step LightX/Turbo correctly
+  if (s.includes("lightx") || s.includes("turbo")) {
+    if (s.includes("sa_solver") || s.includes("sa")) return "LightX SA-4";
+    if (s.includes("er_sde") || s.includes("sde")) return "LightX SDE-4";
+    if (s.includes("4")) return "LightX 4";
+    if (s.includes("8") || s.includes("fl2v_8")) return "LightX 8";
+    return "LightX 8";
+  }
+  if (s.includes("pdd")) {
+    if (s.includes("600")) return "PDD 600";
+    return "PDD 900";
+  }
+  if (s.includes("12") || s.includes("balanced")) return "Base 12";
+  if (s.includes("20") || s.includes("quality")) return "Base 20";
+  if (s.length <= 12) return profile;
+  return "Custom";
+}
+
 function applyItemToNode(node, item, cardEl, shelfEl) {
   if (!node) return;
   activeSelectedId = item.id;
@@ -143,14 +165,20 @@ function applyItemToNode(node, item, cardEl, shelfEl) {
   const next = {
     ...current,
     prompt: promptText,
+    references: item.references || current.references || [],
+    prompt_options: {
+      ...current.prompt_options,
+      ...(item.prompt_options || {}),
+    },
     generation: {
       ...current.generation,
       aspect_ratio: item.aspect || current.generation?.aspect_ratio || "16:9",
       megapixels: Number(item.target_mp ?? current.generation?.megapixels ?? 1.0),
-      sampling_profile: item.sampling || current.generation?.sampling_profile || "base_quality_20",
+      sampling_profile: item.sampling || current.generation?.sampling_profile || "lightx_v1_fl2v_8",
       route: item.route || current.generation?.route || "auto",
       seed: item.seed != null ? Number(item.seed) : current.generation?.seed,
-    }
+      ...(item.generation || {}),
+    },
   };
   applyState(node, next, true);
 
@@ -182,24 +210,6 @@ function timeAgo(timestamp) {
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
   return `${hours}h ago`;
-}
-
-function formatSamplingBadge(profile) {
-  if (!profile) return "LightX 8";
-  const s = String(profile).toLowerCase();
-  if (s.includes("lightx") || s.includes("turbo")) {
-    if (s.includes("8") || s.includes("fl2v_8") || s.includes("v1")) return "LightX 8";
-    if (s.includes("sa_solver") || s.includes("sa")) return "LightX SA-4";
-    if (s.includes("er_sde") || s.includes("sde")) return "LightX SDE-4";
-    return "LightX 8";
-  }
-  if (s.includes("pdd")) {
-    if (s.includes("600")) return "PDD 600";
-    return "PDD 900";
-  }
-  if (s.includes("12") || s.includes("balanced")) return "Base 12";
-  if (s.includes("20") || s.includes("quality")) return "Base 20";
-  return "LightX 8";
 }
 
 function renderShelfContent(node, shelf, manifest) {
@@ -456,7 +466,7 @@ async function buildDemoShelf(node, selectedId = null) {
   const body = document.createElement("div");
   body.className = "h3s-demos-body";
 
-  renderCards(shelf, body, node, demos, history, selectedId);
+  renderShelfContent(node, shelf, demos);
 
   shelf.appendChild(header);
   shelf.appendChild(body);
@@ -473,7 +483,7 @@ function updateActiveShelves() {
       if (body) {
         const node = app.graph?._nodes?.find((n) => n.comfyClass === TARGET);
         loadManifest().then((demos) => {
-          renderCards(shelf, body, node, demos, history, activeSelectedId);
+          renderShelfContent(node, shelf, demos);
         });
       }
     }
@@ -523,13 +533,52 @@ function executedImageUrl(item) {
   return `/view?${params.toString()}`;
 }
 
-// Auto-capture executed generations into history
+function findDirectorForOutput(executedNodeId) {
+  if (!app.graph?._nodes) return null;
+
+  // 1. Direct match
+  const direct = app.graph._nodes.find((n) => String(n.id) === String(executedNodeId) && n.comfyClass === TARGET);
+  if (direct) return direct;
+
+  // 2. Trace upstream from executed node
+  const visited = new Set();
+  const queue = [String(executedNodeId)];
+
+  while (queue.length > 0) {
+    const currentId = queue.shift();
+    if (visited.has(currentId)) continue;
+    visited.add(currentId);
+
+    const currentNode = app.graph._nodes.find((n) => String(n.id) === currentId);
+    if (!currentNode) continue;
+
+    if (currentNode.comfyClass === TARGET) {
+      return currentNode;
+    }
+
+    if (currentNode.inputs) {
+      for (const input of currentNode.inputs) {
+        if (input.link != null && app.graph.links) {
+          const link = app.graph.links[input.link];
+          if (link?.origin_id != null) {
+            queue.push(String(link.origin_id));
+          }
+        }
+      }
+    }
+  }
+
+  // 3. Fallback to first Director node in graph
+  return app.graph._nodes.find((n) => n.comfyClass === TARGET) || null;
+}
+
+// Auto-capture executed generations into history with upstream node association
 api.addEventListener("executed", ({ detail }) => {
   const item = detail?.output?.images?.[0];
   const url = executedImageUrl(item);
   if (!url) return;
 
-  const directorNode = app.graph?._nodes?.find((n) => n.comfyClass === TARGET);
+  const directorNode = findDirectorForOutput(detail?.node);
   if (!directorNode) return;
 
   const state = stateFromNode(directorNode);
@@ -544,8 +593,11 @@ api.addEventListener("executed", ({ detail }) => {
     seed: state.generation?.seed,
     aspect: state.generation?.aspect_ratio || "16:9",
     target_mp: state.generation?.megapixels || 1.0,
-    sampling: state.generation?.sampling_profile || "base_quality_20",
+    sampling: state.generation?.sampling_profile || "lightx_v1_fl2v_8",
     route: state.generation?.route || "auto",
+    references: state.references || [],
+    prompt_options: state.prompt_options || {},
+    generation: state.generation || {},
     title: `Generation #${getSessionHistory().length + 1}`,
   });
 });
@@ -582,3 +634,11 @@ app.registerExtension({
     };
   },
 });
+
+export {
+  buildDemoShelf,
+  formatSamplingBadge,
+  installDemosShelf,
+  renderShelfContent,
+  findDirectorForOutput,
+};
