@@ -14,6 +14,17 @@ function widget(node, name) {
   return node.widgets?.find((item) => item?.name === name) || null;
 }
 
+function synchronizeVisibleControl(node, seed) {
+  const root = node.__h3studioPanel;
+  if (!root) return;
+  for (const input of root.querySelectorAll('input[aria-label="Seed"], input[title="Seed"]')) {
+    input.min = "0";
+    input.max = String(MAX_SAFE_COMFY_SEED);
+    input.step = "1";
+    if (clampSeed(input.value) !== Number(input.value)) input.value = String(seed);
+  }
+}
+
 function synchronizeSeed(node, { notify = false } = {}) {
   const seedWidget = widget(node, "seed");
   if (!seedWidget) return 0;
@@ -42,6 +53,7 @@ function synchronizeSeed(node, { notify = false } = {}) {
       // The Director's own recovery/validation path owns malformed state handling.
     }
   }
+  synchronizeVisibleControl(node, seed);
 
   if (notify && Number.isFinite(before) && Math.trunc(before) !== seed) {
     app.extensionManager?.toast?.add?.({
@@ -76,6 +88,23 @@ function install(node) {
       console.info(`[H3 Studio] Queueing exact seed=${seed}`);
       return original?.apply(this, arguments);
     };
+  }
+
+  const panel = node.__h3studioPanel;
+  if (panel && !node.__h3studioSeedObserver) {
+    const observer = new MutationObserver(() => synchronizeVisibleControl(node, clampSeed(seedWidget.value)));
+    observer.observe(panel, { childList: true, subtree: true });
+    node.__h3studioSeedObserver = observer;
+    panel.addEventListener("change", (event) => {
+      const input = event.target;
+      if (!(input instanceof HTMLInputElement) || input.getAttribute("aria-label") !== "Seed") return;
+      const clamped = clampSeed(input.value);
+      if (Number(input.value) !== clamped) {
+        input.value = String(clamped);
+        seedWidget.value = clamped;
+        synchronizeSeed(node, { notify: true });
+      }
+    }, true);
   }
 }
 
