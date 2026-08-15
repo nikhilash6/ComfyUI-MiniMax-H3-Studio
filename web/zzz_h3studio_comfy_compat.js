@@ -30,10 +30,29 @@ function hostFor(node) {
   return panel?.querySelector?.(".h3s-v7-inspector, .h3s-v6-inspector, .h3s-inspector") || panel || null;
 }
 
+function relationLabel(item) {
+  if (item?.relation === "ahead") return "newer than core pin";
+  if (item?.relation === "behind") return "older than core pin";
+  if (item?.relation === "missing") return "missing";
+  if (item?.relation === "mismatch") return "does not satisfy core requirement";
+  return "matches";
+}
+
 function issueText(item) {
   const installed = item?.installed || "missing";
   const required = item?.required || "required by this ComfyUI build";
-  return `${item?.name || "package"}: ${installed} → ${required}`;
+  return `${item?.name || "package"}: installed ${installed} · core requires ${required} · ${relationLabel(item)}`;
+}
+
+function introText(payload) {
+  const core = payload?.core_version || "unknown";
+  if (payload?.diagnosis === "companions_ahead") {
+    return `Core ${core} is older than the installed companion package set. The installed packages are ahead of this core's exact pins; update ComfyUI core or reinstall this core's requirements so the versions match.`;
+  }
+  if (payload?.diagnosis === "companions_behind") {
+    return `Core ${core} expects newer companion packages than are installed. Update the companion packages from this core's requirements.txt.`;
+  }
+  return `Core ${core} and its companion packages are out of sync. H3 Studio can still start, but runtime/UI behavior may silently fall back until the exact package contract matches.`;
 }
 
 function render(node, payload) {
@@ -63,7 +82,7 @@ function render(node, payload) {
 
   const intro = document.createElement("div");
   intro.style.cssText = "opacity:.86;margin-bottom:6px";
-  intro.textContent = `Core ${payload.core_version || "unknown"} expects newer companion packages. H3 Studio can still start, but runtime/UI behavior may silently fall back until they match.`;
+  intro.textContent = introText(payload);
   section.appendChild(intro);
 
   for (const item of payload.issues) {
@@ -76,7 +95,10 @@ function render(node, payload) {
   if (payload.issues.some((item) => item?.name === "comfy-kitchen")) {
     const kitchen = document.createElement("div");
     kitchen.style.cssText = "margin-top:6px;opacity:.9";
-    kitchen.textContent = "comfy-kitchen matters to H3 Studio Auto/Fast attention selection; an outdated build can force a slower fallback backend.";
+    const kitchenIssue = payload.issues.find((item) => item?.name === "comfy-kitchen");
+    kitchen.textContent = kitchenIssue?.relation === "ahead"
+      ? "comfy-kitchen matters to H3 Studio Auto/Fast attention selection. A newer kitchen paired with an older core can expose APIs the core was not pinned against; align the core and companion set."
+      : "comfy-kitchen matters to H3 Studio Auto/Fast attention selection; an older or incompatible build can force a slower fallback backend.";
     section.appendChild(kitchen);
   }
 
