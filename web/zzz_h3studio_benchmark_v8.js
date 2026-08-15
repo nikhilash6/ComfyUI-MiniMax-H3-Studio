@@ -46,6 +46,11 @@ function qualityVsLightX(node) {
     { ...structuredClone(base), name: "LightX · 8 steps", sampling_profile: "lightx_v1_fl2v_8" },
   ];
 }
+function refreshBenchmark(node) {
+  queueMicrotask(() => {
+    try { node.onConfigure?.({}); } catch { node.setDirtyCanvas?.(true, true); }
+  });
+}
 function saveScenarios(node, scenarios) {
   const target = widget(node, "scenarios_json");
   if (!target) return;
@@ -54,6 +59,7 @@ function saveScenarios(node, scenarios) {
   node.properties ||= {};
   node.properties.h3studio_benchmark_preset = "quality-lightx";
   node.setDirtyCanvas?.(true, true);
+  refreshBenchmark(node);
 }
 
 function installStyles() {
