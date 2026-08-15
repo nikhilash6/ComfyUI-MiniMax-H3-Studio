@@ -24,3 +24,9 @@ test("speed-pack card survives base Model Setup rerenders", () => {
   assert.match(source, /if \(!root\.querySelector\(`\.\$\{CARD_CLASS\}`\)\)/);
   assert.match(source, /GGUF Auto ready/);
 });
+
+test("prompt prep cards are placed at the bottom of the installer panel", () => {
+  const promptModelsSource = readFileSync(new URL("../../web/h3studio_prompt_models_setup.js", import.meta.url), "utf8");
+  assert.match(promptModelsSource, /const footer = root\.querySelector\(":scope > \.h3ms-log"\)/);
+  assert.match(source, /const promptModels = root\.querySelector\(":scope > \.h3pm"\)/);
+});
