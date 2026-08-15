@@ -48,6 +48,26 @@ def _required_specs() -> dict[str, str]:
     return result
 
 
+def _exact_required_version(required: str):
+    """Return Version for a simple exact == pin, otherwise None."""
+
+    if not required:
+        return None
+    try:
+        from packaging.specifiers import SpecifierSet
+        from packaging.version import Version
+
+        specifiers = list(SpecifierSet(required))
+        if len(specifiers) != 1:
+            return None
+        specifier = specifiers[0]
+        if specifier.operator not in {"==", "==="} or "*" in specifier.version:
+            return None
+        return Version(specifier.version)
+    except Exception:
+        return None
+
+
 def _package_status(name: str, required: str) -> dict[str, Any]:
     installed = ""
     try:
@@ -56,20 +76,32 @@ def _package_status(name: str, required: str) -> dict[str, Any]:
         pass
 
     ok = bool(installed)
+    relation = "match" if installed else "missing"
     if installed and required:
         try:
             from packaging.specifiers import SpecifierSet
             from packaging.version import Version
 
-            ok = Version(installed) in SpecifierSet(required)
+            installed_version = Version(installed)
+            ok = installed_version in SpecifierSet(required)
+            if ok:
+                relation = "match"
+            else:
+                exact = _exact_required_version(required)
+                if exact is not None:
+                    relation = "ahead" if installed_version > exact else "behind"
+                else:
+                    relation = "mismatch"
         except Exception:
             ok = False
+            relation = "mismatch"
 
     return {
         "name": name,
         "installed": installed or None,
         "required": required or None,
         "ok": bool(ok),
+        "relation": relation,
         "importance": (
             "runtime" if name == "comfy-kitchen"
             else "frontend" if name == "comfyui-frontend-package"
@@ -95,6 +127,16 @@ def compatibility_status() -> dict[str, Any]:
 
     issues = [item for item in packages if not item["ok"]]
     critical = [item for item in issues if item["importance"] in {"runtime", "frontend"}]
+    relations = {str(item.get("relation") or "mismatch") for item in issues}
+    if not issues:
+        diagnosis = "aligned"
+    elif relations == {"ahead"}:
+        diagnosis = "companions_ahead"
+    elif relations <= {"behind", "missing"}:
+        diagnosis = "companions_behind"
+    else:
+        diagnosis = "mixed_mismatch"
+
     return {
         "ok": not issues,
         "core_version": core_version,
@@ -102,6 +144,7 @@ def compatibility_status() -> dict[str, Any]:
         "packages": packages,
         "issues": issues,
         "critical": bool(critical),
+        "diagnosis": diagnosis,
     }
 
 
