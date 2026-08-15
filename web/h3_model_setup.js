@@ -158,15 +158,11 @@ function installUI(node) {
     if (!uadReady) {
       const old = state.managerHasUad
         ? `<b>Universal Asset Downloader is installed, but this integration needs the current UAD v2.</b><div class="h3ms-note">Update UAD in ComfyUI-Manager, restart ComfyUI, then press R or hard refresh this page.</div>`
-        : `<b>Universal Asset Downloader is not loaded.</b><div class="h3ms-note">It stays a separate package so H3 Studio and the downloader can update independently.</div>`;
+        : `<b>Universal Asset Downloader is not loaded.</b><div class="h3ms-note">It stays a separate package so H3 Studio and the downloader can update independently. Direct Hugging Face links and exact model directories are listed below for manual installation.</div>`;
       body += `<div class="h3ms-card h3ms-missing">${old}<div class="h3ms-actions" style="margin-top:9px">${state.manager&&!state.managerHasUad?'<button class="h3ms-btn h3ms-primary" data-action="install-uad" data-blocking="1">Install UAD with Manager</button>':''}<a class="h3ms-btn" href="${UAD_PAGE}" target="_blank" rel="noopener noreferrer">Open UAD repo ↗</a><button class="h3ms-btn" data-action="recheck" data-blocking="1">Recheck</button></div>${state.manager?'':'<div class="h3ms-note">ComfyUI-Manager was not detected, so automatic installation is unavailable.</div>'}</div>`;
-      body += `<div class="h3ms-log" data-log>${state.managerHasUad?'Waiting for UAD after update + restart.':'Install UAD, restart ComfyUI, then reload the browser.'}</div>`;
-      root.innerHTML = body;
-      bind();
-      return;
     }
 
-    body += `<div class="h3ms-actions"><button class="h3ms-btn" data-action="required">Select required</button><button class="h3ms-btn" data-action="recommended">Select recommended setup</button><button class="h3ms-btn" data-action="metadata" data-blocking="1">${state.metadataLoading?'Loading sizes…':'Refresh sizes'}</button><button class="h3ms-btn" data-action="verify" data-blocking="1">Verify all</button><button class="h3ms-btn h3ms-primary" data-action="download" data-blocking="1">Download selected missing</button><button class="h3ms-btn" data-action="repair" data-blocking="1">Repair selected</button></div>`;
+    body += `<div class="h3ms-actions"><button class="h3ms-btn" data-action="required">Select required</button><button class="h3ms-btn" data-action="recommended">Select recommended setup</button><button class="h3ms-btn" data-action="metadata" data-blocking="1" ${uadReady?'':'disabled title="Requires Universal Asset Downloader"'}>${state.metadataLoading?'Loading sizes…':'Refresh sizes'}</button><button class="h3ms-btn" data-action="verify" data-blocking="1" ${uadReady?'':'disabled title="Requires Universal Asset Downloader"'}>Verify all</button><button class="h3ms-btn h3ms-primary" data-action="download" data-blocking="1" ${uadReady?'':'disabled title="Requires Universal Asset Downloader"'}>Download selected missing</button><button class="h3ms-btn" data-action="repair" data-blocking="1" ${uadReady?'':'disabled title="Requires Universal Asset Downloader"'}>Repair selected</button></div>`;
     body += `<div class="h3ms-stats"><div class="h3ms-stat"><small>Selected</small><strong>${selected.length} · ${bytesLabel(selectedBytes)}</strong></div><div class="h3ms-stat"><small>Known total</small><strong>${bytesLabel(knownBytes)}</strong></div><div class="h3ms-stat"><small>Verified</small><strong>${verifiedCount}/${ASSETS.length}</strong></div><div class="h3ms-stat"><small>Missing</small><strong>${state.verification.size?missingCount:'not checked'}</strong></div></div>`;
 
     for (const group of GROUPS) {
@@ -184,7 +180,7 @@ function installUI(node) {
     }
 
     body += `<div class="h3ms-card"><b>PDD · optional REF2VA acceleration</b><div class="h3ms-note">PDD is separate from the LightX LoRA groups above and uses its own LoRA + heads pair.</div><div style="margin-top:5px"><a href="https://github.com/mamad8c/ComfyUI-MiniMaxH3-PDD-Mamad8" target="_blank" rel="noopener noreferrer" style="color:#7dd3fc">Open MiniMax H3 PDD ↗</a></div></div>`;
-    body += `<div class="h3ms-log" data-log>${state.metadataLoading?'Loading provider sizes and hashes in background workers. The rest of ComfyUI remains usable.':'Ready. Verify checks exact paths; downloads use UAD atomic install + provider verification.'}</div><div class="h3ms-progress"><div style="width:${state.progress}%"></div></div><div class="h3ms-footer">Downloader integration: <a href="${UAD_PAGE}" target="_blank" rel="noopener noreferrer">Universal Asset Downloader ↗</a></div>`;
+    body += `<div class="h3ms-log" data-log>${!uadReady ? 'UAD is not connected. Install UAD for automatic atomic downloads and verification, or download models manually from the links above.' : state.metadataLoading ? 'Loading provider sizes and hashes in background workers. The rest of ComfyUI remains usable.' : 'Ready. Verify checks exact paths; downloads use UAD atomic install + provider verification.'}</div><div class="h3ms-progress"><div style="width:${state.progress}%"></div></div><div class="h3ms-footer">Downloader integration: <a href="${UAD_PAGE}" target="_blank" rel="noopener noreferrer">Universal Asset Downloader ↗</a></div>`;
     root.innerHTML = body;
     bind();
     setBusy(state.busy);

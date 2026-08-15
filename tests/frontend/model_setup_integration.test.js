@@ -54,3 +54,9 @@ test("Model Setup dynamically adapts widget viewport height to node height witho
   assert.match(source, /function modelSetupWidgetSizing\(node\)/);
   assert.match(source, /\.\.\.modelSetupWidgetSizing\(node\)/);
 });
+
+test("Model Setup renders full model groups and Hugging Face links even when UAD is missing", () => {
+  const uadBlock = source.slice(source.indexOf("if (!uadReady)"), source.indexOf("body += `<div class=\"h3ms-actions\">"));
+  assert.ok(!uadBlock.includes("return;"), "UAD block must not return early");
+  assert.match(source, /for\s*\(const group of GROUPS\)/);
+});
