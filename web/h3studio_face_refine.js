@@ -5,112 +5,91 @@
 
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
+import { applyState, stateFromNode } from "./js/studio_extension.js";
 
-const EXTENSION_NAME = "h3studio.face_refine";
+const TARGET = "H3StudioDirector";
+const EXTENSION_NAME = "H3Studio.FaceRefine";
+const STYLE_ID = "h3studio-face-refine-style";
 
-function createFaceRefineSection(node, state, applyCallback) {
-  const container = document.createElement("div");
-  container.className = "h3s-face-refine-panel";
-  container.style.cssText = `
-    margin: 8px 0;
-    padding: 10px 12px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 8px;
-    font-family: inherit;
-    font-size: 12px;
-    color: var(--fg-color, #e0e0e0);
+function installStyles() {
+  if (document.getElementById(STYLE_ID)) return;
+  const style = document.createElement("style");
+  style.id = STYLE_ID;
+  style.textContent = `
+    .h3s-face-refine-section{margin:0 0 10px 0;padding:10px 11px;border:1px solid #282f36;border-radius:8px;background:color-mix(in srgb,var(--h3s-bg,#15191d) 92%,white 2%);box-sizing:border-box}
+    .h3s-face-refine-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .h3s-face-refine-title-group{display:flex;align-items:center;gap:6px}
+    .h3s-face-refine-icon{color:#ec4899;font-size:11px;line-height:1}
+    .h3s-face-refine-title{font-size:10px;font-weight:700;color:#e8ebed;letter-spacing:.02em}
+    .h3s-face-refine-sub{font-size:8.5px;color:#7e8b97;font-style:italic}
+    .h3s-face-refine-badge{font-size:8px;font-weight:650;padding:1.5px 5px;border-radius:4px;transition:all .15s ease}
+    .h3s-face-refine-badge.is-off{background:rgba(255,255,255,.05);color:#838d96;border:1px solid rgba(255,255,255,.08)}
+    .h3s-face-refine-badge.is-auto{background:rgba(236,72,153,.15);color:#f472b6;border:1px solid rgba(236,72,153,.35)}
+    .h3s-face-refine-badge.is-strong{background:rgba(168,85,247,.15);color:#c084fc;border:1px solid rgba(168,85,247,.35)}
+    
+    .h3s-face-refine-mode-grid{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:4px;background:#0d1012;padding:2px;border-radius:6px;border:1px solid #232a30;margin-bottom:6px}
+    .h3s-face-refine-mode-btn{font-size:9px;font-weight:650;padding:4px 6px;border-radius:4px;border:0;background:transparent;color:#7e8b97;cursor:pointer;transition:all .12s ease;text-align:center}
+    .h3s-face-refine-mode-btn:hover{color:#d1d9e0}
+    .h3s-face-refine-mode-btn.is-active{background:#232b34;color:#f0f4f8;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+    
+    .h3s-face-refine-drawer{margin-top:6px;padding-top:6px;border-top:1px solid #232a30}
+    .h3s-face-refine-toggle-summary{font-size:8.5px;color:#7e8b97;cursor:pointer;user-select:none;outline:none;display:flex;align-items:center;justify-content:space-between}
+    .h3s-face-refine-toggle-summary:hover{color:#c4cdd5}
+    .h3s-face-refine-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;padding:6px 8px;background:#0e1114;border-radius:6px;border:1px solid #1c2227}
+    .h3s-face-refine-ctrl-label{font-size:8px;font-weight:600;color:#8c959e;display:flex;justify-content:space-between;margin-bottom:3px}
+    .h3s-face-refine-slider{width:100%;height:3px;cursor:pointer;accent-color:#ec4899;display:block}
+    .h3s-face-refine-telemetry{margin-top:6px;padding:3px 7px;font-size:8.5px;border-radius:4px;background:rgba(34,197,94,.12);color:#4ade80;border:1px solid rgba(34,197,94,.25);display:none}
   `;
+  document.head.append(style);
+}
 
+function buildFaceRefineSection(node) {
+  const state = stateFromNode(node);
   const generation = state.generation || {};
   const currentMode = (generation.face_refine_mode || "off").toLowerCase();
-  const cropFactor = generation.face_refine_crop_factor || 2.5;
-  const guideSize = generation.face_refine_guide_size || 768;
-  const denoise = generation.face_refine_denoise || 0.22;
+  const cropFactor = Number(generation.face_refine_crop_factor ?? 2.5);
+  const denoise = Number(generation.face_refine_denoise ?? 0.22);
+  const guideSize = Number(generation.face_refine_guide_size ?? 768);
 
-  // Header
+  const section = document.createElement("div");
+  section.className = "h3s-face-refine-section";
+
+  // 1. Header
   const header = document.createElement("div");
-  header.style.cssText = `
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 8px;
-  `;
+  header.className = "h3s-face-refine-header";
 
   const titleGroup = document.createElement("div");
-  titleGroup.style.cssText = "display: flex; align-items: center; gap: 6px;";
-  
+  titleGroup.className = "h3s-face-refine-title-group";
+
   const icon = document.createElement("span");
+  icon.className = "h3s-face-refine-icon";
   icon.textContent = "✦";
-  icon.style.color = "#ec4899";
-  icon.style.fontSize = "13px";
 
-  const title = document.createElement("strong");
+  const title = document.createElement("span");
+  title.className = "h3s-face-refine-title";
   title.textContent = "Face Refine";
-  title.style.fontWeight = "600";
-  title.style.color = "#f1f5f9";
 
-  const subtitle = document.createElement("span");
-  subtitle.textContent = "Distant & Wide";
-  subtitle.style.fontSize = "10px";
-  subtitle.style.color = "rgba(255, 255, 255, 0.45)";
-  subtitle.style.marginLeft = "4px";
+  const sub = document.createElement("span");
+  sub.className = "h3s-face-refine-sub";
+  sub.textContent = "· Distant & Wide";
 
-  titleGroup.appendChild(icon);
-  titleGroup.appendChild(title);
-  titleGroup.appendChild(subtitle);
+  titleGroup.append(icon, title, sub);
 
-  // Status Badge
-  const statusBadge = document.createElement("span");
-  statusBadge.className = "h3s-face-refine-badge";
-  statusBadge.style.cssText = `
-    font-size: 10px;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-weight: 500;
-    transition: all 0.2s ease;
-  `;
+  const badge = document.createElement("span");
+  badge.className = `h3s-face-refine-badge is-${currentMode}`;
+  badge.textContent = currentMode === "auto" ? "Auto · Distant" : currentMode === "strong" ? "Strong · All" : "Off";
 
-  function updateBadge(mode) {
-    if (mode === "auto") {
-      statusBadge.textContent = "Auto · Distant Only";
-      statusBadge.style.background = "rgba(236, 72, 153, 0.15)";
-      statusBadge.style.color = "#f472b6";
-      statusBadge.style.border = "1px solid rgba(236, 72, 153, 0.3)";
-    } else if (mode === "strong") {
-      statusBadge.textContent = "Strong · All Faces";
-      statusBadge.style.background = "rgba(168, 85, 247, 0.15)";
-      statusBadge.style.color = "#c084fc";
-      statusBadge.style.border = "1px solid rgba(168, 85, 247, 0.3)";
-    } else {
-      statusBadge.textContent = "Off";
-      statusBadge.style.background = "rgba(255, 255, 255, 0.05)";
-      statusBadge.style.color = "rgba(255, 255, 255, 0.4)";
-      statusBadge.style.border = "1px solid rgba(255, 255, 255, 0.1)";
-    }
-  }
-  updateBadge(currentMode);
+  header.append(titleGroup, badge);
+  section.appendChild(header);
 
-  header.appendChild(titleGroup);
-  header.appendChild(statusBadge);
-  container.appendChild(header);
-
-  // Segmented Mode Buttons
-  const modeBar = document.createElement("div");
-  modeBar.style.cssText = `
-    display: grid;
-    grid-template-columns: 1fr 1.3fr 1fr;
-    gap: 4px;
-    background: rgba(0, 0, 0, 0.25);
-    padding: 3px;
-    border-radius: 6px;
-    margin-bottom: 8px;
-  `;
+  // 2. Mode Segmented Buttons
+  const modeGrid = document.createElement("div");
+  modeGrid.className = "h3s-face-refine-mode-grid";
 
   const modes = [
     { key: "off", label: "Off" },
-    { key: "auto", label: "✦ Auto", desc: "Distant Only" },
-    { key: "strong", label: "Strong", desc: "All Faces" },
+    { key: "auto", label: "✦ Auto" },
+    { key: "strong", label: "Strong" },
   ];
 
   const modeButtons = {};
@@ -118,175 +97,188 @@ function createFaceRefineSection(node, state, applyCallback) {
   modes.forEach(({ key, label }) => {
     const btn = document.createElement("button");
     btn.type = "button";
+    btn.className = `h3s-face-refine-mode-btn${key === currentMode ? " is-active" : ""}`;
     btn.textContent = label;
-    btn.style.cssText = `
-      border: none;
-      padding: 5px 8px;
-      border-radius: 4px;
-      font-size: 11px;
-      font-weight: 500;
-      cursor: pointer;
-      background: transparent;
-      color: rgba(255, 255, 255, 0.6);
-      transition: all 0.15s ease;
-    `;
-
-    if (key === currentMode) {
-      btn.style.background = "rgba(255, 255, 255, 0.12)";
-      btn.style.color = "#ffffff";
-      btn.style.boxShadow = "0 1px 3px rgba(0,0,0,0.3)";
-    }
 
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
-      state.generation.face_refine_mode = key;
+      const current = stateFromNode(node);
+      const next = {
+        ...current,
+        generation: {
+          ...current.generation,
+          face_refine_mode: key,
+        },
+      };
+      applyState(node, next, true);
+
       Object.keys(modeButtons).forEach((k) => {
-        const b = modeButtons[k];
-        if (k === key) {
-          b.style.background = "rgba(255, 255, 255, 0.12)";
-          b.style.color = "#ffffff";
-          b.style.boxShadow = "0 1px 3px rgba(0,0,0,0.3)";
-        } else {
-          b.style.background = "transparent";
-          b.style.color = "rgba(255, 255, 255, 0.6)";
-          b.style.boxShadow = "none";
-        }
+        modeButtons[k].classList.toggle("is-active", k === key);
       });
-      updateBadge(key);
-      advancedDrawer.style.display = key === "off" ? "none" : "block";
-      applyCallback?.(state);
+
+      badge.className = `h3s-face-refine-badge is-${key}`;
+      badge.textContent = key === "auto" ? "Auto · Distant" : key === "strong" ? "Strong · All" : "Off";
+
+      if (drawer) {
+        drawer.style.display = key === "off" ? "none" : "block";
+      }
     });
 
     modeButtons[key] = btn;
-    modeBar.appendChild(btn);
+    modeGrid.appendChild(btn);
   });
 
-  container.appendChild(modeBar);
+  section.appendChild(modeGrid);
 
-  // Collapsible Advanced Drawer
-  const advancedDrawer = document.createElement("div");
-  advancedDrawer.style.cssText = `
-    display: ${currentMode === "off" ? "none" : "block"};
-    margin-top: 6px;
-    padding-top: 6px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-  `;
+  // 3. Collapsible Tuning Drawer
+  const drawer = document.createElement("div");
+  drawer.className = "h3s-face-refine-drawer";
+  drawer.style.display = currentMode === "off" ? "none" : "block";
 
-  const drawerToggle = document.createElement("details");
-  drawerToggle.style.cursor = "pointer";
-
+  const details = document.createElement("details");
   const summary = document.createElement("summary");
-  summary.textContent = "Advanced Tuning & Geometry";
-  summary.style.cssText = `
-    font-size: 10.5px;
-    color: rgba(255, 255, 255, 0.5);
-    margin-bottom: 6px;
-    outline: none;
-    user-select: none;
-  `;
-  drawerToggle.appendChild(summary);
+  summary.className = "h3s-face-refine-toggle-summary";
+  summary.innerHTML = `<span>Tuning & Geometry</span> <span>▾</span>`;
+  details.appendChild(summary);
 
-  const controlsGrid = document.createElement("div");
-  controlsGrid.style.cssText = `
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    margin-top: 6px;
-    padding: 6px 8px;
-    background: rgba(0, 0, 0, 0.15);
-    border-radius: 6px;
-  `;
+  const grid = document.createElement("div");
+  grid.className = "h3s-face-refine-grid";
 
-  // Crop Factor
-  const cropWrapper = document.createElement("div");
-  const cropLabel = document.createElement("label");
-  cropLabel.style.cssText = "font-size: 10px; color: rgba(255,255,255,0.6); display: block; margin-bottom: 2px;";
-  cropLabel.textContent = `Crop Context: ${cropFactor.toFixed(1)}×`;
+  // Crop context slider
+  const cropBox = document.createElement("div");
+  const cropLabel = document.createElement("div");
+  cropLabel.className = "h3s-face-refine-ctrl-label";
+  cropLabel.innerHTML = `<span>Crop</span> <span>${cropFactor.toFixed(1)}×</span>`;
   const cropSlider = document.createElement("input");
   cropSlider.type = "range";
+  cropSlider.className = "h3s-face-refine-slider";
   cropSlider.min = "1.5";
   cropSlider.max = "4.0";
   cropSlider.step = "0.1";
   cropSlider.value = String(cropFactor);
-  cropSlider.style.cssText = "width: 100%; height: 4px; cursor: pointer; accent-color: #ec4899;";
   cropSlider.addEventListener("input", () => {
     const val = parseFloat(cropSlider.value);
-    cropLabel.textContent = `Crop Context: ${val.toFixed(1)}×`;
-    state.generation.face_refine_crop_factor = val;
-    applyCallback?.(state);
+    cropLabel.innerHTML = `<span>Crop</span> <span>${val.toFixed(1)}×</span>`;
+    const cur = stateFromNode(node);
+    applyState(node, {
+      ...cur,
+      generation: { ...cur.generation, face_refine_crop_factor: val },
+    }, true);
   });
-  cropWrapper.appendChild(cropLabel);
-  cropWrapper.appendChild(cropSlider);
+  cropBox.append(cropLabel, cropSlider);
 
-  // Denoise Strength
-  const denoiseWrapper = document.createElement("div");
-  const denoiseLabel = document.createElement("label");
-  denoiseLabel.style.cssText = "font-size: 10px; color: rgba(255,255,255,0.6); display: block; margin-bottom: 2px;";
-  denoiseLabel.textContent = `Refine Denoise: ${denoise.toFixed(2)}`;
+  // Denoise slider
+  const denoiseBox = document.createElement("div");
+  const denoiseLabel = document.createElement("div");
+  denoiseLabel.className = "h3s-face-refine-ctrl-label";
+  denoiseLabel.innerHTML = `<span>Denoise</span> <span>${denoise.toFixed(2)}</span>`;
   const denoiseSlider = document.createElement("input");
   denoiseSlider.type = "range";
+  denoiseSlider.className = "h3s-face-refine-slider";
   denoiseSlider.min = "0.10";
   denoiseSlider.max = "0.50";
   denoiseSlider.step = "0.01";
   denoiseSlider.value = String(denoise);
-  denoiseSlider.style.cssText = "width: 100%; height: 4px; cursor: pointer; accent-color: #ec4899;";
   denoiseSlider.addEventListener("input", () => {
     const val = parseFloat(denoiseSlider.value);
-    denoiseLabel.textContent = `Refine Denoise: ${val.toFixed(2)}`;
-    state.generation.face_refine_denoise = val;
-    applyCallback?.(state);
+    denoiseLabel.innerHTML = `<span>Denoise</span> <span>${val.toFixed(2)}</span>`;
+    const cur = stateFromNode(node);
+    applyState(node, {
+      ...cur,
+      generation: { ...cur.generation, face_refine_denoise: val },
+    }, true);
   });
-  denoiseWrapper.appendChild(denoiseLabel);
-  denoiseWrapper.appendChild(denoiseSlider);
+  denoiseBox.append(denoiseLabel, denoiseSlider);
 
-  controlsGrid.appendChild(cropWrapper);
-  controlsGrid.appendChild(denoiseWrapper);
-  drawerToggle.appendChild(controlsGrid);
-  advancedDrawer.appendChild(drawerToggle);
-  container.appendChild(advancedDrawer);
+  grid.append(cropBox, denoiseBox);
+  details.appendChild(grid);
+  drawer.appendChild(details);
+  section.appendChild(drawer);
 
-  // Execution Telemetry Banner
-  const telemetryBadge = document.createElement("div");
-  telemetryBadge.className = "h3s-face-refine-telemetry";
-  telemetryBadge.style.cssText = `
-    display: none;
-    margin-top: 6px;
-    padding: 4px 8px;
-    font-size: 10px;
-    border-radius: 4px;
-    background: rgba(34, 197, 94, 0.12);
-    color: #4ade80;
-    border: 1px solid rgba(34, 197, 94, 0.25);
-  `;
-  container.appendChild(telemetryBadge);
+  // 4. Execution Telemetry
+  const telemetry = document.createElement("div");
+  telemetry.className = "h3s-face-refine-telemetry";
+  section.appendChild(telemetry);
 
-  // Listen to node execution events
-  const onExecuted = (event) => {
-    if (event.detail?.node === String(node.id)) {
-      const output = event.detail?.output;
-      if (output?.face_refine_status || output?.status) {
-        telemetryBadge.textContent = output.face_refine_status || output.status;
-        telemetryBadge.style.display = "block";
-        setTimeout(() => {
-          telemetryBadge.style.display = "none";
-        }, 8000);
-      }
+  return section;
+}
+
+function sectionHost(panel) {
+  return panel?.querySelector?.(".h3s-v6-inspector, .h3s-v7-inspector, .h3s-inspector") || panel;
+}
+
+function installFaceRefineSection(node, replace = false) {
+  const panel = node?.__h3studioPanel;
+  if (!panel?.isConnected) return;
+
+  const existing = panel.querySelector(".h3s-face-refine-section");
+  if (existing && !replace) return;
+
+  const section = buildFaceRefineSection(node);
+  if (existing) {
+    existing.replaceWith(section);
+  } else {
+    const host = sectionHost(panel);
+    // Insert before custom LoRAs or advanced section
+    const lorasSection = host.querySelector?.(".h3s-custom-loras");
+    const advanced = [...host.children].find((child) => child.querySelector?.(".h3s-advanced-toggle"));
+    if (lorasSection) {
+      host.insertBefore(section, lorasSection);
+    } else if (advanced) {
+      host.insertBefore(section, advanced);
+    } else {
+      host.appendChild(section);
     }
-  };
-  api.addEventListener("executed", onExecuted);
+  }
+}
 
-  return container;
+function watchDirector(node) {
+  if (node.__h3studioFaceRefineObserver || node.__h3studioFaceRefinePending) return;
+  node.__h3studioFaceRefinePending = true;
+
+  let attempts = 0;
+  const wait = () => {
+    const panel = node.__h3studioPanel;
+    if (!panel) {
+      attempts += 1;
+      if (attempts < 600) setTimeout(wait, 25);
+      else node.__h3studioFaceRefinePending = false;
+      return;
+    }
+    node.__h3studioFaceRefinePending = false;
+    installStyles();
+    installFaceRefineSection(node);
+
+    const observer = new MutationObserver(() => {
+      if (!panel.querySelector(".h3s-face-refine-section")) {
+        installFaceRefineSection(node);
+      }
+    });
+    observer.observe(panel, { childList: true, subtree: true });
+    node.__h3studioFaceRefineObserver = observer;
+  };
+  setTimeout(wait, 0);
 }
 
 app.registerExtension({
   name: EXTENSION_NAME,
-  async nodeCreated(node) {
-    if (node.comfyClass === "H3StudioDirector") {
-      node.__createFaceRefineSection = (state, applyCallback) => {
-        return createFaceRefineSection(node, state, applyCallback);
-      };
-    }
+  beforeRegisterNodeDef(nodeType, nodeData) {
+    if (nodeData.name !== TARGET) return;
+    const created = nodeType.prototype.onNodeCreated;
+    nodeType.prototype.onNodeCreated = function h3FaceRefineCreated() {
+      const result = created?.apply(this, arguments);
+      installStyles();
+      watchDirector(this);
+      return result;
+    };
+    const configured = nodeType.prototype.onConfigure;
+    nodeType.prototype.onConfigure = function h3FaceRefineConfigured() {
+      const result = configured?.apply(this, arguments);
+      installStyles();
+      watchDirector(this);
+      return result;
+    };
   },
 });
 
-export { createFaceRefineSection };
+export { buildFaceRefineSection, installFaceRefineSection };
