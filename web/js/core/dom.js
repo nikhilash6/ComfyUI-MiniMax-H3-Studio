@@ -16,9 +16,31 @@ export function element(tag, options = {}, children = []) {
 
 function normalizedOptions(options) {
   return (options || []).map((option) => {
-    const [key, text] = Array.isArray(option) ? option : [option, option];
-    return [String(key), String(text)];
+    if (Array.isArray(option)) {
+      const [key, text, meta = null] = option;
+      return { key: String(key), text: String(text), meta };
+    }
+    return { key: String(option), text: String(option), meta: null };
   });
+}
+
+function ratioShape(meta) {
+  const ratio = typeof meta === "object" ? String(meta?.ratio || "") : "";
+  if (!ratio) return null;
+  const [rawW, rawH] = ratio.split(":").map(Number);
+  if (!Number.isFinite(rawW) || !Number.isFinite(rawH) || rawW <= 0 || rawH <= 0) return null;
+  const scale = 14 / Math.max(rawW, rawH);
+  return element("span", {
+    className: "h3s-choice-ratio-icon",
+    attrs: { "aria-hidden": "true" },
+    style: `--ratio-w:${Math.max(5, rawW * scale)}px;--ratio-h:${Math.max(5, rawH * scale)}px`,
+  });
+}
+
+function optionContent(item, className = "") {
+  const icon = ratioShape(item.meta);
+  const label = element("span", { className: className || "h3s-choice-option-label", text: item.text });
+  return icon ? [icon, label] : [label];
 }
 
 function closeFloatingChooser(root) {
@@ -34,22 +56,20 @@ function closeFloatingChooser(root) {
 
 export function selectControl(value, options, label, onChange) {
   const items = normalizedOptions(options);
-  let current = String(value ?? items[0]?.[0] ?? "");
+  let current = String(value ?? items[0]?.key ?? "");
   const root = element("div", { className: "h3s-choice" });
-  const currentText = () => items.find(([key]) => key === current)?.[1] || current || "Select";
+  const currentItem = () => items.find((item) => item.key === current) || { key: current, text: current || "Select", meta: null };
+  const valueWrap = element("span", { className: "h3s-choice-current" }, optionContent(currentItem(), "h3s-choice-value"));
   const trigger = element("button", {
     className: "h3s-choice-trigger",
     type: "button",
     attrs: { "aria-label": label, "aria-haspopup": "listbox", "aria-expanded": "false" },
   }, [
-    element("span", { className: "h3s-choice-value", text: currentText() }),
+    valueWrap,
     element("span", { className: "h3s-choice-chevron", text: "⌄", attrs: { "aria-hidden": "true" } }),
   ]);
 
-  const updateLabel = () => {
-    const valueNode = trigger.querySelector(".h3s-choice-value");
-    if (valueNode) valueNode.textContent = currentText();
-  };
+  const updateLabel = () => valueWrap.replaceChildren(...optionContent(currentItem(), "h3s-choice-value"));
 
   const open = () => {
     if (trigger.disabled) return;
@@ -61,26 +81,25 @@ export function selectControl(value, options, label, onChange) {
       className: "h3s-choice-menu",
       attrs: { role: "listbox", "aria-label": label },
     });
-    for (const [key, text] of items) {
+    for (const item of items) {
       const option = element("button", {
-        className: `h3s-choice-option${key === current ? " is-active" : ""}`,
+        className: `h3s-choice-option${item.key === current ? " is-active" : ""}`,
         type: "button",
-        text,
-        attrs: { role: "option", "aria-selected": String(key === current) },
+        attrs: { role: "option", "aria-selected": String(item.key === current) },
         on: {
           click: (event) => {
             event.preventDefault();
             event.stopPropagation();
-            if (key !== current) {
-              current = key;
+            if (item.key !== current) {
+              current = item.key;
               updateLabel();
-              onChange(key);
+              onChange(item.key);
             }
             closeFloatingChooser(root);
             trigger.focus({ preventScroll: true });
           },
         },
-      });
+      }, optionContent(item));
       panel.append(option);
     }
     document.body.append(panel);
@@ -91,14 +110,15 @@ export function selectControl(value, options, label, onChange) {
     const place = () => {
       if (!panel.isConnected) return;
       const rect = trigger.getBoundingClientRect();
-      const width = Math.max(rect.width, Math.min(420, window.innerWidth - 24));
+      const minWidth = Math.max(120, rect.width);
+      const width = Math.min(Math.max(minWidth, Math.min(236, rect.width * 1.18)), window.innerWidth - 20);
       const below = window.innerHeight - rect.bottom;
-      const estimated = Math.min(320, Math.max(44, panel.scrollHeight));
-      const top = below >= estimated || rect.top < below ? rect.bottom + 5 : Math.max(8, rect.top - estimated - 5);
+      const estimated = Math.min(280, Math.max(40, panel.scrollHeight));
+      const top = below >= estimated || rect.top < below ? rect.bottom + 4 : Math.max(8, rect.top - estimated - 4);
       panel.style.left = `${Math.max(8, Math.min(window.innerWidth - width - 8, rect.left))}px`;
       panel.style.top = `${top}px`;
       panel.style.width = `${width}px`;
-      panel.style.maxHeight = `${Math.max(120, Math.min(320, Math.max(rect.top - 16, below - 16)))}px`;
+      panel.style.maxHeight = `${Math.max(110, Math.min(280, Math.max(rect.top - 14, below - 14)))}px`;
     };
     place();
     requestAnimationFrame(place);
@@ -181,7 +201,7 @@ export function rangeValueFromPointer(clientX, rect, options) {
   return Number(Math.max(minimum, Math.min(maximum, snapped)).toFixed(decimals));
 }
 
-export function rangeControl(value, options, label, onCommit) {
+export function rangeControl(value, options, label, onCommit, onPreview = null) {
   const minimum = Number(options.min);
   const maximum = Number(options.max);
   const input = element("input", {
@@ -200,38 +220,35 @@ export function rangeControl(value, options, label, onCommit) {
   ]);
 
   let lastCommitted = Number(value);
-  const synchronize = (nextValue) => {
+  const synchronize = (nextValue, preview = true) => {
     const bounded = Math.max(minimum, Math.min(maximum, Number(nextValue)));
     const progress = maximum === minimum ? 0 : ((bounded - minimum) / (maximum - minimum)) * 100;
     input.value = String(bounded);
     input.setAttribute("aria-valuenow", String(bounded));
     control.style.setProperty("--h3s-range-progress", `${progress}%`);
+    control.style.setProperty("--h3s-range-heat", String(progress / 100));
+    if (preview) onPreview?.(bounded);
     return bounded;
   };
   const commit = (nextValue) => {
-    const bounded = synchronize(nextValue);
+    const bounded = synchronize(nextValue, true);
     if (bounded === lastCommitted) return;
     lastCommitted = bounded;
     onCommit(bounded);
   };
   const updateFromPointer = (event) => {
-    synchronize(rangeValueFromPointer(event.clientX, control.getBoundingClientRect(), options));
+    synchronize(rangeValueFromPointer(event.clientX, control.getBoundingClientRect(), options), true);
   };
 
-  // Moving a range thumb used to call the Director state callback for every
-  // pointer pixel. That callback reconstructs the entire Director DOM, including
-  // all reference cards. Keep thumb feedback local and commit once on release.
-  input.addEventListener("input", (event) => synchronize(Number(event.target.value)));
+  input.addEventListener("input", (event) => synchronize(Number(event.target.value), true));
   input.addEventListener("change", (event) => commit(Number(event.target.value)));
   input.addEventListener("pointerdown", (event) => {
-    event.preventDefault();
     input.focus();
     input.setPointerCapture?.(event.pointerId);
     updateFromPointer(event);
   });
   input.addEventListener("pointermove", (event) => {
     if (!input.hasPointerCapture?.(event.pointerId)) return;
-    event.preventDefault();
     updateFromPointer(event);
   });
   const releasePointer = (event) => {
@@ -240,7 +257,7 @@ export function rangeControl(value, options, label, onCommit) {
   };
   input.addEventListener("pointerup", releasePointer);
   input.addEventListener("pointercancel", releasePointer);
-  synchronize(value);
+  synchronize(value, false);
   return control;
 }
 
