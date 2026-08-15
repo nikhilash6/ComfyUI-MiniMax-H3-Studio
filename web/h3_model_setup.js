@@ -338,6 +338,10 @@ function installUI(node) {
     root.querySelector('[data-action="repair"]')?.addEventListener('click',()=>downloadSelected(true));
   }
 
+  node.computeSize = function h3ModelSetupComputeSize() {
+    return [MODEL_SETUP_MIN_WIDTH, MODEL_SETUP_MIN_VIEWPORT + MODEL_SETUP_NODE_CHROME];
+  };
+
   const widget = node.addDOMWidget("h3_model_setup", "h3_model_setup", root, {
     serialize: false,
     hideOnZoom: false,
@@ -346,12 +350,26 @@ function installUI(node) {
   });
   widget.computeSize = (width) => [
     Math.max(MODEL_SETUP_MIN_WIDTH, Number(width) || MODEL_SETUP_DEFAULT_NODE_WIDTH),
-    MODEL_SETUP_MIN_VIEWPORT,
+    modelSetupViewportHeight(node.size?.[1]),
   ];
   node.setSize?.([
     Math.max(node.size?.[0] || MODEL_SETUP_DEFAULT_NODE_WIDTH, MODEL_SETUP_MIN_WIDTH),
     Math.max(node.size?.[1] || MODEL_SETUP_DEFAULT_NODE_HEIGHT, MODEL_SETUP_MIN_VIEWPORT + MODEL_SETUP_NODE_CHROME),
   ]);
+
+  const originalOnResize = node.onResize;
+  node.onResize = function h3ModelSetupOnResize(size) {
+    originalOnResize?.apply(this, arguments);
+    if (root && size) {
+      const height = modelSetupViewportHeight(size[1]);
+      root.style.height = `${height}px`;
+      const wrapper = root.parentElement;
+      if (wrapper) {
+        wrapper.style.height = `${height}px`;
+        wrapper.style.width = `${Math.max(MODEL_SETUP_MIN_WIDTH, size[0] - 20)}px`;
+      }
+    }
+  };
   render();
   detect();
 }

@@ -43,9 +43,10 @@ test("manifest includes H3 role-aware destinations and current LightX profiles",
   assert.match(source, /destination:"vae_approx"/);
 });
 
-test("Model Setup widget computeSize does not couple to dynamic node.size to avoid runaway expansion", () => {
-  assert.doesNotMatch(source, /computeSize\s*=\s*\(width\)\s*=>\s*\[[^\]]*node\.size/);
+test("Model Setup node computeSize is static to prevent runaway expansion while widget fills node height", () => {
+  assert.match(source, /node\.computeSize\s*=\s*function h3ModelSetupComputeSize/);
   assert.match(source, /widget\.computeSize\s*=\s*\(width\)\s*=>/);
+  assert.match(source, /node\.onResize\s*=\s*function h3ModelSetupOnResize/);
 });
 
 test("Model Setup dynamically adapts widget viewport height to node height without empty space", () => {
