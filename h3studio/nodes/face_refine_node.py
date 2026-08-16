@@ -49,20 +49,41 @@ def _profile_for_fl2va(profile: str) -> tuple[str, bool]:
     """Return a fast/safe FL2VA recipe and whether the requested profile was preserved.
 
     When a LightX profile is active on the main generation (e.g. 8-step), Face Refine
-    automatically uses the optimized LightX 4-step FL2VA profile for 2x faster inpainting.
+    automatically uses the optimized LightX 4-step FL2VA profile if available on disk;
+    otherwise it preserves the active FL2VA profile (e.g. 8-step) or falls back to Base Balanced.
     """
     key = str(profile or "base_balanced_12")
     if key.startswith("lightx_"):
-        if "lightx_v1_fl2v_4_pruned" in SAMPLING_PROFILES:
-            return "lightx_v1_fl2v_4_pruned", True
-        if "lightx_er_sde_4" in SAMPLING_PROFILES:
-            return "lightx_er_sde_4", True
+        try:
+            import folder_paths
+            from ..acceleration import LIGHTX_PROFILES
+            from ..lora_stack import _basename
+
+            loras = set(_basename(item) for item in folder_paths.get_filename_list("loras"))
+            p4 = LIGHTX_PROFILES.get("lightx_v1_fl2v_4_pruned")
+            if p4 and _basename(p4.lora_filename) in loras:
+                return "lightx_v1_fl2v_4_pruned", True
+
+            # If 4-step pruned isn't installed, check if current key is an available FL2VA profile
+            main_p = LIGHTX_PROFILES.get(key)
+            if main_p and _basename(main_p.lora_filename) in loras:
+                recipe = SAMPLING_PROFILES.get(key)
+                if recipe is not None and recipe.get("route") in (None, ROUTE_FL2VA):
+                    return key, True
+
+            p8 = LIGHTX_PROFILES.get("lightx_v1_fl2v_8")
+            if p8 and _basename(p8.lora_filename) in loras:
+                return "lightx_v1_fl2v_8", True
+        except Exception:
+            pass
+
+        recipe = SAMPLING_PROFILES.get(key)
+        if recipe is not None and recipe.get("route") in (None, ROUTE_FL2VA):
+            return key, True
+
     recipe = SAMPLING_PROFILES.get(key)
     if recipe is not None and recipe.get("route") in (None, ROUTE_FL2VA):
         return key, True
-    # PDD and dedicated REF2VA LightX adapters cannot be applied to the FL2VA
-    # checkpoint used for a source-anchored face edit. Base Balanced is always
-    # available and keeps the fallback explicit rather than silently crossing routes.
     return "base_balanced_12", False
 
 
@@ -129,7 +150,25 @@ def _build_alternate_fl2va_sampling(runtime: FaceRefineSamplingRuntime, guide_si
     if profile.startswith("lightx_"):
         from ..acceleration import build_lightx_backend
 
-        model, sampler, _full_sigmas, info = build_lightx_backend(model, profile)
+        try:
+            model, sampler, _full_sigmas, info = build_lightx_backend(model, profile)
+        except Exception as exc:
+            LOGGER.warning("[H3 Studio FaceRefine] LightX backend %s failed (%s); falling back to Base Balanced.", profile, exc)
+            profile = "base_balanced_12"
+            recipe = SAMPLING_PROFILES[profile]
+            from .image_runtime import H3StudioSamplingSettings
+
+            model, sampler, _full_sigmas, info = H3StudioSamplingSettings().build(
+                model=model,
+                sampler_name=str(recipe["sampler"]),
+                scheduler=str(recipe["scheduler"]),
+                steps=int(recipe["steps"]),
+                denoise=1.0,
+                shift_video=float(recipe["shift_video"]),
+                shift_audio=float(recipe["shift_audio"]),
+                beta_alpha=0.6,
+                beta_beta=0.6,
+            )
     else:
         from .image_runtime import H3StudioSamplingSettings
 

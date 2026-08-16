@@ -43,6 +43,13 @@ function installStyles() {
     .h3s-fr-status.is-running .h3s-fr-status-dot{background:#c9a75e}
     .h3s-fr-status.is-done .h3s-fr-status-dot{background:#6e9b80}
     .h3s-fr-status.is-error .h3s-fr-status-dot{background:#b86d65}
+    .h3s-fr-proof{margin-top:7px;border-radius:6px;overflow:hidden;border:1px solid #1e2327;background:#0d1113;padding:6px;display:flex;flex-direction:column;gap:5px}
+    .h3s-fr-proof-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:8px}
+    .h3s-fr-proof-title{font-weight:700;color:#dbe2e6}
+    .h3s-fr-proof-meta{color:#88959e;font-variant-numeric:tabular-nums}
+    .h3s-fr-proof-img{width:100%;max-height:180px;object-fit:contain;border-radius:4px;background:#000000;cursor:pointer;display:block;border:1px solid #181d21;transition:border-color .15s}
+    .h3s-fr-proof-img:hover{border-color:#38d6af}
+    .h3s-fr-empty{font-size:8px;line-height:1.4;color:#69747c;padding:3px 2px}
   `;
   document.head.append(style);
 }
