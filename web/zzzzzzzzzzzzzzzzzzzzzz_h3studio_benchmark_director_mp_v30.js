@@ -317,7 +317,6 @@ function mountField(field) {
 
 function sweep() {
   return;
-  return;
   sweepQueued = false;
   installStyles();
   document.querySelectorAll(`${ROOT_SELECTOR} .h3b7-field`).forEach(mountField);
@@ -330,7 +329,6 @@ function scheduleSweep() {
 }
 
 function observe(node) {
-  return;
   return;
   if (observer || !document.body) return;
   observer = new MutationObserver((records) => {

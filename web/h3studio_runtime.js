@@ -240,7 +240,7 @@ function buildSection(node) {
 }
 
 function sectionHost(panel) {
-  return panel?.querySelector?.(".h3s-col-right, .h3s-v6-inspector, .h3s-v7-inspector, .h3s-inspector") || panel;
+  return panel?.querySelector?.(".h3s-v6-inspector, .h3s-v7-inspector, .h3s-inspector") || panel;
 }
 
 function installRuntimeSection(node, replace = false) {
@@ -258,13 +258,13 @@ function installRuntimeSection(node, replace = false) {
   }
 }
 
-export function createRuntimeSection(node) {
-  installStyles();
-  return buildSection(node);
-}
-
 function watchDirector(node) {
-  installStyles();
+  const wait = () => {
+    if (!node.graph) return;
+    if (node.__h3studioPanel?.isConnected) { installRuntimeSection(node); return; }
+    setTimeout(wait, 50);
+  };
+  setTimeout(wait, 0);
 }
 
 api.addEventListener("h3studio-runtime-resolved", ({ detail }) => {

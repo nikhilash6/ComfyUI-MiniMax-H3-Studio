@@ -2963,9 +2963,6 @@ function setConditionalWidgetVisible(node, widget, visible) {
 }
 
 function syncModeWidgets(node) {
-    if (node?.comfyClass === "H3StudioDirector" || node?.__h3studioPanelInstalled || node?.__h3studioPanel) {
-        return false;
-    }
     const advanced = isAdvancedEnabled(node);
     const changed = [
         setConditionalWidgetVisible(node, getWidget(node, "fps"), advanced),

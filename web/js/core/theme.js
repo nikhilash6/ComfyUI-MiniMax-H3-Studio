@@ -30,20 +30,18 @@ export function installTheme() {
       min-width: 0;
       min-height: 0;
       flex: 1;
-      height: 100%;
+      height: calc(100% - 36px);
     }
     .h3s-col {
       display: flex;
       flex-direction: column;
       gap: 7px;
       min-width: 0;
-      min-height: 0;
-      flex: 1 1 auto;
       height: 100%;
-      max-height: 100%;
+      max-height: 560px;
       overflow-y: auto !important;
       overflow-x: hidden !important;
-      padding: 0 8px 80px 8px;
+      padding: 0 8px 36px 8px;
       scrollbar-width: thin !important;
       scrollbar-color: #58646d transparent !important;
       overscroll-behavior: contain;

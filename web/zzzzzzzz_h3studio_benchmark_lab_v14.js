@@ -147,7 +147,6 @@ function belongsInspector(section) {
   return Boolean(section?.classList?.contains("h3s-runtime-section") || section?.classList?.contains("h3s-custom-loras") || section?.classList?.contains("h3s-share-section") || section?.querySelector?.(":scope > .h3s-advanced-toggle") || ["generation","runtime","preset","custom loras"].includes(sectionTitle(section)));
 }
 function fixDirectorScroll(node) {
-  return;
   const panel = node?.__h3studioPanel;
   if (!panel?.isConnected) return;
   const layout = panel.querySelector(".h3s-v6-layout,.h3s-v7-layout"), inspector = layout?.querySelector(".h3s-v6-inspector,.h3s-v7-inspector"), main = layout?.querySelector(".h3s-v6-main,.h3s-v7-main");
@@ -225,15 +224,12 @@ function observeBenchmark(node) {
   let queued=false; const observer=new MutationObserver(()=>{ if (queued) return; queued=true; requestAnimationFrame(()=>{ queued=false; refreshBenchmark(node); }); }); observer.observe(root,{childList:true,subtree:true}); root.__h3b14Observer=observer;
 }
 function observeDirector(node) {
-  return;
   const root=node?.__h3studioPanel; if (!root?.isConnected) return; fixDirectorScroll(node); if (root.__h3b14DirectorObserver) return;
   let queued=false; const observer=new MutationObserver(()=>{ if (queued) return; queued=true; requestAnimationFrame(()=>{ queued=false; fixDirectorScroll(node); }); }); observer.observe(root,{childList:true,subtree:true}); root.__h3b14DirectorObserver=observer;
 }
 function attach(node) {
-  return;
   return; if (!node?.graph) return; if (node.comfyClass===BENCHMARK) node.__h3bRoot?.isConnected ? observeBenchmark(node) : setTimeout(()=>attach(node),120); else if (node.comfyClass===DIRECTOR) node.__h3studioPanel?.isConnected ? observeDirector(node) : setTimeout(()=>attach(node),120); }
 function sweep() {
-  return;
   return; for (const node of app.graph?._nodes||[]) if (node?.comfyClass===BENCHMARK||node?.comfyClass===DIRECTOR) attach(node); filterDirectorPicker(); }
 const bodyObserver=new MutationObserver(()=>filterDirectorPicker());
 

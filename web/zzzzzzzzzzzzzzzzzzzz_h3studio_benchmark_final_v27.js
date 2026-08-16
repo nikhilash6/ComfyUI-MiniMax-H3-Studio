@@ -396,7 +396,6 @@ function applyNode(node) {
 
 function sweep() {
   return;
-  return;
   sweepQueued = false;
   installStyles();
   for (const node of app.graph?._nodes || []) if (node?.comfyClass === BENCHMARK) applyNode(node);

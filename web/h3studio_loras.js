@@ -444,7 +444,7 @@ function buildSection(node) {
 }
 
 function sectionHost(panel) {
-  return panel?.querySelector?.(".h3s-col-right, .h3s-v6-inspector, .h3s-v7-inspector, .h3s-inspector") || panel;
+  return panel?.querySelector?.(".h3s-v6-inspector, .h3s-v7-inspector, .h3s-inspector") || panel;
 }
 
 function installLoraSection(node, replace = false) {
@@ -462,13 +462,8 @@ function installLoraSection(node, replace = false) {
   }
 }
 
-export function createLoraSection(node) {
-  installStyles();
-  return buildSection(node);
-}
-
 function watchDirector(node) {
-  if (node.__h3studioLoraWatchPending) return;
+  if (node.__h3studioLoraObserver || node.__h3studioLoraWatchPending) return;
   node.__h3studioLoraWatchPending = true;
   let attempts = 0;
   const wait = () => {
@@ -481,7 +476,12 @@ function watchDirector(node) {
     }
     node.__h3studioLoraWatchPending = false;
     installStyles();
-    // MutationObserver on panel is superseded by canonical renderer mounting via createLoraSection
+    installLoraSection(node);
+    const observer = new MutationObserver(() => {
+      if (!panel.querySelector(".h3s-custom-loras")) installLoraSection(node);
+    });
+    observer.observe(panel, { childList: true });
+    node.__h3studioLoraObserver = observer;
     loadCatalog().then(() => {
       node.__h3studioLoraCatalogError = "";
       installLoraSection(node, true);

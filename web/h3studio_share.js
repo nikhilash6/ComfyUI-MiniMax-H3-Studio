@@ -295,7 +295,7 @@ function buildSection(node) {
 }
 
 function sectionHost(panel) {
-  return panel?.querySelector?.(".h3s-col-right, .h3s-v6-inspector, .h3s-v7-inspector, .h3s-inspector") || panel;
+  return panel?.querySelector?.(".h3s-v6-inspector, .h3s-v7-inspector, .h3s-inspector") || panel;
 }
 
 function installShareSection(node, replace = false) {
@@ -312,13 +312,13 @@ function installShareSection(node, replace = false) {
   }
 }
 
-export function createShareSection(node) {
-  installStyles();
-  return buildSection(node);
-}
-
 function watch(node) {
-  installStyles();
+  const wait = () => {
+    if (!node.graph) return;
+    if (node.__h3studioPanel?.isConnected) { installShareSection(node); return; }
+    setTimeout(wait, 70);
+  };
+  setTimeout(wait, 0);
 }
 
 app.registerExtension({

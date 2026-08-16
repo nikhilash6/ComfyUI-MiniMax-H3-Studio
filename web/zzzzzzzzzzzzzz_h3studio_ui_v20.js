@@ -357,7 +357,6 @@ function decorate(node) {
 
 function observe(node) {
   return;
-  return;
   const root = node?.comfyClass === BENCHMARK ? node.__h3bRoot : node?.__h3studioPanel;
   if (!root?.isConnected) { setTimeout(() => observe(node), 100); return; }
   decorate(node);
@@ -373,7 +372,6 @@ function observe(node) {
 }
 
 function sweep() {
-  return;
   return;
   for (const node of app.graph?._nodes || []) {
     if (node?.comfyClass === BENCHMARK || node?.comfyClass === DIRECTOR) observe(node);

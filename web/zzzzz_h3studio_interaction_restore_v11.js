@@ -120,7 +120,6 @@ function bindMegapixelHeat(node) {
 }
 
 function decorateDirector(node) {
-  return;
   const root = node?.__h3studioPanel;
   if (!root) return;
   root.querySelectorAll(".h3s-custom-aspect-editor").forEach((editor) => editor.remove());
@@ -226,7 +225,6 @@ document.addEventListener("click", interceptCustomAspect, true);
 
 function attachDirector(node) {
   if (node?.__h3studioPanel || true) return;
-  if (node?.__h3studioPanel || true) return;
   if (!node || node.comfyClass !== DIRECTOR || !node.__h3studioPanel) return;
   // v10's observer only existed to re-inject transient UI. Resize ownership stays untouched.
   node.__h3studioPanel.__h3GeometryObserver?.disconnect?.();
@@ -247,7 +245,6 @@ function attachDirector(node) {
 }
 
 function sweep() {
-  return;
   return;
   for (const node of app.graph?._nodes || []) attachDirector(node);
   decorateAspectMenus();

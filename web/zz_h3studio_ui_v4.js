@@ -150,7 +150,6 @@ function decorateSections(root) {
 }
 
 function placeDirectorSections(root) {
-  return;
   if (!root) return;
   let layout = root.querySelector(":scope > .h3s-v6-layout");
   if (!layout) {
@@ -213,7 +212,6 @@ function optimizeDirectorDomWidget(node) {
 }
 
 function decoratePanel(node) {
-  return;
   const root = node?.__h3studioPanel;
   if (!root) return;
   root.style.contentVisibility = "auto";
@@ -227,7 +225,6 @@ function decoratePanel(node) {
 }
 
 function attachDirector(node) {
-  if (node?.__h3studioPanel || true) return;
   if (node?.__h3studioPanel || true) return;
   if (!node || node.comfyClass !== DIRECTOR) return;
   forceHideNativeWidgets(node);
@@ -301,7 +298,6 @@ function fixBenchmark(node) {
 }
 
 function sweep() {
-  return;
   return;
   for (const node of app.graph?._nodes || []) {
     if (node?.comfyClass === DIRECTOR) attachDirector(node);
