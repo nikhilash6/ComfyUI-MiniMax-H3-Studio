@@ -225,12 +225,31 @@ def _download_file(url: str, dest_path: Path, label: str) -> None:
         raise
 
 
+def _check_custom_node_deps(dirname: str) -> bool:
+    if dirname == IMPACT_SUBPACK_DIRNAME:
+        code = "import dill, ultralytics, cv2, matplotlib; print('ok')"
+    elif dirname == IMPACT_PACK_DIRNAME:
+        code = "import segment_anything, dill; print('ok')"
+    else:
+        return False
+    try:
+        res = _run([sys.executable, "-c", code], timeout=10)
+        return res.returncode == 0 and "ok" in res.stdout
+    except Exception:
+        return False
+
+
 def _install_custom_node_requirements(target_dir: Path, actions: list[str]) -> bool:
     req_file = target_dir / "requirements.txt"
     if not req_file.is_file():
         return False
-    actions.append(f"Installing dependencies for {target_dir.name} ({req_file.name}) using {sys.executable}…")
-    res = _run([sys.executable, "-m", "pip", "install", "-r", str(req_file)], cwd=target_dir, timeout=300)
+
+    if _check_custom_node_deps(target_dir.name):
+        actions.append(f"Dependencies for {target_dir.name} already satisfied (skipped pip install).")
+        return False
+
+    actions.append(f"Installing missing dependencies for {target_dir.name} ({req_file.name}) using {sys.executable}…")
+    res = _run([sys.executable, "-m", "pip", "install", "-r", str(req_file)], cwd=target_dir, timeout=360)
     if res.returncode != 0:
         actions.append(f"Warning: pip install -r {req_file.name} for {target_dir.name} returned code {res.returncode}: {res.stdout.strip()[:200]}")
         return False
