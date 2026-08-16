@@ -12,6 +12,7 @@ from .dependency_web import register_dependency_routes
 from .face_refine.integration import install as install_face_refine_integration
 from .face_refine.sampling_bridge import install as install_face_refine_sampling_bridge
 from .face_refine.setup import register_face_setup_routes
+from .history_library import register_history_routes
 from .legacy_t2i_multiguide import install as install_legacy_t2i_multiguide
 from .llama_cpp_dependency import register_routes as register_llama_cpp_routes
 from .llama_existing_runtime import adopt_existing_runtime
@@ -137,6 +138,7 @@ install_smart_benchmark_restore()
 # old queue-of-one behavior that discarded intermediate/final steps.
 install_preview_history_fix()
 register_routes()
+register_history_routes()
 register_runtime_routes()
 register_dependency_routes()
 register_comfy_compat_routes()
