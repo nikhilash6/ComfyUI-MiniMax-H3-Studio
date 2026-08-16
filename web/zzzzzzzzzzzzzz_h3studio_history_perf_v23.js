@@ -185,9 +185,6 @@ function installStyles() {
   style.textContent = `
     .h3s-demo-card[data-kind='history']{contain:layout paint style;content-visibility:auto;contain-intrinsic-size:288px 188px}
     .h3s-demo-card[data-kind='history'] .h3s-demo-thumb{background:#101416}
-    .h3s-demo-card[data-kind='history'] .h3s-demo-category-tag,
-    .h3s-demo-card[data-kind='history'] .h3s-demo-badge-specs,
-    .h3s-demo-card[data-kind='history'] .h3s-history-favorite{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
     .h3s-demo-card[data-kind='history'] .h3s-history-favorite{
       display:grid!important;visibility:visible!important;opacity:.92!important;
       width:24px!important;height:24px!important;right:7px!important;top:7px!important;
