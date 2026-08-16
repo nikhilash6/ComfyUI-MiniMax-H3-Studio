@@ -1,227 +1,279 @@
+<div align="center">
 
 # MiniMax H3 Studio
 
-### A reference-aware still-image workspace for MiniMax H3 in ComfyUI.
+### Turn MiniMax H3 into an actual image workflow for ComfyUI.
 
-Build text-to-image, anchored edits, multi-reference compositions, and controlled benchmark matrices from one maintained workflow.
+Text-to-image, image editing, multi-reference generation, LightX acceleration, smart prompt prep, Face Refine, previews and benchmarking — without building the whole H3 graph yourself.
 
 <p>
   <a href="https://github.com/thaakeno/ComfyUI-MiniMax-H3-Studio/stargazers"><img alt="Star H3 Studio" src="https://img.shields.io/badge/%E2%98%85%20Star-H3%20Studio-34D3B5?style=for-the-badge&logo=github&logoColor=white&labelColor=171B1F"></a>
   <img alt="ComfyUI custom nodes" src="https://img.shields.io/badge/ComfyUI-Custom%20Nodes-0EA5E9?style=for-the-badge&labelColor=171B1F">
-  <img alt="MiniMax H3 profiles" src="https://img.shields.io/badge/H3-Base%20%C2%B7%20LightX%20%C2%B7%20PDD-A855F7?style=for-the-badge&labelColor=171B1F">
-  <img alt="Project status alpha" src="https://img.shields.io/badge/Status-Alpha-F59E0B?style=for-the-badge&labelColor=171B1F">
+  <img alt="H3 profiles" src="https://img.shields.io/badge/H3-Base%20%C2%B7%20LightX%20%C2%B7%20PDD-A855F7?style=for-the-badge&labelColor=171B1F">
+  <img alt="Status alpha" src="https://img.shields.io/badge/Status-Alpha-F59E0B?style=for-the-badge&labelColor=171B1F">
   <img alt="Images generated" src="https://h3-studio-counter.h3-studio-counter.workers.dev/badge.svg">
 </p>
 
-## **Direct the image, understand every reference, and keep the graph readable.**
-<img width="3264" height="1408" alt="ComfyUI_temp_krtgv_00010_" src="https://github.com/user-attachments/assets/91b541b9-98a4-4d14-8b6a-5916b02baa9d" />
+**One maintained workflow. H3 underneath. Far less wiring.**
 
 </div>
 
+<img width="3264" height="1408" alt="H3 Studio" src="https://github.com/user-attachments/assets/91b541b9-98a4-4d14-8b6a-5916b02baa9d" />
+
 > [!IMPORTANT]
-> H3 Studio is alpha software built around an evolving audio-video model. Keep working workflow copies when updating ComfyUI, checkpoints, or acceleration nodes. High-resolution generation is experimental; more pixels do not guarantee more learned detail.
+> H3 Studio is still alpha. MiniMax H3 is an audio-video model being pushed into image-generation workflows here, so some paths are experimental and can change as ComfyUI and H3 support evolve.
 
 > [!WARNING]
-> **ComfyUI Nodes 2.0 is not supported yet.** H3 Studio's custom Image Director and Smart Benchmark interfaces currently target classic Nodes 1.0. Nodes 2.0 has active DOM-widget layout/resizing differences that can cause stretched nodes, bottom-anchored panels, or incorrect overflow with these interfaces. **Use classic Nodes 1.0 for H3 Studio for now.** Proper Nodes 2.0 support is planned for an upcoming update.
+> H3 Studio currently targets classic ComfyUI Nodes 1.0. Nodes 2.0 UI support is still being worked on.
 
+## Why H3 Studio
 
-<img width="1032" height="478" alt="chrome_Qq5N3IDeDL" src="https://github.com/user-attachments/assets/64b62853-aa77-4932-a57f-5801b503a5e9" />
-<img width="1032" height="478" alt="chrome_nKGRTNd8ri" src="https://github.com/user-attachments/assets/b50b4cc1-b8c0-4a7a-85b2-0e16a528edd2" />
+Running H3 for images is possible in normal ComfyUI, but a serious setup quickly turns into model routing, reference conditioning, sampler profiles, frame selection, VAE handling, prompt tooling and a pile of utility nodes.
 
-> [!NOTE]
-> **An official image-specific H3 descendant is planned.** In the MiniMax H3 team AMA, H3 researcher Kiro Song said the team is deriving a dedicated image model from a common ancestor in the H3 lineage. It is expected to reuse H3's VAE encoder through weight slicing and receive a dedicated image-generation VAE decoder. MiniMax did not announce a release date or measured quality improvement, so H3 Studio's current still-image and experimental T=1 paths remain community solutions for now. [Read the team response.](https://www.reddit.com/r/StableDiffusion/comments/1vh9rtw/comment/p23ecga/)
+H3 Studio keeps that machinery behind a smaller image-focused interface while still using the real H3 FL2VA and REF2VA paths underneath.
 
-## One Studio, three generation paths
-
-| Path | What it does | H3 route |
-| --- | --- | --- |
-| Text to image | Generates from the prompt without secretly consuming uploaded images | FL2VA |
-| Anchored image edit | Uses Image 1 as the first-frame/source canvas | FL2VA |
-| Reference mix/edit | Regenerates from ordered references with explicit ownership | REF2VA |
-
-<img width="1600" height="1000" alt="H3StudioComparison_temp_rlcer_00005_" src="https://github.com/user-attachments/assets/9e68b1dc-e7d1-4a4e-8c1c-d4379fa081c5" />
-
-
-Auto selects the valid route from your requested mode and enabled references. Impossible PDD, REF2VA, forced-route, and missing-reference combinations are rejected before expensive model work starts.
-
-## What you get
+## What it does
 
 <table>
-  <tr>
-    <td width="50%" valign="top">
-      <h3>🎯 Direct references precisely</h3>
-      Upload up to nine images, inspect them at full size, and address them as <code>@Image1</code>–<code>@Image9</code>. Each card preserves its role, retention policy, dimensions, fingerprint, description, and thumbnail across workflow reloads.
-    </td>
-    <td width="50%" valign="top">
-      <h3>🧠 Analyze once, reuse the facts</h3>
-      Optional Qwen3-VL pixel analysis produces factual source records. A separate cached text-only Qwen pass enhances the prompt. The default reuses the same 4B checkpoint; 4B, 8B, and mixed analyzer/writer choices remain available.
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <h3>⚡ Choose a real sampling recipe</h3>
-      Compare native Base RES20/RES12, Kijai's empirical LightX v0.1 four-step profiles, or Mamad8's external four-step PDD REF2VA students. Profile metadata states what is proven and what remains empirical.
-    </td>
-    <td width="50%" valign="top">
-      <h3>🔬 Benchmark more than A/B</h3>
-      Build guarded profile × resolution × repeat matrices. See the exact run count before queueing, live progress and honest ETA, optional cell previews, references, original prompt, seeds, timings, and real output dimensions.
-    </td>
-  </tr>
+<tr>
+<td width="50%" valign="top">
+
+### One Image Director
+
+Text-to-image, image-to-image and reference editing live in the same interface.
+
+Choose the aspect ratio or exact output size, sampling profile, seed, runtime behavior and frame strategy without rebuilding the workflow.
+
+</td>
+<td width="50%" valign="top">
+
+### Multi-reference H3
+
+Add up to nine ordered references and address them directly as <code>@Image1</code> through <code>@Image9</code>.
+
+Each image can own a different part of the result: identity, pose, outfit, style, composition, lighting, environment and more.
+
+</td>
+</tr>
+
+<tr>
+<td width="50%" valign="top">
+
+### Fast H3 paths
+
+Use native Base sampling or accelerated LightX/PDD profiles.
+
+The current main fast path is **LightX v1.0 FL2VA 8-step**, with Kijai's reduced variants and older experimental profiles also available.
+
+</td>
+<td width="50%" valign="top">
+
+### Face Refine
+
+Small and distant faces can be detected after the final H3 still is selected and rerendered through H3 at a larger crop.
+
+YOLOv8-Face is the recommended detector. SAM is optional and only improves the blend mask.
+
+</td>
+</tr>
+
+<tr>
+<td width="50%" valign="top">
+
+### Smarter prompt prep
+
+Optional vision models can inspect references and help turn a rough request into a cleaner H3 instruction.
+
+Qwen3-VL is supported, alongside the lighter Qwen3.5 4B GGUF + llama.cpp path for much faster prompt preparation.
+
+</td>
+<td width="50%" valign="top">
+
+### Demos, history and benchmarks
+
+The Director includes restorable demo generations and local generation history.
+
+Benchmark Lab can compare sampling profiles, resolutions and repeated seeds without maintaining separate workflows.
+
+</td>
+</tr>
 </table>
 
-# Image examples generated by H3
-<img width="3264" height="1408" alt="ComfyUI_temp_krtgv_00011_" src="https://github.com/user-attachments/assets/160a2623-34a2-48ea-9d4b-1b3fc9699970" />
-<img width="1920" height="1088" alt="ComfyUI_temp_cbyme_00013_" src="https://github.com/user-attachments/assets/8054886b-49b9-4642-a97e-59c59a2fcf02" />
-<img width="1920" height="1088" alt="ComfyUI_temp_cbyme_00014_" src="https://github.com/user-attachments/assets/c1e28ee6-9587-4117-8f10-012e45e8c41d" />
-<img width="3264" height="1824" alt="ComfyUI_temp_cbyme_00007_" src="https://github.com/user-attachments/assets/1a2133f0-a95d-4680-9baf-4dc64575f5e6" />
-<img width="1888" height="1056" alt="ComfyUI_temp_svkjp_00001_" src="https://github.com/user-attachments/assets/d023316b-c141-4b8b-b6b5-5d52822c6295" />
-<img width="3264" height="1408" alt="ComfyUI_temp_krtgv_00013_" src="https://github.com/user-attachments/assets/fb332f8c-619e-4a97-bf94-ac7d1e9eb307" />
-<img width="1600" height="1000" alt="H3StudioComparison_temp_acpja_00002_" src="https://github.com/user-attachments/assets/b080a12a-4abb-41a8-93b5-7a0b90fb4ded" />
+## Three generation paths
 
+| Mode | H3 path | Use |
+| --- | --- | --- |
+| **Text to image** | FL2VA | Prompt-only generation |
+| **Image to image** | FL2VA | Edit an input image with an independently chosen output size |
+| **Reference edit** | REF2VA | Generate from one or more ordered reference images |
 
+Auto routing picks the valid path for the current request instead of silently feeding references into the wrong mode.
 
+<img width="1600" height="1000" alt="H3 Studio comparison" src="https://github.com/user-attachments/assets/9e68b1dc-e7d1-4a4e-8c1c-d4379fa081c5" />
+
+## Face Refine
+
+H3 can make a great wide composition while leaving a 40 px background face looking rough.
+
+Face Refine targets that specific problem.
+
+The final still is selected first. YOLO then finds the faces worth touching, H3 rerenders those crops through a low-denoise FL2VA source-latent pass, and the result is blended back into the original image.
+
+The Director shows what happened after the run — detector, detected/selected/refined counts and a before/after inspection image — so it is not an invisible post-process.
+
+Default setup:
+
+```text
+face_yolov8m.pt
+models/ultralytics/bbox/
+```
+
+Recommended detector backend:
+
+[ComfyUI-Impact-Subpack](https://github.com/ltdrdata/ComfyUI-Impact-Subpack)
+
+SAM + [Impact Pack](https://github.com/ltdrdata/ComfyUI-Impact-Pack) are optional.
+
+## Sampling
+
+H3 Studio keeps the actual recipe visible.
+
+| Profile | Route | Steps |
+| --- | --- | ---: |
+| Base Quality | FL2VA / REF2VA | 20 |
+| Base Balanced | FL2VA / REF2VA | 12 |
+| **LightX v1.0 official** | FL2VA | **8** |
+| LightX v1.0 pruned | FL2VA | 8 / 4 |
+| LightX v0.1 | FL2VA / REF2VA | 4 |
+| Mamad8 PDD | REF2VA | 4 |
+
+Runtime presets are separate from sampling. Choosing **Auto**, **Fast**, **Quality** or **Low VRAM** changes how H3 is executed, not which sampling recipe you selected.
+
+## Resolution and decoding
+
+H3 Studio supports normal aspect presets, custom width/height and roughly **0.2–8.5 MP** direct generation.
+
+Higher resolution is experimental. H3 is not a super-resolution model, so doubling the pixels does not automatically double the detail.
+
+The normal H3 video VAE remains the default. H3 Studio also supports temporal frame selection, native chunked H3 VAE handling, configurable VAE tiling and the optional experimental T=1 image VAE.
+
+TAEH3 can provide lightweight live previews while H3 is sampling.
+
+## Demos
+
+The Director ships with a small gallery of cinematic and anime generations.
+
+The demo image itself stores the original H3 Studio generation metadata, so applying a demo restores the actual prompt and Director state instead of loading a separately hand-written approximation.
+
+History works the same way for your own recent generations.
 
 ## Quick start
 
-1. Open [`example_workflows/H3_Studio_Unified_Image.json`](example_workflows/H3_Studio_Unified_Image.json) in ComfyUI.
-2. Select the installed FL2VA, REF2VA, 32B H3 text encoder, and video VAE in **H3 models · lazy route loader**.
-3. Write a prompt in the **Image Director**. Add references only when the image actually needs them.
-4. Assign each reference a narrow role and say what belongs to it: `Keep the identity and pose from @Image1; transfer only the jacket from @Image2.`
-5. Choose a sampling profile, resolution mode, frame profile, and seed behavior, then queue.
+1. Open [`example_workflows/H3_Studio_Unified_Image.json`](example_workflows/H3_Studio_Unified_Image.json).
+2. Select your H3 FL2VA / REF2VA models, 32B text encoder and H3 VAE.
+3. Write a prompt in **H3 Studio Director**.
+4. Add references only when you need them.
+5. Pick a sampling profile and queue.
 
+For multi-reference generation, be explicit:
 
+```text
+Keep the identity and pose from @Image1.
+Transfer only the jacket from @Image2.
+Use the lighting from @Image3.
+```
 
 ## Install
 
-From your ComfyUI installation:
+Clone into `ComfyUI/custom_nodes`:
 
 ```bash
 cd /path/to/ComfyUI/custom_nodes
 git clone https://github.com/thaakeno/ComfyUI-MiniMax-H3-Studio.git
 cd ComfyUI-MiniMax-H3-Studio
 python -m pip install -r requirements.txt
-git log -1 --format='Installed H3 Studio %h · %s'
 ```
 
-Restart ComfyUI, hard-refresh the frontend, and open the maintained workflow. H3 Studio does not download models automatically.
+Restart ComfyUI and open the maintained workflow.
 
-For a reproducible shared install, pin the current release instead of following later development commits:
-
-```bash
-cd /path/to/ComfyUI/custom_nodes
-git clone --branch v0.1.0-alpha.12 --depth 1 https://github.com/thaakeno/ComfyUI-MiniMax-H3-Studio.git
-cd ComfyUI-MiniMax-H3-Studio
-python -m pip install -r requirements.txt
-```
-
-To update an existing Git clone:
+For the latest development build:
 
 ```bash
-cd /path/to/ComfyUI/custom_nodes/ComfyUI-MiniMax-H3-Studio
-git pull --ff-only
-git log -1 --format='Updated H3 Studio %h · %s'
+git clone --branch dev https://github.com/thaakeno/ComfyUI-MiniMax-H3-Studio.git
 ```
 
 ## Models
 
-| Component | ComfyUI folder | Source |
-| --- | --- | --- |
-| Proven pruned W4A8 FL2VA and REF2VA defaults | `models/diffusion_models/` | [Kijai/MiniMax-H3-experimental](https://huggingface.co/Kijai/MiniMax-H3-experimental) |
-| MiniMax H3 32B conditioning encoder | `models/text_encoders/` | [Comfy-Org/MiniMax-H3](https://huggingface.co/Comfy-Org/MiniMax-H3) |
-| H3 video VAE | `models/vae/` | [Comfy-Org/MiniMax-H3](https://huggingface.co/Comfy-Org/MiniMax-H3) |
-| Qwen3-VL 4B/8B analyzer and prompt writer, optional | `models/text_encoders/` | [Comfy-Org/Qwen3-VL](https://huggingface.co/Comfy-Org/Qwen3-VL) |
-| LightX v0.1 LoRA, optional | `models/loras/` | [Kijai/MiniMax-H3_comfy](https://huggingface.co/Kijai/MiniMax-H3_comfy) |
-| TAEH3 approximate preview, optional | `models/vae_approx/` | [Kijai/MiniMax-H3-TAE](https://huggingface.co/Kijai/MiniMax-H3-TAE) |
-| PDD LoRA + heads, optional | `models/loras/`, `models/pdd_heads/` | [Mamad8 PDD](https://huggingface.co/Mamad8/MiniMaxH3_R2V-PDD-Turbo-LoRA-Mamad8) |
-| T=1 Image VAE, experimental | `models/vae/` | [Mamad8 Image VAE](https://huggingface.co/Mamad8/MiniMax-H3-Image-VAE) |
+| Model | Folder |
+| --- | --- |
+| H3 FL2VA / REF2VA | `models/diffusion_models/` |
+| H3 32B text encoder | `models/text_encoders/` |
+| H3 video VAE | `models/vae/` |
+| LightX LoRAs | `models/loras/` |
+| TAEH3 | `models/vae_approx/` |
+| Qwen3.5 GGUF helper | `models/h3studio_vlm/` |
+| YOLO Face | `models/ultralytics/bbox/` |
+| SAM, optional | `models/sams/` |
 
-PDD also requires the separately installed [ComfyUI-MiniMaxH3-PDD-Mamad8](https://github.com/mamad8c/ComfyUI-MiniMaxH3-PDD-Mamad8) package. H3 Studio integrates its registered execution surface; it does not copy or bundle that GPL implementation.
+Recommended H3 model source:
 
-## Profiles and acceleration
+[Kijai/MiniMax-H3-experimental](https://huggingface.co/Kijai/MiniMax-H3-experimental)
 
-| Profile | Recipe | Intended use |
-| --- | --- | --- |
-| Base Quality | RES, 20 steps | Safest native quality baseline |
-| Base Balanced | RES, 12 steps | Faster native comparison |
-| LightX ER-SDE | LightX v0.1 at `0.75`, 4 steps | Empirical Kijai ComfyUI recipe |
-| LightX SA-Solver | LightX v0.1 at `0.75`, 4 steps | Alternate stochastic empirical recipe |
-| PDD 600 / 900 | Matching REF2VA student LoRA + heads, 4 steps | Optional accelerated reference work |
+Official H3 encoder / VAE:
 
-The LightX labels are deliberately marked empirical: they reproduce a current working ComfyUI recipe, not an official guarantee that one sampler is universally best. PDD is REF2VA-only and cannot run without a valid reference context.
+[Comfy-Org/MiniMax-H3](https://huggingface.co/Comfy-Org/MiniMax-H3)
 
-Conditioning uses separate prompt, reference, VAE, and latent caches. Compatible current ComfyUI builds can use upstream chunked H3 VAE encode/decode without changing decoded output. NVFP4 32B conditioning is preferred when installed.
+LightX assets:
 
-## Direct resolution
+[LightX2V/Minimax-h3-Turbo](https://huggingface.co/lightx2v/Minimax-h3-Turbo) · [Kijai/MiniMax-H3_comfy](https://huggingface.co/Kijai/MiniMax-H3_comfy)
 
-The Director offers two explicit planning modes:
+Optional PDD:
 
-- **Conservative:** keeps the older approximately 1 MP working area for predictable memory use.
-- **Direct:** sends the aligned target canvas to H3 from 0.2 MP through approximately 8.5 MP.
+[Mamad8/MiniMaxH3_R2V-PDD-Turbo-LoRA-Mamad8](https://huggingface.co/Mamad8/MiniMaxH3_R2V-PDD-Turbo-LoRA-Mamad8)
 
-The slider labels draft, recommended, extended, experimental, and extreme ranges and always shows the real aligned dimensions. Direct 2/4/8 MP generation is available for experimentation, but H3 Base is not a dedicated super-resolution model. Very large canvases can raise attention cost, decode time, RAM, VRAM, and failure risk without proportional detail gains.
-## Decode choices
+## Model Setup
 
-The Director exposes the decoder separately from sampling speed:
+H3 Studio includes a setup panel that checks the assets used by the workflow.
 
-- **Original H3 Video VAE:** the quality/default path. Choose 5, 9, 13, or 20 temporal frames; more candidates increase sampling and decoding work.
-- **T=1 Image VAE:** the fastest decode path. It samples and decodes one still latent through Mamad8's optional experimental image VAE, but may soften typography, hair, fine contours, and microtexture.
+With [Universal Asset Downloader](https://github.com/thaakeno/comfyui-universal-asset-downloader) installed, supported assets can also be verified and installed directly from the UI.
 
-Current ComfyUI automatically uses its upstream chunked H3 VAE path when available. That path sharply lowers peak decode memory with output-identical pixels, but upstream measurements show approximately unchanged decode speed. H3 Studio therefore reports it as a memory optimization and logs the actual decode duration instead of presenting it as a speed switch.
+Face Refine setup checks both sides separately: having `face_yolov8m.pt` is not enough if there is no detector backend capable of running it.
 
-## Benchmark Lab
+## Image examples
 
-Benchmark Lab is a guarded matrix, not a hard-coded A/B node. Two profiles still make a simple comparison; additional Base, LightX, or PDD profiles expand it. Resolution targets and repeats form the other axes.
+<img width="3264" height="1408" alt="H3 Studio example" src="https://github.com/user-attachments/assets/160a2623-34a2-48ea-9d4b-1b3fc9699970" />
 
-Before execution, the node reports the exact number of generations and blocks oversized matrices unless you explicitly allow them. During execution it reports the active cell, completed and remaining counts, profile, aligned resolution, elapsed time, and an ETA only after enough completed cells exist to support one. Live cell previews are optional and can be disabled for maximum throughput.
+<img width="1920" height="1088" alt="H3 Studio example" src="https://github.com/user-attachments/assets/8054886b-49b9-4642-a97e-59c59a2fcf02" />
 
-The final comparison sheet can include a separate reference strip with correct `@ImageN` labels, the original prompt, and only useful cell metadata: profile, seed, requested/real dimensions, repeat, and sampling time.
+<img width="3264" height="1824" alt="H3 Studio example" src="https://github.com/user-attachments/assets/1a2133f0-a95d-4680-9baf-4dc64575f5e6" />
 
-## Prompt and reference behavior
+## Credits
 
-H3 Studio keeps three things separate:
+H3 Studio is its own project, but some parts started from or were informed by good work already happening around H3.
 
-1. **Factual pixel analysis** describes visible reference content and is cached by image fingerprint.
-2. **Reference ownership** assigns identity, character, style, composition, pose, outfit, object, environment, and other narrow responsibilities.
-3. **Generative prompt direction** uses the selected Qwen3-VL writer to create a compact production instruction. `Same as image analyzer` reuses one checkpoint; selecting another 4B/8B file intentionally stages two.
-4. **Prompt compilation** converts friendly `@ImageN` mentions into H3's model-facing `<Picture N>` form deterministically.
+[ComfyUI-MiniMaxH3-Easy](https://github.com/nkxx188/ComfyUI-MiniMaxH3-Easy) provided foundations for the ordered media / mention interaction.
 
-The maintained workflow uses Auto Qwen3-VL 4B for analysis and `Same as image analyzer` for writing. Writer output is capped to a compact 120–220-word target instead of the former 900-token ceiling, validated for reference assignments and hard visible constraints, and cached independently from factual image analysis.
+[ComfyUI-MiniMax-H3-Image-Studio](https://github.com/astropuzzo/ComfyUI-MiniMax-H3-Image-Studio) provided earlier image-oriented H3 resolution, decode and workflow ideas.
 
-Malformed or truncated analyzer JSON is repaired/retried and useful fallback text is preserved. Legacy mention forms such as `@Image 1` remain accepted, but saved state is canonicalized to `@Image1`.
+[ComfyUI-H3-FaceRefine](https://github.com/Carasibana/ComfyUI-H3-FaceRefine) was a useful reference for crop-based H3 face refinement and source-latent injection.
 
-Reference editing is semantic regeneration, not pixel-locked compositing or mask inpainting. Explicit ownership and retention language improves control; it cannot guarantee exact geometry.
+Kijai, Mamad8, LightX2V, Comfy-Org, Impact Pack/Subpack, Unsloth and llama.cpp provide external models, runtimes or optional integrations used around the project.
 
-## Validation and support
+See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for the exact code and licensing boundaries.
 
-Local checks cover Python and frontend syntax, deterministic compilation, state migration, workflow regeneration/schema, node registration, route validation, PNG metadata restoration, and artifact consistency. CUDA speed, peak memory, model availability, and visual quality still require a real GPU run with the exact installed ComfyUI build.
+H3 Studio is not endorsed by MiniMax, ComfyUI or any of the referenced projects.
 
-If generation fails, open an [issue](https://github.com/thaakeno/ComfyUI-MiniMax-H3-Studio/issues) with the full traceback, ComfyUI version, GPU/VRAM, selected model filenames, route, profile, resolution, and a workflow JSON or metadata PNG when safe.
+## Project status
 
-<details>
-<summary><strong>Development checks</strong></summary>
+H3 Studio is actively developed and still alpha.
 
-```bash
-uv sync --extra dev
-uv run ruff check h3studio tests tools
-uv run pytest -q
-npm run check
-uv run python tools/generate_workflows.py --check
-uv run python tools/validate_workflows.py
-uv run python tools/audit_nodes.py
-uv run python tools/release_check.py
-```
+The core image workflow is working, but H3 itself was not released as a dedicated image model and some high-resolution, acceleration, UI and post-processing paths are intentionally experimental.
 
-</details>
-
-## Credits and project boundaries
-
-H3 Studio adapts the ordered media interaction and mention-editor foundations from [ComfyUI-MiniMaxH3-Easy](https://github.com/nkxx188/ComfyUI-MiniMaxH3-Easy) under MIT, and resolution/decode/workflow foundations from [ComfyUI-MiniMax-H3-Image-Studio](https://github.com/astropuzzo/ComfyUI-MiniMax-H3-Image-Studio) under the Unlicense.
-
-Kijai and Mamad8 model artifacts and optional nodes remain external works under their published terms. See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for the exact boundaries. This independent project is not endorsed by MiniMax, ComfyUI, or the referenced projects.
+If something breaks, open an [issue](https://github.com/thaakeno/ComfyUI-MiniMax-H3-Studio/issues) with the traceback, GPU, ComfyUI version, selected model files and workflow when possible.
 
 ## Star history
 
-If H3 Studio makes MiniMax H3 easier to direct, a star is the clearest signal to keep developing it.
+If H3 Studio makes H3 less painful to use, leave a star.
 
 <div align="center">
   <a href="https://www.star-history.com/#thaakeno/ComfyUI-MiniMax-H3-Studio&Date">
@@ -234,8 +286,10 @@ If H3 Studio makes MiniMax H3 easier to direct, a star is the clearest signal to
 </div>
 
 > [!NOTE]
-> **What the GENERATED badge counts:** successful images saved through H3 Studio. It sends only a batched number—never prompts, images, references, seeds, hardware details, paths, or identifiers. Set `H3STUDIO_TELEMETRY=0` to opt out; [implementation details](telemetry/README.md) are public.
+> The GENERATED badge sends only a batched successful-image count. It never sends prompts, images, references, seeds, paths or hardware information. Set `H3STUDIO_TELEMETRY=0` to disable it.
 
 ## License
 
-Original H3 Studio code is available under the [MIT License](LICENSE). Adapted files retain their upstream notices and terms; external models and optional custom nodes retain their own licenses.
+H3 Studio is available under the [MIT License](LICENSE).
+
+External models and optional custom nodes remain under their own licenses.
