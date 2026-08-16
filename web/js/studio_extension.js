@@ -1135,25 +1135,18 @@ function referencesSection(node, state, refresh) {
 }
 
 function advancedSection(node, state, refresh) {
-  const content = element("div", { className: "h3s-advanced-content h3s-section-stack" });
-  content.hidden = !state.ui.advanced_open;
+  const content = element("div", { className: "h3s-section-stack" });
   const update = (generationPatch = {}, promptPatch = {}) => {
     state.generation = { ...state.generation, ...generationPatch };
     state.prompt_options = { ...state.prompt_options, ...promptPatch };
     applyState(node, state);
-    refresh();
   };
   content.append(element("div", { className: "h3s-grid" }, [
     controlRow("Model route", selectControl(state.generation.route, [
       ["auto", "Auto · choose for me"], ["fl2va", "Force FL2VA"], ["ref2va", "Force REF2VA"],
     ], "Conditioning route", (value) => update({ route: value }))),
   ]));
-  content.append(element("p", { className: "h3s-context-help", text: "Resolution mode now lives beside the target-size control. Model route normally follows Mode; force a route only for controlled comparisons." }));
-  const toggle = element("button", {
-    className: "h3s-advanced-toggle", type: "button", attrs: { "aria-expanded": String(state.ui.advanced_open) },
-    on: { click: () => { state.ui.advanced_open = !state.ui.advanced_open; applyState(node, state); refresh(); } },
-  }, [element("span", { text: "Advanced controls" }), element("span", { text: state.ui.advanced_open ? "−" : "+" })]);
-  return element("section", { className: "h3s-section" }, [toggle, content]);
+  return section("Model Route", content);
 }
 
 function renderPanel(node) {
