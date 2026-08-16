@@ -22,17 +22,19 @@ test("current Extensions UI prevents a false Manager-not-detected state", () => 
   assert.match(source, /Open Extensions/);
 });
 
-test("automatic UAD install is only offered when Manager queue API is reachable", () => {
-  assert.match(source, /if \(snapshot\.apiAvailable\)/);
-  assert.match(source, /snapshot\.apiAvailable && !snapshot\.hasUad/);
-  assert.match(source, /Install UAD now/);
-  assert.match(source, /h3ms-open-extensions/);
+test("UAD is presented as an optional helper instead of a runtime requirement", () => {
+  assert.match(source, /UAD optional · not installed/);
+  assert.match(source, /H3 Studio does not need UAD to generate images/);
+  assert.match(source, /Install optional UAD helper/);
+  assert.match(source, /Download missing · UAD/);
+  assert.match(source, /existing or manually installed models work without it/);
 });
 
-test("missing UAD gets native install confirmation when queue API is available", () => {
-  assert.match(source, /title: "H3 Studio setup"/);
-  assert.match(source, /Install it now with ComfyUI-Manager/);
-  assert.match(source, /Manager is opened from the Extensions button/);
+test("missing UAD never triggers an automatic install prompt", () => {
+  assert.doesNotMatch(source, /nativeConfirm/);
+  assert.doesNotMatch(source, /__h3UadPrompted/);
+  assert.doesNotMatch(source, /Install it now with ComfyUI-Manager/);
+  assert.match(source, /await runInstall\(node\)/);
 });
 
 test("onboarding preserves intentionally added UAD graph nodes", () => {
@@ -41,8 +43,9 @@ test("onboarding preserves intentionally added UAD graph nodes", () => {
   assert.doesNotMatch(source, /beforeConfigureGraph/);
 });
 
-test("onboarding retries Manager startup instead of trusting the first probe", () => {
+test("onboarding retries Manager startup while keeping manual use available", () => {
   assert.match(source, /attempt < 12/);
   assert.match(source, /await sleep\(750\)/);
   assert.match(source, /managerSnapshot\(\)/);
+  assert.match(source, /enhanceMissingPanel\(node, snapshot\)/);
 });
