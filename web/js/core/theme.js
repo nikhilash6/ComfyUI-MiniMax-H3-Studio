@@ -21,28 +21,16 @@ export function installTheme() {
       font: 12px/1.4 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
     }
     .h3s-studio-panel *, .h3s-studio-panel *::before, .h3s-studio-panel *::after { box-sizing: border-box; }
-    .h3s-workspace {
-      display: grid;
-      grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-      gap: 14px;
-      align-items: stretch;
-      width: 100%;
-      min-width: 0;
-      min-height: 0;
-      flex: 1 1 0;
-      overflow: hidden;
-    }
+    .h3s-workspace { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 14px; align-items: start; width: 100%; min-width: 0; min-height: 0; }
     .h3s-col {
       display: flex;
       flex-direction: column;
       gap: 7px;
       min-width: 0;
-      min-height: 0;
-      height: 100%;
-      max-height: 100%;
+      max-height: 520px;
       overflow-y: auto !important;
       overflow-x: hidden !important;
-      padding: 0 8px 80px 8px;
+      padding: 0 8px 100px 8px;
       scrollbar-width: thin !important;
       scrollbar-color: #58646d transparent !important;
     }
