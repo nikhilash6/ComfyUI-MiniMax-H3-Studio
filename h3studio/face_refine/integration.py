@@ -54,13 +54,15 @@ def _face_config(context: Any) -> FaceRefineConfig:
     generation = context.state.generation
     ui = dict(context.state.ui)
     advanced = ui.get("face_refine") if isinstance(ui.get("face_refine"), dict) else {}
+    mode = str(generation.face_refine_mode or "off").lower()
+    max_faces = 1 if mode == "auto" else max(1, min(16, int(advanced.get("max_faces", 4))))
     return FaceRefineConfig(
-        mode=str(generation.face_refine_mode or "off").lower(),
+        mode=mode,
         crop_factor=float(generation.face_refine_crop_factor),
         guide_size=int(generation.face_refine_guide_size),
         denoise=float(generation.face_refine_denoise),
         blend_feather=max(2, min(96, int(advanced.get("blend_feather", 16)))),
-        max_faces=max(1, min(16, int(advanced.get("max_faces", 4)))),
+        max_faces=max_faces,
         min_face_size=max(8, min(96, int(advanced.get("min_face_size", 16)))),
         auto_max_face_px=max(48, min(320, int(advanced.get("auto_max_face_px", 160)))),
         color_match=advanced.get("color_match", True) is not False,

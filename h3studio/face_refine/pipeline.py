@@ -111,7 +111,8 @@ class H3FaceRefinePipeline:
         if not boxes:
             return []
         if config.mode.lower() != "auto":
-            return sorted(boxes, key=lambda b: b.confidence, reverse=True)[: config.max_faces]
+            strong_limit = max(1, config.max_faces) if config.max_faces > 1 else 4
+            return sorted(boxes, key=lambda b: b.confidence, reverse=True)[: strong_limit]
 
         # A pure canvas-area threshold treated surprisingly large portrait faces as
         # "distant" on 4 MP images. Use source-pixel head size with a proportional
@@ -119,7 +120,9 @@ class H3FaceRefinePipeline:
         short_edge_cap = max(48, int(round(min(canvas_width, canvas_height) * 0.14)))
         max_px = min(max(48, int(config.auto_max_face_px)), short_edge_cap)
         selected = [box for box in boxes if box.max_dim <= max_px]
-        return sorted(selected, key=lambda b: (b.max_dim, -b.confidence))[: config.max_faces]
+        # Auto strictly refines at most 1 face to prevent unpredicted multi-pass sampling overhead
+        auto_limit = 1
+        return sorted(selected, key=lambda b: (b.max_dim, -b.confidence))[: auto_limit]
 
     def _mask_for_crop(self, crop_patch: Any, region: CropRegion, config: FaceRefineConfig):
         if config.mask_mode != "sam_auto":

@@ -46,9 +46,17 @@ def _face_seed(seed: int, face_index: int) -> int:
 
 
 def _profile_for_fl2va(profile: str) -> tuple[str, bool]:
-    """Return a safe FL2VA recipe and whether the requested profile was preserved."""
+    """Return a fast/safe FL2VA recipe and whether the requested profile was preserved.
 
+    When a LightX profile is active on the main generation (e.g. 8-step), Face Refine
+    automatically uses the optimized LightX 4-step FL2VA profile for 2x faster inpainting.
+    """
     key = str(profile or "base_balanced_12")
+    if key.startswith("lightx_"):
+        if "lightx_v1_fl2v_4_pruned" in SAMPLING_PROFILES:
+            return "lightx_v1_fl2v_4_pruned", True
+        if "lightx_er_sde_4" in SAMPLING_PROFILES:
+            return "lightx_er_sde_4", True
     recipe = SAMPLING_PROFILES.get(key)
     if recipe is not None and recipe.get("route") in (None, ROUTE_FL2VA):
         return key, True
@@ -147,11 +155,17 @@ def _build_alternate_fl2va_sampling(runtime: FaceRefineSamplingRuntime, guide_si
 
 
 def _sampling_objects(runtime: FaceRefineSamplingRuntime, guide_size: int):
-    """Prefer the exact already-patched FL2VA model from the main run."""
+    """Prefer the exact already-patched FL2VA model from the main run if profile matches."""
 
     route = getattr(getattr(runtime.studio_context, "route", None), "selected", None)
     profile, profile_is_fl2va = _profile_for_fl2va(runtime.sampling_profile)
-    if route == ROUTE_FL2VA and runtime.sampling_model is not None and runtime.sampler is not None and profile_is_fl2va:
+    if (
+        route == ROUTE_FL2VA
+        and runtime.sampling_model is not None
+        and runtime.sampler is not None
+        and profile_is_fl2va
+        and runtime.sampling_profile == profile
+    ):
         return runtime.sampling_model, runtime.sampler, profile, runtime.sampling_info or "reused main FL2VA sampling model"
     return _build_alternate_fl2va_sampling(runtime, guide_size)
 

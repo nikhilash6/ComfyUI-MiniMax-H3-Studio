@@ -46,3 +46,15 @@ def test_sampler_refuses_incomplete_h3_runtime_instead_of_fake_refining() -> Non
 
     sampler = build_h3_face_sampler(h3_bundle=IncompleteBundle(), prompt="face")
     assert sampler is None
+
+
+def test_profile_for_fl2va_prefers_fast_lightx_4step() -> None:
+    from h3studio.nodes.face_refine_node import _profile_for_fl2va
+
+    profile, preserved = _profile_for_fl2va("lightx_v1_fl2v_8")
+    assert profile in ("lightx_v1_fl2v_4_pruned", "lightx_er_sde_4")
+    assert preserved is True
+
+    profile_base, _ = _profile_for_fl2va("base_quality_20")
+    assert profile_base == "base_quality_20"
+
