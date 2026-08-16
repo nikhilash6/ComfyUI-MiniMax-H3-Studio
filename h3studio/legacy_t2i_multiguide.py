@@ -211,8 +211,8 @@ def _install_pipeline_patch() -> None:
                 diagnostics,
             )
 
-        import node_helpers
         from .nodes.image_runtime import _prompt_warning
+        import node_helpers
 
         width, height = int(studio_context.width), int(studio_context.height)
         prompt = str(studio_context.prompt)
