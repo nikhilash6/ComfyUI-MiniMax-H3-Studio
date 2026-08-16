@@ -37,6 +37,62 @@ def _guide_positions(count: int, frame_count: int) -> tuple[int, ...]:
     return tuple(0 for _ in range(count))
 
 
+def _install_compiler_diagnostics_patch() -> None:
+    """Replace the stale strict-T2I warning with the real guided-T2I contract."""
+
+    from dataclasses import replace
+
+    from .constants import MODE_TEXT_TO_IMAGE
+    from .errors import Diagnostic
+    from .prompting.compiler import PromptCompiler
+
+    current = PromptCompiler.compile
+    if bool(getattr(current, "__h3studio_guided_t2i_diagnostics__", False)):
+        return
+
+    original = current
+
+    def compile(self, state, *args, **kwargs):
+        result = original(self, state, *args, **kwargs)
+        if result.resolved_mode != MODE_TEXT_TO_IMAGE or not result.references:
+            return result
+
+        count = len(result.references)
+        diagnostics = []
+        for item in result.diagnostics:
+            if item.code == "references_ignored_in_t2i":
+                diagnostics.append(
+                    Diagnostic(
+                        "warning",
+                        "references_guided_in_t2i",
+                        (
+                            f"Explicit text-to-image keeps creative T2I prompt semantics while {count} connected "
+                            f"image reference{'s' if count != 1 else ''} are used as real FL2VA visual "
+                            f"guide{'s' if count != 1 else ''}. They are not REF2VA edit inputs and are not ignored."
+                        ),
+                        field="mode",
+                        hint="Use Image to Image for a locked source edit, or Reference Mix/Edit for REF2VA semantics.",
+                    )
+                )
+            elif item.code == "references_not_mentioned":
+                diagnostics.append(
+                    replace(
+                        item,
+                        message=(
+                            "Connected images are active FL2VA visual guides, but the prompt does not explicitly assign "
+                            "their job. Visual guidance still applies; @Image mentions make multi-guide intent less ambiguous."
+                        ),
+                    )
+                )
+            else:
+                diagnostics.append(item)
+        return replace(result, diagnostics=tuple(diagnostics))
+
+    compile.__h3studio_guided_t2i_diagnostics__ = True
+    compile.__wrapped__ = original
+    PromptCompiler.compile = compile
+
+
 def _install_contract_patch() -> None:
     from . import runtime_contract_fixes as contracts
     from .constants import MODE_TEXT_TO_IMAGE
@@ -256,6 +312,7 @@ def _install_pipeline_patch() -> None:
 def install() -> None:
     """Install before runtime_contract_fixes captures the conditioning pipeline."""
 
+    _install_compiler_diagnostics_patch()
     _install_pipeline_patch()
     _install_contract_patch()
 
