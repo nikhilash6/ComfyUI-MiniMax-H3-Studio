@@ -21,6 +21,7 @@ from typing import Any
 LOGGER = logging.getLogger(__name__)
 _RUNTIME_MODE = "text_to_image_guided (FL2VA)"
 _MAX_GUIDES = 9
+_GUIDED_WRITER_MARKER = "GUIDED T2I ACTIVE VISUAL GUIDE CONTRACT"
 
 
 def _guide_positions(count: int, frame_count: int) -> tuple[int, ...]:
@@ -35,6 +36,67 @@ def _guide_positions(count: int, frame_count: int) -> tuple[int, ...]:
     del frame_count  # Kept in the signature for tests/diagnostics compatibility.
     count = max(0, min(_MAX_GUIDES, int(count)))
     return tuple(0 for _ in range(count))
+
+
+def _guided_writer_instruction(adherence: float, reference_count: int) -> str:
+    """Recreate the old reference-priority writer semantics without another pass."""
+
+    priority = max(0, min(100, round(float(adherence) * 100)))
+    count = max(1, min(_MAX_GUIDES, int(reference_count)))
+    plural = "references" if count != 1 else "reference"
+    return (
+        f"{_GUIDED_WRITER_MARKER}: This is creative text-to-image with {count} connected FL2VA visual {plural}, "
+        f"using {priority}% reference priority. The connected source records are active visual grounding even when "
+        "the user never typed an @Image tag. Naturally carry the useful visible guide traits into the final prose: "
+        "subject design/identity, face and hair, outfit/accessories, proportions, pose/expression, composition, style, "
+        "palette or lighting when relevant to each source. With one general/reference Image1, treat it as the default "
+        "visual subject guide. Explicit user-requested changes always win, but do not let contradictory boilerplate or "
+        "template fields silently erase unrequested guide traits. A reference_only card still means active source "
+        "guidance here; it does not mean ignore the image. Keep creative T2I wording, not locked-source edit wording. "
+        "If the user omitted @Image tags, do not add them merely for bookkeeping; verbalize the relevant guide traits "
+        "naturally, as the historical T2I enhancer did."
+    )
+
+
+def _install_writer_priority_patch() -> None:
+    """Feed guided-T2I reference priority into the existing one-pass writer."""
+
+    from dataclasses import replace
+
+    from .constants import MODE_TEXT_TO_IMAGE
+    from .nodes import director as director_module
+
+    current = director_module._state_from_widgets
+    if bool(getattr(current, "__h3studio_guided_t2i_writer_priority__", False)):
+        return
+
+    original = current
+
+    def state_from_widgets(*args, **kwargs):
+        state = original(*args, **kwargs)
+        if state.generation.mode != MODE_TEXT_TO_IMAGE or state.reference_count <= 0:
+            return state
+
+        internal = _guided_writer_instruction(state.prompt_options.adherence, state.reference_count)
+        existing = str(state.prompt_options.system_instruction or "").strip()
+        if _GUIDED_WRITER_MARKER in existing:
+            merged = existing
+        else:
+            merged = f"{existing}\n\n{internal}".strip() if existing else internal
+
+        LOGGER.info(
+            "[H3 Studio - Director] Guided T2I writer contract | refs=%d | reference priority=%d%% | no extra model pass",
+            state.reference_count,
+            max(0, min(100, round(float(state.prompt_options.adherence) * 100))),
+        )
+        return replace(
+            state,
+            prompt_options=replace(state.prompt_options, system_instruction=merged),
+        )
+
+    state_from_widgets.__h3studio_guided_t2i_writer_priority__ = True
+    state_from_widgets.__wrapped__ = original
+    director_module._state_from_widgets = state_from_widgets
 
 
 def _install_compiler_diagnostics_patch() -> None:
@@ -79,9 +141,10 @@ def _install_compiler_diagnostics_patch() -> None:
                     replace(
                         item,
                         message=(
-                            "Connected images are active FL2VA visual guides, but the prompt does not explicitly assign "
-                            "their job. Visual guidance still applies; @Image mentions make multi-guide intent less ambiguous."
+                            "Connected images are active FL2VA visual guides. In guided T2I the prompt enhancer also "
+                            "carries their relevant visible traits into the final prose even without explicit @Image mentions."
                         ),
+                        hint="Use @Image mentions only when you want to assign a precise job, especially with multiple guides.",
                     )
                 )
             else:
@@ -313,6 +376,7 @@ def _install_pipeline_patch() -> None:
 def install() -> None:
     """Install before runtime_contract_fixes captures the conditioning pipeline."""
 
+    _install_writer_priority_patch()
     _install_compiler_diagnostics_patch()
     _install_pipeline_patch()
     _install_contract_patch()
