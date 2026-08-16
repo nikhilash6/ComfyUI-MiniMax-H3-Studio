@@ -31,6 +31,7 @@ Text-to-image, image editing, multi-reference generation, LightX acceleration, s
 <td width="50%"><img src="https://github.com/user-attachments/assets/f33c76e2-9d8d-40ce-8f23-e0b41c3ca44b" width="100%" /></td>
 </tr>
 </table>
+
 > [!WARNING]
 > **ComfyUI Nodes 2.0 is not supported yet.** H3 Studio's custom Director and Benchmark interfaces currently target classic Nodes 1.0. Nodes 2.0 UI support is still being worked on.
 
