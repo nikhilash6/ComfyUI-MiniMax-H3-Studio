@@ -9,6 +9,7 @@ if __package__:
     # completed analyzer/writer and Smart Benchmark schemas.
     from .h3studio.prompt_prep_residency_fast import install as install_prompt_prep_residency_fast
     from .h3studio.consolidated_integrity_fix import install as install_consolidated_integrity_fix
+    from .h3studio.post_merge_fixes import install as install_post_merge_fixes
 
     # Accept stale alpha Smart Benchmark values before ComfyUI validation.
     install_smart_benchmark_compat()
@@ -16,6 +17,8 @@ if __package__:
     install_prompt_prep_residency_fast()
     # Apply prompt/reference/PNG/preview integrity fixes after runtime registration.
     install_consolidated_integrity_fix()
+    # Fill the one-reference semantic resize gap and make automatic roles prompt-aware.
+    install_post_merge_fixes()
 else:  # pragma: no cover - collection shim, not the ComfyUI execution path
     NODE_CLASS_MAPPINGS = {}
     NODE_DISPLAY_NAME_MAPPINGS = {}
