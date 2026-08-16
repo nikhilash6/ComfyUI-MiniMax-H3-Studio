@@ -148,8 +148,17 @@ export function studioMetadataFromChunks(chunks) {
   if (!state) {
     throw new Error("PNG is valid, but it does not contain restorable H3 Studio Director state.");
   }
+  const resultState = clone(state);
+  if (prompt && typeof prompt === "object") {
+    for (const node of Object.values(prompt)) {
+      if (String(node?.class_type || "") === "H3StudioDirector" && typeof node?.inputs?.prompt === "string" && node.inputs.prompt.trim()) {
+        resultState.prompt = node.inputs.prompt;
+        break;
+      }
+    }
+  }
   return {
-    state: clone(state),
+    state: resultState,
     h3studio: h3studio && typeof h3studio === "object" ? h3studio : {},
     workflow,
     prompt,
