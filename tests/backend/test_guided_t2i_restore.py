@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import numpy as np
+import pytest
 
 from h3studio.constants import MODE_TEXT_TO_IMAGE
 from h3studio.legacy_t2i_multiguide import (
@@ -50,6 +50,7 @@ def test_explicit_t2i_diagnostic_says_reference_is_guided_not_ignored() -> None:
 
 
 def test_mtmd_text_adapter_uses_information_free_placeholder(monkeypatch, tmp_path: Path) -> None:
+    np = pytest.importorskip("numpy")
     from h3studio import qwen35_gguf as gguf
 
     mmproj = tmp_path / "mmproj.gguf"
