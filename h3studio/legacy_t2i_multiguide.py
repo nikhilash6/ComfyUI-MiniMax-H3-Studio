@@ -5,6 +5,12 @@ still noticed connected images and entered FL2VA source/keyframe conditioning.
 That accidental hybrid produced useful results: creative T2I prompt semantics
 plus strong visual grounding. Keep that behavior intentionally for explicit
 T2I with connected images, without changing pure T2I, I2I, or REF2VA.
+
+The one-image branch deliberately delegates to the exact historical I2I
+conditioning implementation. This keeps the useful old accident byte-for-byte
+at the H3 conditioning level while the Director/compiler remains T2I. The only
+new behavior is the 2-9 image extension, where all guides are simultaneous
+frame-0 FL2VA conditions rather than a temporal morph sequence.
 """
 
 from __future__ import annotations
@@ -18,22 +24,17 @@ _MAX_GUIDES = 9
 
 
 def _guide_positions(count: int, frame_count: int) -> tuple[int, ...]:
-    """Spread FL2VA guides over the available still packet.
+    """Place every guided-T2I image at the historical frame-0 anchor.
 
-    One image stays at frame 0 exactly like the historical path. Multiple
-    images use H3's native multi-keyframe mechanism and are distributed over
-    the packet. Duplicate frame indices are allowed when there are more guides
-    than decoded frames; PackedLayout keeps every condition block separately.
+    H3's PackedLayout accepts multiple FL2VA condition blocks at the same
+    resolved frame. Keeping every guide at frame 0 is the closest multi-image
+    generalization of the old one-image T2I accident and avoids turning a still
+    packet into a temporal interpolation between references.
     """
 
+    del frame_count  # Kept in the signature for tests/diagnostics compatibility.
     count = max(0, min(_MAX_GUIDES, int(count)))
-    frame_count = max(1, int(frame_count))
-    if count <= 0:
-        return ()
-    if count == 1 or frame_count == 1:
-        return tuple(0 for _ in range(count))
-    last = frame_count - 1
-    return tuple(int(round(index * last / (count - 1))) for index in range(count))
+    return tuple(0 for _ in range(count))
 
 
 def _install_contract_patch() -> None:
@@ -118,6 +119,42 @@ def _install_pipeline_patch() -> None:
                 reference_size=reference_size,
             )
 
+        # This is the exact accidental pre-contract-fix path for one image:
+        # T2I compiler/context upstream, old FL2VA I2I conditioner downstream.
+        # Delegating instead of reimplementing removes every possible semantic
+        # difference in source fitting, CLIP multimodal tokenization, latent
+        # preparation, VAE encoding, keyframe insertion and cache behavior.
+        if len(guides) == 1:
+            historical = original(
+                bundle,
+                studio_context,
+                route=route,
+                runtime_mode="image_to_image (FL2VA)",
+                used_images=guides,
+                frame_preset=frame_preset,
+                source_fit=source_fit,
+                reference_size=reference_size,
+            )
+            runtime_info = historical.runtime_info.replace(
+                "Mode: image_to_image (FL2VA)",
+                "Mode: text_to_image (FL2VA · exact legacy one-guide)",
+                1,
+            )
+            diagnostics = historical.diagnostics.replace(
+                "reference_conditioning=source_vae:",
+                "legacy_t2i_source_vae:",
+                1,
+            )
+            LOGGER.info("[H3 Studio] Exact legacy one-guide T2I conditioning\n  %s", diagnostics)
+            return cache.ConditioningStages(
+                historical.conditioning,
+                historical.latent,
+                historical.fitted_source,
+                historical.requested_frames,
+                runtime_info,
+                diagnostics,
+            )
+
         import node_helpers
         from .nodes.image_runtime import _prompt_warning
 
@@ -125,8 +162,8 @@ def _install_pipeline_patch() -> None:
         prompt = str(studio_context.prompt)
         image_ids = cache.image_cache_key(studio_context, guides)
 
-        # Deliberately reuse the historical FL2VA source-latent policy. The only
-        # behavioral extension is that every connected image becomes a guide.
+        # Multi-guide is the only intentional extension beyond historical T2I.
+        # Keep the same source-latent policy and same short still packet.
         latent, requested_frames, natural_frames, internal_frames, output_strategy, latent_state = cache._latent_stage(
             "image_to_image (FL2VA)", width, height, frame_preset
         )
@@ -189,10 +226,10 @@ def _install_pipeline_patch() -> None:
             else f"temporal latent naturally decodes {natural_frames} frames; H3 Exact Frame Decode keeps {requested_frames}"
         )
         runtime_info = (
-            f"Mode: text_to_image (FL2VA · legacy guided) | temporal profile: {internal_frames} frames | "
+            f"Mode: text_to_image (FL2VA · legacy multi-guide) | temporal profile: {internal_frames} frames | "
             f"canvas {width}x{height} | internal packet {natural_frames} frames | decoded profile {requested_frames} | "
             f"{decode_note} | {trained_note}. {len(guides)} connected image guide(s) are passed to H3's multimodal "
-            f"conditioning encoder and VAE-encoded as native FL2VA keyframes at target frame(s) [{positions_text}]. "
+            f"conditioning encoder and VAE-encoded as simultaneous native FL2VA frame-0 keyframes. "
             "The Director/compiler remains text-to-image, so no locked-source edit wording is injected. "
             f"Preferred output strategy: {output_strategy}.{_prompt_warning(prompt)}"
         )
@@ -201,7 +238,7 @@ def _install_pipeline_patch() -> None:
             f"visual_guides=FL2VA:{hits}/{len(guides)} VAE HIT | positions=[{positions_text}] | "
             f"latent_prepare={latent_state} | text_encoder_runtime={residency}"
         )
-        LOGGER.info("[H3 Studio] Legacy guided T2I conditioning\n  %s", diagnostics)
+        LOGGER.info("[H3 Studio] Legacy multi-guide T2I conditioning\n  %s", diagnostics)
         return cache.ConditioningStages(
             conditioning,
             latent,
