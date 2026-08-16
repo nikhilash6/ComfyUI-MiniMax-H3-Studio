@@ -38,20 +38,25 @@ test("sampling badges distinguish LightX 4/8 and PDD profiles", () => {
   assert.equal(shortSamplingLabel("base_balanced_12"), "Base 12");
 });
 
-test("Manifest includes cinematic, anime and realistic catalog entries", () => {
+test("Manifest includes cinematic and anime catalog entries from authentic generations", () => {
   const ids = manifestJson.map((demo) => demo.id);
   assert.ok(ids.includes("cinematic_interstellar_miller"));
+  assert.ok(ids.includes("cinematic_interstellar_docking"));
   assert.ok(ids.includes("cinematic_interstellar_wormhole"));
   assert.ok(ids.includes("cinematic_sicario_border"));
   assert.ok(ids.includes("cinematic_nocountry_cointoss"));
   assert.ok(ids.includes("cinematic_nocountry_motel"));
   assert.ok(ids.includes("cinematic_1917_ruins_flare"));
-  assert.ok(ids.includes("anime_gits_rainy_overpass"));
+  assert.ok(ids.includes("anime_naruto_team7_bridge"));
+  assert.ok(ids.includes("anime_bleach_downtime"));
+  assert.ok(ids.includes("anime_dragonball_adventure"));
+  assert.ok(ids.includes("anime_aot_reconnaissance"));
+  assert.ok(ids.includes("anime_hxh_yorknew_surveillance"));
+  assert.ok(ids.includes("anime_gits_sac_surveillance"));
 
   const categories = new Set(manifestJson.map((demo) => demo.category));
   assert.ok(categories.has("CINEMATIC"));
   assert.ok(categories.has("ANIME"));
-  assert.ok(categories.has("REALISTIC"));
 });
 
 test("Demos shelf derives categories, traces the real upstream Director, and requires embedded PNG metadata", () => {

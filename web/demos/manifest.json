@@ -6,5 +6,101 @@
     "subtitle": "Those aren't mountains... they're waves.",
     "thumbnail": "cinematic_interstellar_miller.webp",
     "metadata_file": "cinematic_interstellar_miller.webp"
+  },
+  {
+    "id": "anime_naruto_team7_bridge",
+    "category": "ANIME",
+    "title": "Naruto \u00b7 Team 7 on Bridge",
+    "subtitle": "Waiting on the bridge.",
+    "thumbnail": "anime_naruto_team7_bridge.webp",
+    "metadata_file": "anime_naruto_team7_bridge.webp"
+  },
+  {
+    "id": "anime_bleach_downtime",
+    "category": "ANIME",
+    "title": "Bleach \u00b7 Seireitei Corridor",
+    "subtitle": "Soul Society infiltration downtime.",
+    "thumbnail": "anime_bleach_downtime.webp",
+    "metadata_file": "anime_bleach_downtime.webp"
+  },
+  {
+    "id": "anime_dragonball_adventure",
+    "category": "ANIME",
+    "title": "Dragon Ball \u00b7 Early Adventure",
+    "subtitle": "Goku and Bulma on the road.",
+    "thumbnail": "anime_dragonball_adventure.webp",
+    "metadata_file": "anime_dragonball_adventure.webp"
+  },
+  {
+    "id": "anime_aot_reconnaissance",
+    "category": "ANIME",
+    "title": "Attack on Titan \u00b7 Forest Reconnaissance",
+    "subtitle": "Quiet scout moment in the trees.",
+    "thumbnail": "anime_aot_reconnaissance.webp",
+    "metadata_file": "anime_aot_reconnaissance.webp"
+  },
+  {
+    "id": "anime_hxh_yorknew_surveillance",
+    "category": "ANIME",
+    "title": "Hunter x Hunter \u00b7 Yorknew Surveillance",
+    "subtitle": "Quiet observation in the city.",
+    "thumbnail": "anime_hxh_yorknew_surveillance.webp",
+    "metadata_file": "anime_hxh_yorknew_surveillance.webp"
+  },
+  {
+    "id": "anime_gits_sac_surveillance",
+    "category": "ANIME",
+    "title": "Ghost in the Shell: SAC \u00b7 Surveillance",
+    "subtitle": "Section 9 rainy city stakeout.",
+    "thumbnail": "anime_gits_sac_surveillance.webp",
+    "metadata_file": "anime_gits_sac_surveillance.webp"
+  },
+  {
+    "id": "cinematic_interstellar_docking",
+    "category": "CINEMATIC",
+    "title": "Interstellar \u00b7 Emergency Docking",
+    "subtitle": "Spinning docking maneuver above the planet.",
+    "thumbnail": "cinematic_interstellar_docking.webp",
+    "metadata_file": "cinematic_interstellar_docking.webp"
+  },
+  {
+    "id": "cinematic_interstellar_wormhole",
+    "category": "CINEMATIC",
+    "title": "Interstellar \u00b7 Saturn Wormhole Handshake",
+    "subtitle": "Approaching the spherical spacetime anomaly.",
+    "thumbnail": "cinematic_interstellar_wormhole.webp",
+    "metadata_file": "cinematic_interstellar_wormhole.webp"
+  },
+  {
+    "id": "cinematic_sicario_border",
+    "category": "CINEMATIC",
+    "title": "Sicario \u00b7 Juarez Border Confrontation",
+    "subtitle": "Tense gridlock at the bridge crossing.",
+    "thumbnail": "cinematic_sicario_border.webp",
+    "metadata_file": "cinematic_sicario_border.webp"
+  },
+  {
+    "id": "cinematic_nocountry_motel",
+    "category": "CINEMATIC",
+    "title": "No Country for Old Men \u00b7 Del Rio Motel",
+    "subtitle": "Which room did you give him?",
+    "thumbnail": "cinematic_nocountry_motel.webp",
+    "metadata_file": "cinematic_nocountry_motel.webp"
+  },
+  {
+    "id": "cinematic_nocountry_cointoss",
+    "category": "CINEMATIC",
+    "title": "No Country for Old Men \u00b7 The Coin Toss",
+    "subtitle": "What's the most you ever lost on a coin toss?",
+    "thumbnail": "cinematic_nocountry_cointoss.webp",
+    "metadata_file": "cinematic_nocountry_cointoss.webp"
+  },
+  {
+    "id": "cinematic_1917_ruins_flare",
+    "category": "CINEMATIC",
+    "title": "1917 \u00b7 Night in the Burning Ruins",
+    "subtitle": "Moving through the ruined town under flares.",
+    "thumbnail": "cinematic_1917_ruins_flare.webp",
+    "metadata_file": "cinematic_1917_ruins_flare.webp"
   }
 ]
