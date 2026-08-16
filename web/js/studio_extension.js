@@ -1159,6 +1159,11 @@ function advancedSection(node, state, refresh) {
 function renderPanel(node) {
   const root = node.__h3studioPanel;
   if (!root) return;
+  const prevLeftScroll = root.querySelector(".h3s-col-left")?.scrollTop ?? 0;
+  const prevRightScroll = root.querySelector(".h3s-col-right")?.scrollTop ?? 0;
+  const prevWorkspaceScroll = root.querySelector(".h3s-workspace")?.scrollTop ?? 0;
+  const prevRootScroll = root.scrollTop ?? 0;
+
   const existingShelf = root.querySelector(".h3s-demos-shelf") || node.__h3studioShelf;
   const state = applyState(node, stateFromNode(node), false);
   root.replaceChildren();
@@ -1196,6 +1201,23 @@ function renderPanel(node) {
   ].filter(Boolean);
   root.append(...children);
   node.__h3studioLinkSignature = linkSignature(node);
+
+  if (prevLeftScroll > 0) {
+    leftCol.scrollTop = prevLeftScroll;
+    requestAnimationFrame(() => { leftCol.scrollTop = prevLeftScroll; });
+  }
+  if (prevRightScroll > 0) {
+    rightCol.scrollTop = prevRightScroll;
+    requestAnimationFrame(() => { rightCol.scrollTop = prevRightScroll; });
+  }
+  if (prevWorkspaceScroll > 0) {
+    workspace.scrollTop = prevWorkspaceScroll;
+    requestAnimationFrame(() => { workspace.scrollTop = prevWorkspaceScroll; });
+  }
+  if (prevRootScroll > 0) {
+    root.scrollTop = prevRootScroll;
+    requestAnimationFrame(() => { root.scrollTop = prevRootScroll; });
+  }
 
   if (!existingShelf && typeof installDemosShelf === "function") {
     installDemosShelf(node);
