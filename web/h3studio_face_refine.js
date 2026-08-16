@@ -43,6 +43,12 @@ function installStyles() {
     .h3s-fr-status.is-running .h3s-fr-status-dot{background:#c9a75e}
     .h3s-fr-status.is-done .h3s-fr-status-dot{background:#6e9b80}
     .h3s-fr-status.is-error .h3s-fr-status-dot{background:#b86d65}
+    .h3s-fr-warning{font-size:7.5px;line-height:1.35;color:#b89565;background:#1a150d;border:1px solid #362916;border-radius:4px;padding:4px 6px;margin-top:6px}
+    .h3s-fr-mp-control{grid-column:1 / -1;min-width:0;background:#0c0f11;border:1px solid #1a1e22;border-radius:5px;padding:5px 6px}
+    .h3s-fr-mp-presets{display:flex;gap:3px;margin-top:4px}
+    .h3s-fr-mp-preset{appearance:none;border:1px solid #22282d;border-radius:3px;background:#14181b;color:#7c8790;font-size:7.5px;padding:2px 4px;cursor:pointer;flex:1;text-align:center;transition:all .15s}
+    .h3s-fr-mp-preset:hover{color:#c5cdd2;background:#1c2125}
+    .h3s-fr-mp-preset.is-active{color:#e6ad55;border-color:#544122;background:#241d13;font-weight:600}
     .h3s-fr-proof{margin-top:7px;border-radius:6px;overflow:hidden;border:1px solid #1e2327;background:#0d1113;padding:6px;display:flex;flex-direction:column;gap:5px}
     .h3s-fr-proof-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:8px}
     .h3s-fr-proof-title{font-weight:700;color:#dbe2e6}
@@ -191,7 +197,7 @@ function renderTelemetry(node, container) {
   slot.appendChild(status);
 }
 
-function rangeControl(labelText, value, min, max, step, format, onInput) {
+function rangeControl(labelText, value, min, max, step, format, onInput, onCommit) {
   const box = document.createElement("div");
   box.className = "h3s-fr-control";
   const label = document.createElement("div");
@@ -212,9 +218,101 @@ function rangeControl(labelText, value, min, max, step, format, onInput) {
   input.addEventListener("input", () => {
     const next = Number(input.value);
     display.textContent = format(next);
-    onInput(next);
+    onInput?.(next);
+  });
+  input.addEventListener("change", () => {
+    const next = Number(input.value);
+    onCommit?.(next);
+  });
+  input.addEventListener("pointerup", () => {
+    const next = Number(input.value);
+    onCommit?.(next);
   });
   box.append(label, input);
+  return box;
+}
+
+function mpSliderControl(labelText, value, onInput, onCommit) {
+  const box = document.createElement("div");
+  box.className = "h3s-fr-mp-control";
+  const label = document.createElement("div");
+  label.className = "h3s-fr-label";
+  const name = document.createElement("span");
+  name.textContent = labelText;
+  const display = document.createElement("span");
+  display.className = "h3s-fr-value";
+
+  const format = (size) => {
+    const mp = (size * size) / (1024 * 1024);
+    let note = "Fast";
+    if (size >= 1536) note = "Extreme";
+    else if (size >= 1280) note = "High";
+    else if (size >= 1024) note = "Detail";
+    else if (size >= 768) note = "Recommended";
+    return `${mp.toFixed(2)} MP · ${size} px (${note})`;
+  };
+
+  display.textContent = format(value);
+  label.append(name, display);
+
+  const input = document.createElement("input");
+  input.type = "range";
+  input.className = "h3s-fr-range";
+  input.min = "512";
+  input.max = "1536";
+  input.step = "64";
+  input.value = String(value);
+
+  const presets = [
+    [512, "0.26 MP"],
+    [768, "0.59 MP"],
+    [1024, "1.05 MP"],
+    [1280, "1.64 MP"],
+    [1536, "2.36 MP"],
+  ];
+  const presetWrap = document.createElement("div");
+  presetWrap.className = "h3s-fr-mp-presets";
+  const presetButtons = [];
+
+  const updateActivePresets = (v) => {
+    for (const [btn, presetVal] of presetButtons) {
+      btn.classList.toggle("is-active", Math.abs(presetVal - v) < 32);
+    }
+  };
+
+  for (const [presetVal, presetLabel] of presets) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `h3s-fr-mp-preset${Math.abs(presetVal - value) < 32 ? " is-active" : ""}`;
+    btn.textContent = presetLabel;
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      input.value = String(presetVal);
+      display.textContent = format(presetVal);
+      updateActivePresets(presetVal);
+      onInput(presetVal);
+      onCommit(presetVal);
+    });
+    presetButtons.push([btn, presetVal]);
+    presetWrap.appendChild(btn);
+  }
+
+  input.addEventListener("input", () => {
+    const next = Number(input.value);
+    display.textContent = format(next);
+    updateActivePresets(next);
+    onInput(next);
+  });
+  input.addEventListener("change", () => {
+    const next = Number(input.value);
+    onCommit(next);
+  });
+  input.addEventListener("pointerup", () => {
+    const next = Number(input.value);
+    onCommit(next);
+  });
+
+  box.append(label, input, presetWrap);
   return box;
 }
 
@@ -317,6 +415,11 @@ function createFaceRefineSection(node, state, applyCallback) {
   const controls = document.createElement("div");
   controls.hidden = mode === "off";
 
+  const warning = document.createElement("div");
+  warning.className = "h3s-fr-warning";
+  warning.textContent = "Face Refine runs an individual H3 FL2VA diffusion pass per detected face. Higher MP guides and multiple faces will increase total generation time proportionally.";
+  controls.appendChild(warning);
+
   const details = document.createElement("details");
   details.className = "h3s-fr-advanced";
   const summary = document.createElement("summary");
@@ -326,12 +429,12 @@ function createFaceRefineSection(node, state, applyCallback) {
   grid.className = "h3s-fr-grid";
 
   grid.append(
-    rangeControl("Crop context", generation.face_refine_crop_factor, 1.5, 4.0, 0.1, (v) => `${v.toFixed(1)}×`, (v) => { generation.face_refine_crop_factor = v; commit(); }),
-    selectBox("Refine canvas", String(generation.face_refine_guide_size), [["512", "512 px · faster"], ["768", "768 px · recommended"], ["1024", "1024 px · expensive"]], (v) => { generation.face_refine_guide_size = Number(v); commit(); }),
-    rangeControl("Base denoise", generation.face_refine_denoise, 0.10, 0.60, 0.01, (v) => v.toFixed(2), (v) => { generation.face_refine_denoise = v; commit(); }),
-    rangeControl("Max faces", advanced.max_faces, 1, 12, 1, (v) => String(Math.round(v)), (v) => { advanced.max_faces = Math.round(v); commit(); }),
-    rangeControl("Auto face ceiling", advanced.auto_max_face_px, 48, 240, 8, (v) => `${Math.round(v)} px`, (v) => { advanced.auto_max_face_px = Math.round(v); commit(); }),
-    rangeControl("Blend feather", advanced.blend_feather, 4, 48, 2, (v) => `${Math.round(v)} px`, (v) => { advanced.blend_feather = Math.round(v); commit(); }),
+    mpSliderControl("Refine target canvas", generation.face_refine_guide_size, (v) => { generation.face_refine_guide_size = v; }, (v) => { generation.face_refine_guide_size = v; commit(); }),
+    rangeControl("Crop context", generation.face_refine_crop_factor, 1.5, 4.0, 0.1, (v) => `${v.toFixed(1)}×`, (v) => { generation.face_refine_crop_factor = v; }, () => commit()),
+    rangeControl("Base denoise", generation.face_refine_denoise, 0.10, 0.60, 0.01, (v) => v.toFixed(2), (v) => { generation.face_refine_denoise = v; }, () => commit()),
+    rangeControl("Max faces", advanced.max_faces, 1, 12, 1, (v) => String(Math.round(v)), (v) => { advanced.max_faces = Math.round(v); }, () => commit()),
+    rangeControl("Auto face ceiling", advanced.auto_max_face_px, 48, 240, 8, (v) => `${Math.round(v)} px`, (v) => { advanced.auto_max_face_px = Math.round(v); }, () => commit()),
+    rangeControl("Blend feather", advanced.blend_feather, 4, 48, 2, (v) => `${Math.round(v)} px`, (v) => { advanced.blend_feather = Math.round(v); }, () => commit()),
     selectBox("Mask", advanced.mask_mode, [["feather", "Feathered face box · default"], ["sam_auto", "SAM if installed · fallback safe"]], (v) => { advanced.mask_mode = v; commit(); }),
     switchBox("Adaptive denoise", advanced.adaptive_denoise, (v) => { advanced.adaptive_denoise = v; commit(); }),
     switchBox("Color-match patch", advanced.color_match, (v) => { advanced.color_match = v; commit(); }),
