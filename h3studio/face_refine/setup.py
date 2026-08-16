@@ -225,32 +225,50 @@ def _download_file(url: str, dest_path: Path, label: str) -> None:
         raise
 
 
+def _install_custom_node_requirements(target_dir: Path, actions: list[str]) -> bool:
+    req_file = target_dir / "requirements.txt"
+    if not req_file.is_file():
+        return False
+    actions.append(f"Installing dependencies for {target_dir.name} ({req_file.name}) using {sys.executable}…")
+    res = _run([sys.executable, "-m", "pip", "install", "-r", str(req_file)], cwd=target_dir, timeout=300)
+    if res.returncode != 0:
+        actions.append(f"Warning: pip install -r {req_file.name} for {target_dir.name} returned code {res.returncode}: {res.stdout.strip()[:200]}")
+        return False
+    actions.append(f"Successfully verified/installed requirements for {target_dir.name}.")
+    return True
+
+
 def _install_git_custom_node(repo_url: str, dirname: str, actions: list[str]) -> bool:
     custom_nodes = _custom_nodes_path()
     custom_nodes.mkdir(parents=True, exist_ok=True)
     target = custom_nodes / dirname
 
+    installed_or_updated = False
     if target.exists():
         if not (target / ".git").exists():
             actions.append(f"{dirname} exists (skipped git update: not a git repo).")
-            return False
-        fetch = _run(["git", "fetch", "origin"], target, timeout=60)
-        if fetch.returncode == 0:
-            pull = _run(["git", "merge", "--ff-only"], target, timeout=60)
-            if pull.returncode == 0 and "Already up to date" not in pull.stdout:
-                actions.append(f"Updated {dirname} to latest commit.")
-                return True
-            actions.append(f"{dirname} already up to date.")
-            return False
-        actions.append(f"{dirname} already installed.")
-        return False
+        else:
+            fetch = _run(["git", "fetch", "origin"], target, timeout=60)
+            if fetch.returncode == 0:
+                pull = _run(["git", "merge", "--ff-only"], target, timeout=60)
+                if pull.returncode == 0 and "Already up to date" not in pull.stdout:
+                    actions.append(f"Updated {dirname} to latest commit.")
+                    installed_or_updated = True
+                else:
+                    actions.append(f"{dirname} already up to date.")
+            else:
+                actions.append(f"{dirname} already installed.")
+    else:
+        actions.append(f"Cloning {dirname} from {repo_url}…")
+        clone = _run(["git", "clone", "--filter=blob:none", repo_url, str(target)], custom_nodes, timeout=180)
+        if clone.returncode != 0:
+            raise RuntimeError(f"Failed to clone {dirname}: {clone.stdout.strip()}")
+        actions.append(f"Successfully installed {dirname}.")
+        installed_or_updated = True
 
-    actions.append(f"Cloning {dirname} from {repo_url}…")
-    clone = _run(["git", "clone", "--filter=blob:none", repo_url, str(target)], custom_nodes, timeout=180)
-    if clone.returncode != 0:
-        raise RuntimeError(f"Failed to clone {dirname}: {clone.stdout.strip()}")
-    actions.append(f"Successfully installed {dirname}.")
-    return True
+    # Always ensure the custom node's requirements.txt is installed into the ComfyUI python environment
+    _install_custom_node_requirements(target, actions)
+    return installed_or_updated
 
 
 def _pip_install_ultralytics(actions: list[str]) -> bool:
