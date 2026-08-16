@@ -51,17 +51,21 @@ function normalizeNumericChoice(value, allowed, fallback) {
 }
 
 function constrainChoiceWidget(node, name, values, fallback, numeric = false) {
-    const target = widget(node, name);
-    if (!target) return;
-    target.label = CONTROL_LABELS[name] || target.label;
-    const next = numeric
-        ? normalizeNumericChoice(target.value, values, fallback)
-        : normalizeStringChoice(target.value, values, fallback);
-    target.value = next;
-    if (target._state) target._state.value = next;
-    target.type = "combo";
-    target.options ||= {};
-    target.options.values = [...values];
+    try {
+        const target = widget(node, name);
+        if (!target) return;
+        target.label = CONTROL_LABELS[name] || target.label;
+        const next = numeric
+            ? normalizeNumericChoice(target.value, values, fallback)
+            : normalizeStringChoice(target.value, values, fallback);
+        target.value = next;
+        if (target._state) target._state.value = next;
+        if (target.type !== "combo") target.type = "combo";
+        target.options ||= {};
+        target.options.values = [...values];
+    } catch {
+        // ignore safely
+    }
 }
 
 function sanitizeControlWidgets(node) {
