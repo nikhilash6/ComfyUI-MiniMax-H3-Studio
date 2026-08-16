@@ -9,12 +9,20 @@ const DIRECTOR = "H3StudioDirector";
 // nested text-node replacement made all of these decorators wake together.
 const ROOT_ONLY_OBSERVERS = [
   "__h3studioV6Observer",
+  "__h3GeometryObserver",
   "__h3InteractionRestoreObserver",
+  "__h3BenchmarkControlsV12Observer",
+  "__h3b14Observer",
   "__h3b14DirectorObserver",
   "__h3b15Observer",
   "__h3V16Observer",
   "__h3V17Observer",
+  "__h3V18Observer",
   "__h3V20Observer",
+  "__h3V21Observer",
+  "__h3studioSeedObserver",
+  "__h3studioBenchmarkV8Observer",
+  "__h3sMpScrollObserver",
 ];
 
 const tuned = new WeakSet();
@@ -32,11 +40,14 @@ function tuneObserver(observer, root) {
 }
 
 function optimizeDirector(node) {
-  if (node?.comfyClass !== DIRECTOR) return;
-  const root = node.__h3studioPanel;
+  if (node?.comfyClass !== DIRECTOR && node?.comfyClass !== "H3StudioSmartBenchmark") return;
+  const root = node.__h3studioPanel || node.__h3bRoot;
   if (!root?.isConnected) return;
 
-  for (const key of ROOT_ONLY_OBSERVERS) tuneObserver(root[key], root);
+  for (const key of ROOT_ONLY_OBSERVERS) {
+    if (root[key]) tuneObserver(root[key], root);
+    if (node[key]) tuneObserver(node[key], root);
+  }
 }
 
 function sweep() {
