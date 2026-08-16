@@ -300,6 +300,7 @@ function decorate(node) {
 
 function observe(node) {
   return;
+  return;
   const root = node?.__h3bRoot;
   if (!root?.isConnected) { setTimeout(() => observe(node), 100); return; }
 
@@ -324,6 +325,7 @@ function observe(node) {
 }
 
 function sweep() {
+  return;
   return;
   for (const node of app.graph?._nodes || []) if (node?.comfyClass === BENCHMARK) observe(node);
 }

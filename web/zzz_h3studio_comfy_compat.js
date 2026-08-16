@@ -108,6 +108,7 @@ function render(node, payload) {
 
 function attach(node) {
   return;
+  return;
   if (!node || className(node) !== TARGET || node.__h3ComfyCompatAttached) return;
   node.__h3ComfyCompatAttached = true;
   Promise.all([status()]).then(([payload]) => {

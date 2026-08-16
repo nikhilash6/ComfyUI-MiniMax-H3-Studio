@@ -2964,9 +2964,6 @@ function setConditionalWidgetVisible(node, widget, visible) {
 
 function syncModeWidgets(node) {
     if (node?.comfyClass === "H3StudioDirector" || node?.__h3studioPanelInstalled || node?.__h3studioPanel) {
-        for (const name of ["fps", "keyframe_role", "ref_image_size", "reference_mention_mode", "aspect_ratio", "width", "height", "mode", "resolution", "seconds", "advanced", "megapixels", "seed", "enhance_mode", "adherence", "route", "sampling_profile", "frame_profile", "analyzer_model", "studio_state"]) {
-            hideConditionalWidget(getWidget(node, name));
-        }
         return false;
     }
     const advanced = isAdvancedEnabled(node);

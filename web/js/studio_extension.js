@@ -767,14 +767,9 @@ function generationSection(node, state, refresh) {
     conservativeMode,
     directMode,
   ]);
-  const route = selectControl(
-    [["auto", "✦ Auto route"], ["Force FL2VA", "FL2VA (text / reference edit)"], ["Force REF2VA", "REF2VA (experimental)"]],
-    generation.route || "auto",
-    (value) => {
-      state.generation.route = value;
-      applyCallback(state);
-    },
-  );
+  const route = selectControl(generation.route, [
+    ["auto", "Auto · choose for me"], ["fl2va", "Force FL2VA"], ["ref2va", "Force REF2VA"],
+  ], "Conditioning route", (value) => update({ route: value }));
   const grid = element("div", { className: "h3s-grid" }, [
     controlRow("Mode", mode), controlRow("Aspect", ratio), controlRow("Target size", megapixelControl), controlRow("Seed", seedWrap),
     controlRow("Speed", sampling), controlRow("Model route", route), controlRow("Decoder", decoder), controlRow("Temporal quality", frames),

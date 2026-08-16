@@ -230,8 +230,10 @@ function observeDirector(node) {
   let queued=false; const observer=new MutationObserver(()=>{ if (queued) return; queued=true; requestAnimationFrame(()=>{ queued=false; fixDirectorScroll(node); }); }); observer.observe(root,{childList:true,subtree:true}); root.__h3b14DirectorObserver=observer;
 }
 function attach(node) {
+  return;
   return; if (!node?.graph) return; if (node.comfyClass===BENCHMARK) node.__h3bRoot?.isConnected ? observeBenchmark(node) : setTimeout(()=>attach(node),120); else if (node.comfyClass===DIRECTOR) node.__h3studioPanel?.isConnected ? observeDirector(node) : setTimeout(()=>attach(node),120); }
 function sweep() {
+  return;
   return; for (const node of app.graph?._nodes||[]) if (node?.comfyClass===BENCHMARK||node?.comfyClass===DIRECTOR) attach(node); filterDirectorPicker(); }
 const bodyObserver=new MutationObserver(()=>filterDirectorPicker());
 

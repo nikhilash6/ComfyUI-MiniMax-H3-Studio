@@ -37,7 +37,7 @@ function installStyles() {
       --h3s-warning:#d4ae74!important;
       display:block!important;
       width:100%;max-width:100%;height:100%;min-width:0;
-      padding:0!important;padding-bottom:90px!important;overflow:auto!important;overscroll-behavior:contain!important;
+      padding:0!important;overflow:auto!important;overscroll-behavior:contain!important;
       scrollbar-gutter:stable!important;box-sizing:border-box!important;
       border:1px solid #262b30!important;border-radius:10px!important;
       background:#101214!important;color:var(--h3s-text)!important;box-shadow:none!important;
@@ -56,8 +56,8 @@ function installStyles() {
     .h3s-studio-brand{display:flex!important;align-items:center!important;gap:8px!important}.h3s-studio-mark{position:relative!important;width:18px!important;height:18px!important;border:0!important;border-radius:4px!important;background:transparent!important;box-shadow:none!important}.h3s-studio-mark::after{content:'△';position:absolute;inset:0;display:grid;place-items:center;color:#cfd5da;font:700 15px/1 system-ui}.h3s-studio-title{font-size:12px!important;font-weight:700!important;letter-spacing:0!important}.h3s-status-pill{padding:2px 6px!important;border:0!important;border-radius:5px!important;background:#1b1f23!important;color:#8e969d!important;font-size:8px!important;letter-spacing:.02em!important}
 
     .h3s-v6-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(286px,34%);align-items:start;min-height:100%;background:#101214}
-    .h3s-v6-main{min-width:0;padding:4px 18px 90px;background:#101214}
-    .h3s-v6-inspector{min-width:0;padding:4px 14px 90px;border-left:1px solid #24292e;background:#121416;align-self:stretch}
+    .h3s-v6-main{min-width:0;padding:4px 18px 18px;background:#101214}
+    .h3s-v6-inspector{min-width:0;padding:4px 14px 18px;border-left:1px solid #24292e;background:#121416;align-self:stretch}
 
     .h3s-section{display:block!important;margin:0!important;padding:18px 0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;overflow:visible!important}
     .h3s-v6-main>.h3s-section+.h3s-section,.h3s-v6-inspector>.h3s-section+.h3s-section{border-top:1px solid #22272b!important}
@@ -167,12 +167,10 @@ function placeDirectorSections(root) {
   const inspector = layout.querySelector(":scope > .h3s-v6-inspector");
   if (!main || !inspector) return;
 
-  for (const section of [...root.querySelectorAll(".h3s-section, .h3s-fr")]) {
-    if (section.parentElement === main || section.parentElement === inspector) continue;
-    const isFaceRefine = section.classList.contains("h3s-fr");
-    const key = isFaceRefine ? "face_refine" : sectionKey(section);
+  for (const section of [...root.querySelectorAll(":scope > .h3s-section")]) {
+    const key = sectionKey(section);
     section.dataset.h3Section = key;
-    const target = ["generation", "runtime", "advanced", "loras", "face_refine"].includes(key) ? inspector : main;
+    const target = ["generation", "runtime", "advanced", "loras"].includes(key) ? inspector : main;
     if (key === "runtime") {
       for (const old of [...inspector.querySelectorAll(":scope > .h3s-runtime-section")]) {
         if (old !== section) old.remove();
@@ -230,6 +228,7 @@ function decoratePanel(node) {
 
 function attachDirector(node) {
   if (node?.__h3studioPanel || true) return;
+  if (node?.__h3studioPanel || true) return;
   if (!node || node.comfyClass !== DIRECTOR) return;
   forceHideNativeWidgets(node);
   decoratePanel(node);
@@ -270,6 +269,7 @@ function attachDirector(node) {
 }
 
 function fixBenchmark(node) {
+  return;
   if (node?.comfyClass !== BENCHMARK) return;
   for (const w of node.widgets || []) {
     if (w?.name === "h3studio_smart_benchmark") continue;
@@ -301,6 +301,7 @@ function fixBenchmark(node) {
 }
 
 function sweep() {
+  return;
   return;
   for (const node of app.graph?._nodes || []) {
     if (node?.comfyClass === DIRECTOR) attachDirector(node);

@@ -270,6 +270,7 @@ function normalizeRoot(root) {
 
 function sweep() {
   return;
+  return;
   installStyles();
   document.querySelectorAll(".h3b7.h3final-benchmark").forEach(normalizeRoot);
 }

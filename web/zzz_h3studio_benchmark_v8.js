@@ -117,6 +117,7 @@ function decorate(node) {
 
 function attach(node) {
   return;
+  return;
   if (!node || node.comfyClass !== TARGET) return;
   installStyles(); ensureDefault(node); decorate(node);
   if (node.__h3BenchmarkV8) return;

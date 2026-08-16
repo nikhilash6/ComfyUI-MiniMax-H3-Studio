@@ -217,7 +217,7 @@ function createFaceRefineSection(node, state, applyCallback) {
   installStyles();
   state.generation ||= {};
   const generation = state.generation;
-  ensureAdvanced(state);
+  const advanced = ensureAdvanced(state);
   let mode = String(generation.face_refine_mode || "off").toLowerCase();
   if (!new Set(["off", "auto", "strong"]).has(mode)) mode = "off";
   generation.face_refine_mode = mode;
@@ -252,62 +252,23 @@ function createFaceRefineSection(node, state, applyCallback) {
   head.append(heading, badge);
   container.appendChild(head);
 
-  const advanced = ensureAdvanced(state);
   const controls = document.createElement("div");
   controls.className = "h3s-fr-controls";
   controls.hidden = mode === "off";
 
   const grid = document.createElement("div");
   grid.className = "h3s-fr-grid";
-
-  grid.appendChild(rangeControl("Crop context", `${(Number(advanced.crop_factor) || 2.5).toFixed(1)}×`, 1.2, 5.0, 0.1, Number(advanced.crop_factor) || 2.5, (val) => {
-    advanced.crop_factor = val;
-    generation.face_refine_crop_factor = val;
-    commit();
-  }));
-
-  grid.appendChild(rangeControl("Refine canvas", `${Math.round(Number(advanced.guide_size) || 768)}px`, 256, 1536, 64, Math.round(Number(advanced.guide_size) || 768), (val) => {
-    advanced.guide_size = Math.round(val);
-    generation.face_refine_guide_size = Math.round(val);
-    commit();
-  }));
-
-  grid.appendChild(rangeControl("Base denoise", `${Math.round((Number(advanced.denoise) || 0.22) * 100)}%`, 0.05, 0.8, 0.01, Number(advanced.denoise) || 0.22, (val) => {
-    advanced.denoise = val;
-    generation.face_refine_denoise = val;
-    commit();
-  }));
-
-  grid.appendChild(rangeControl("Max faces", `${Math.round(Number(advanced.max_faces) || 4)}`, 1, 8, 1, Math.round(Number(advanced.max_faces) || 4), (val) => {
-    advanced.max_faces = Math.round(val);
-    commit();
-  }));
-
-  grid.appendChild(rangeControl("Auto face ceiling", `${Math.round(Number(advanced.auto_max_faces) || 1)}`, 1, 4, 1, Math.round(Number(advanced.auto_max_faces) || 1), (val) => {
-    advanced.auto_max_faces = Math.round(val);
-    commit();
-  }));
-
-  grid.appendChild(rangeControl("Blend feather", `${Math.round(Number(advanced.feather) || 32)}px`, 4, 128, 4, Math.round(Number(advanced.feather) || 32), (val) => {
-    advanced.feather = Math.round(val);
-    commit();
-  }));
-
-  grid.appendChild(selectBox("Mask mode", [["face_hull", "Tight face boundary"], ["smooth_box", "Soft crop box"]], advanced.mask_mode || "face_hull", (val) => {
-    advanced.mask_mode = val;
-    commit();
-  }));
-
-  grid.appendChild(switchControl("Adaptive denoise", "Scale denoise with face distance", Boolean(advanced.adaptive_denoise), (val) => {
-    advanced.adaptive_denoise = val;
-    commit();
-  }));
-
-  grid.appendChild(switchControl("Color-match patch", "Rebalance tone after sampling", Boolean(advanced.color_match), (val) => {
-    advanced.color_match = val;
-    commit();
-  }));
-
+  grid.append(
+    rangeControl("Crop context", generation.face_refine_crop_factor, 1.5, 4.0, 0.1, (v) => `${v.toFixed(1)}×`, (v) => { generation.face_refine_crop_factor = v; commit(); }),
+    selectBox("Refine canvas", String(generation.face_refine_guide_size), [["512", "512 px · faster"], ["768", "768 px · recommended"], ["1024", "1024 px · expensive"]], (v) => { generation.face_refine_guide_size = Number(v); commit(); }),
+    rangeControl("Base denoise", generation.face_refine_denoise, 0.10, 0.60, 0.01, (v) => v.toFixed(2), (v) => { generation.face_refine_denoise = v; commit(); }),
+    rangeControl("Max faces", advanced.max_faces, 1, 12, 1, (v) => String(Math.round(v)), (v) => { advanced.max_faces = Math.round(v); commit(); }),
+    rangeControl("Auto face ceiling", advanced.auto_max_face_px, 48, 240, 8, (v) => `${Math.round(v)} px`, (v) => { advanced.auto_max_face_px = Math.round(v); commit(); }),
+    rangeControl("Blend feather", advanced.blend_feather, 4, 48, 2, (v) => `${Math.round(v)} px`, (v) => { advanced.blend_feather = Math.round(v); commit(); }),
+    selectBox("Mask", advanced.mask_mode, [["feather", "Feathered face box · default"], ["sam_auto", "SAM if installed · fallback safe"]], (v) => { advanced.mask_mode = v; commit(); }),
+    switchBox("Adaptive denoise", advanced.adaptive_denoise, (v) => { advanced.adaptive_denoise = v; commit(); }),
+    switchBox("Color-match patch", advanced.color_match, (v) => { advanced.color_match = v; commit(); }),
+  );
   controls.appendChild(grid);
 
   const modes = document.createElement("div");
