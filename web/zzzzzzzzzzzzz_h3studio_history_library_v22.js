@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { api } from "../../scripts/api.js";
 
 const HISTORY_KEY = "h3studio-history-v2";
 const HISTORY_BACKUP_KEY = "h3studio-history-v18-unbounded";
@@ -43,7 +44,10 @@ function savePrefs(next) {
 }
 
 function historyItems() {
-  const merged = [...parseList(localStorage.getItem(HISTORY_KEY)), ...parseList(localStorage.getItem(HISTORY_BACKUP_KEY))];
+  const merged = [
+    ...parseList(localStorage.getItem(HISTORY_KEY)),
+    ...parseList(localStorage.getItem(HISTORY_BACKUP_KEY)),
+  ];
   const seen = new Set();
   const result = [];
   for (const item of merged) {
@@ -60,7 +64,9 @@ function directorTiming(item) {
   const node = app.graph?.getNodeById?.(id);
   const timing = node?.__h3studioRunTiming || {};
   return {
-    sampling_seconds: Number.isFinite(Number(timing.samplingSeconds)) ? Number(timing.samplingSeconds) : undefined,
+    sampling_seconds: Number.isFinite(Number(timing.samplingSeconds))
+      ? Number(timing.samplingSeconds)
+      : undefined,
     total_seconds: Number.isFinite(Number(timing.totalSeconds)) ? Number(timing.totalSeconds) : undefined,
   };
 }
@@ -171,7 +177,7 @@ function installStyles() {
   const style = document.createElement("style");
   style.id = STYLE_ID;
   style.textContent = `
-    .h3s-history-library{display:grid;grid-template-columns:minmax(150px,1fr) auto auto auto auto;gap:6px;align-items:center;padding:7px 10px;border-bottom:1px solid #242a2f;background:#101416}
+    .h3s-history-library{display:grid;grid-template-columns:minmax(150px,1fr) auto auto auto auto auto;gap:6px;align-items:center;padding:7px 10px;border-bottom:1px solid #242a2f;background:#101416}
     .h3s-history-search-wrap{position:relative;min-width:0}.h3s-history-search-icon{position:absolute;left:8px;top:50%;transform:translateY(-50%);width:12px;height:12px;opacity:.46;pointer-events:none}.h3s-history-search-icon svg{display:block;width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.5}
     .h3s-history-search,.h3s-history-sort,.h3s-history-sampler{box-sizing:border-box;height:27px;border:1px solid #2b3237;border-radius:6px;background:#151a1e;color:#cbd4d9;font:600 8.5px/1 inherit;outline:none}.h3s-history-search{width:100%;padding:0 9px 0 27px}.h3s-history-search::placeholder{color:#68737b}.h3s-history-search:focus,.h3s-history-sort:focus,.h3s-history-sampler:focus{border-color:#596871}
     .h3s-history-sort,.h3s-history-sampler{max-width:128px;padding:0 22px 0 8px;cursor:pointer}.h3s-history-sampler{max-width:142px}
@@ -180,7 +186,7 @@ function installStyles() {
     .h3s-history-favorite{position:absolute;z-index:7;right:7px;top:7px;display:grid;place-items:center;width:21px;height:21px;padding:0;border:0;border-radius:6px;background:rgba(7,10,12,.48);backdrop-filter:blur(6px);color:rgba(235,240,243,.58);cursor:pointer;opacity:.15;transition:opacity .12s ease,color .12s ease,background .12s ease}.h3s-demo-card:hover .h3s-history-favorite,.h3s-history-favorite.is-favorite{opacity:1}.h3s-history-favorite:hover{background:rgba(10,13,15,.78);color:#fff}.h3s-history-favorite.is-favorite{color:#e7bd70}.h3s-history-favorite svg{width:12px;height:12px;stroke:currentColor;stroke-width:1.45;fill:transparent;stroke-linejoin:round}.h3s-history-favorite.is-favorite svg{fill:currentColor}
     .h3s-history-runtime{color:#75838b!important}.h3s-history-no-results{flex:1 0 100%;padding:25px 14px;text-align:center;color:#66737a;font-size:9px}
     .h3s-demos-shelf:has(.h3s-shelf-tab:nth-child(2).is-active) .h3s-history-clear-btn:not(.h3s-history-restore-btn){display:none!important}
-    @media(max-width:760px){.h3s-history-library{grid-template-columns:minmax(120px,1fr) auto auto}.h3s-history-sampler,.h3s-history-count{display:none}}
+    @media(max-width:760px){.h3s-history-library{grid-template-columns:minmax(120px,1fr) auto auto auto}.h3s-history-sampler,.h3s-history-count{display:none}}
   `;
   document.head.append(style);
 }
@@ -215,7 +221,7 @@ function buildToolbar(shelf) {
 
   const favorite = document.createElement("button");
   favorite.type = "button";
-  favorite.className = "h3s-history-library-btn";
+  favorite.className = "h3s-history-library-btn h3s-history-favorites-filter";
   favorite.innerHTML = `${starSvg()}<span>Favorites</span>`;
 
   const sampler = document.createElement("select");
@@ -226,7 +232,7 @@ function buildToolbar(shelf) {
 
   const rebuild = document.createElement("button");
   rebuild.type = "button";
-  rebuild.className = "h3s-history-library-btn";
+  rebuild.className = "h3s-history-library-btn h3s-history-rebuild";
   rebuild.title = "Re-index H3 Studio PNGs from ComfyUI output";
   rebuild.innerHTML = `${refreshSvg()}<span>Re-index</span>`;
 
@@ -239,8 +245,7 @@ function buildToolbar(shelf) {
   sort.value = state.sort || "newest";
 
   search.addEventListener("input", () => {
-    const next = { ...prefs(), q: search.value };
-    savePrefs(next);
+    savePrefs({ ...prefs(), q: search.value });
     clearTimeout(filterTimer);
     filterTimer = setTimeout(() => refreshLibrary(), 130);
   });
@@ -281,7 +286,6 @@ function refreshToolbar(bar) {
   const state = prefs();
   const sampler = bar.querySelector(".h3s-history-sampler");
   const current = state.sampler || "";
-  const options = [`<option value="">All samplers</option>`, ...samplers.map((value) => `<option value="${CSS.escape(value)}"></option>` )];
   sampler.replaceChildren();
   const all = document.createElement("option");
   all.value = "";
@@ -297,7 +301,7 @@ function refreshToolbar(bar) {
   const count = bar.querySelector(".h3s-history-count");
   count.textContent = serverAvailable ? `${serverItems.length}/${totalIndexed}` : `${totalIndexed} local`;
   count.classList.toggle("is-local", !serverAvailable);
-  bar.querySelector(".h3s-history-library-btn")?.classList.toggle("is-active", Boolean(state.favorite));
+  bar.querySelector(".h3s-history-favorites-filter")?.classList.toggle("is-active", Boolean(state.favorite));
 }
 
 async function toggleFavorite(event, card, button) {
@@ -310,7 +314,10 @@ async function toggleFavorite(event, card, button) {
   button.classList.toggle("is-favorite", next);
   if (item) item.favorite = next;
   try {
-    await jsonRequest(`${ENDPOINT}/favorite`, { method: "POST", body: JSON.stringify({ id, favorite: next }) });
+    await jsonRequest(`${ENDPOINT}/favorite`, {
+      method: "POST",
+      body: JSON.stringify({ id, favorite: next }),
+    });
     await refreshLibrary();
   } catch (error) {
     button.classList.toggle("is-favorite", !next);
@@ -332,7 +339,10 @@ function decorateCard(card) {
     favorite.title = "Favorite";
     favorite.setAttribute("aria-label", "Favorite generation");
     favorite.innerHTML = starSvg();
-    favorite.addEventListener("pointerdown", (event) => { event.preventDefault(); event.stopPropagation(); });
+    favorite.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
     favorite.addEventListener("click", (event) => toggleFavorite(event, card, favorite));
     thumb.append(favorite);
   }
@@ -401,6 +411,7 @@ function decorateAll() {
 
 installStorageSync();
 installStyles();
+api.addEventListener("execution_success", schedulePush);
 
 let observerQueued = false;
 new MutationObserver(() => {
@@ -410,7 +421,12 @@ new MutationObserver(() => {
     observerQueued = false;
     decorateAll();
   });
-}).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
+}).observe(document.documentElement, {
+  childList: true,
+  subtree: true,
+  attributes: true,
+  attributeFilter: ["class"],
+});
 
 (async () => {
   await pushLocalHistory();
