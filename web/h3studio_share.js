@@ -295,7 +295,7 @@ function buildSection(node) {
 }
 
 function sectionHost(panel) {
-  return panel?.querySelector?.(".h3s-col-right, .h3s-v6-inspector, .h3s-v7-inspector, .h3s-inspector") || panel;
+  return panel?.querySelector?.(".h3s-v6-inspector, .h3s-v7-inspector, .h3s-inspector") || panel;
 }
 
 function installShareSection(node, replace = false) {
