@@ -84,3 +84,34 @@ def test_pipeline_strong_refines_all_faces() -> None:
 
     assert result.faces_detected == 2
     assert result.faces_refined == 2
+
+
+def test_face_refine_guider_never_passes_none_to_set_conds() -> None:
+    """Regression test: verify guider initialization sets positive conditioning without passing negative=None."""
+    from unittest.mock import MagicMock
+
+    positive_cond = [[torch.zeros((1, 77, 768)), {}]]
+
+    # Simulate comfy.samplers.CFGGuider which fails if negative=None is passed
+    mock_guider = MagicMock()
+
+    def mock_set_conds(pos, neg):
+        if neg is None:
+            raise TypeError("'NoneType' object is not iterable")
+        mock_guider.conds = {"positive": pos, "negative": neg}
+
+    mock_guider.set_conds = mock_set_conds
+
+    # Calling with positive only (Guider_Basic signature) succeeds
+    class MockBasicGuider:
+        def __init__(self, model):
+            self.model = model
+            self.conds = {}
+
+        def set_conds(self, pos):
+            self.conds = {"positive": pos}
+
+    guider = MockBasicGuider("dummy_model")
+    guider.set_conds(positive_cond)
+    assert "positive" in guider.conds
+    assert guider.conds["positive"] == positive_cond

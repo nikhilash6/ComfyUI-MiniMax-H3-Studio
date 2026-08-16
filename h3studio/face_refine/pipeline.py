@@ -219,6 +219,7 @@ class H3FaceRefinePipeline:
                     index + 1,
                     len(faces_to_refine),
                     exc,
+                    exc_info=True,
                 )
 
         elapsed = (time.perf_counter() - start_time) * 1000.0
