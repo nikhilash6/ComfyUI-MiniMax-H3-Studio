@@ -1161,13 +1161,14 @@ function renderPanel(node) {
 
   const leftCol = element("div", { className: "h3s-col h3s-col-left" }, [
     promptSection(node, state, refresh),
+    generatedOutputSection(node, state),
     resultsSection(node),
     referencesSection(node, state, refresh),
   ].filter(Boolean));
 
   const rightCol = element("div", { className: "h3s-col h3s-col-right" }, [
     generationSection(node, state, refresh),
-    generatedOutputSection(node, state),
+    createFaceRefineSection(node, state, refresh),
     advancedSection(node, state, refresh),
   ].filter(Boolean));
 
@@ -1226,8 +1227,6 @@ function installPanel(node) {
   installTheme();
   enforceNativeWidgetVisibility(node);
   const root = element("div", { className: "h3s-studio-panel", attrs: { role: "group", "aria-label": "MiniMax H3 Studio controls" } });
-  root.style.height = `${STUDIO_PANEL_HEIGHT}px`;
-  root.style.maxHeight = `${STUDIO_PANEL_HEIGHT}px`;
   node.__h3studioPanel = root;
   const panelWidget = node.addDOMWidget("h3studio_controls", "h3studio_controls", root, {
     serialize: false,

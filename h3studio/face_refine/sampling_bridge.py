@@ -224,8 +224,17 @@ def build_h3_face_sampler(
         seed = legacy._face_seed(runtime.seed, face_index)
         noise = comfy.sample.prepare_noise(latent, seed, h3_latent.get("batch_index"))
         sigmas = legacy._denoise_sigmas(sampling_model, profile, effective_denoise)
-        guider = comfy.samplers.Guider_Basic(sampling_model)
-        guider.set_conds(positive)
+        if hasattr(comfy.samplers, "CFGGuider"):
+            guider = comfy.samplers.CFGGuider(sampling_model)
+            guider.set_conds(positive, None)
+            guider.set_cfg(1.0)
+        elif hasattr(comfy.samplers, "Guider_Basic"):
+            guider = comfy.samplers.Guider_Basic(sampling_model)
+            guider.set_conds(positive)
+        else:
+            from comfy_extras.nodes_custom_sampler import BasicGuider
+            guider = BasicGuider().get_guider(sampling_model, positive)[0]
+
         refined = guider.sample(
             noise,
             latent,
