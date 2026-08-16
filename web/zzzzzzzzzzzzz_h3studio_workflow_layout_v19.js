@@ -1,5 +1,7 @@
 import { app } from "../../scripts/app.js";
 
+
+if (!globalThis.__H3_STUDIO_CANONICAL_UI__) {
 const WORKFLOW_ID = "51ffc0bb-1b7a-4a1c-a183-1ce99edb4e5e";
 
 const NODE_LAYOUT = new Map([
@@ -52,3 +54,5 @@ app.registerExtension({
     applyLayout(graphData);
   },
 });
+
+}

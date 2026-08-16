@@ -1,5 +1,7 @@
 import { app } from "../../scripts/app.js";
 
+
+if (!globalThis.__H3_STUDIO_CANONICAL_UI__) {
 const TARGET = "H3StudioDirector";
 const MAX_SAFE_COMFY_SEED = 1125899906842623; // 2^50 - 1
 const STATE_PROPERTY = "h3studio_state";
@@ -128,3 +130,5 @@ app.registerExtension({
 });
 
 export { MAX_SAFE_COMFY_SEED, clampSeed, synchronizeSeed };
+
+}

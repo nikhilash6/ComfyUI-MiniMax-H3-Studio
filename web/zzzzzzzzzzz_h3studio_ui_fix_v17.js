@@ -1,5 +1,7 @@
 import { app } from "../../scripts/app.js";
 
+
+if (!globalThis.__H3_STUDIO_CANONICAL_UI__) {
 const DIRECTOR = "H3StudioDirector";
 const BENCHMARK = "H3StudioSmartBenchmark";
 const STYLE_ID = "h3studio-ui-fix-v17-style";
@@ -128,3 +130,5 @@ function decorate(node){if(node?.comfyClass===DIRECTOR)normalizeTarget(node);els
 function observe(node){const root=node?.comfyClass===DIRECTOR?node.__h3studioPanel:node?.__h3bRoot;if(!root?.isConnected){setTimeout(()=>observe(node),100);return;}decorate(node);if(root.__h3V17Observer)return;let queued=false;const observer=new MutationObserver(()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;decorate(node);});});observer.observe(root,{childList:true,subtree:true});root.__h3V17Observer=observer;}
 function sweep(){for(const node of app.graph?._nodes||[])if(node?.comfyClass===DIRECTOR||node?.comfyClass===BENCHMARK)observe(node);}
 app.registerExtension({name:"H3Studio.UIFixV17",setup(){installStyles();setTimeout(sweep,220);},nodeCreated(node){if(node?.comfyClass===DIRECTOR||node?.comfyClass===BENCHMARK)setTimeout(()=>observe(node),220);},afterConfigureGraph(){installStyles();setTimeout(sweep,280);}});
+
+}

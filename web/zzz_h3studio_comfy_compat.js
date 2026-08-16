@@ -1,6 +1,8 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 
+
+if (!globalThis.__H3_STUDIO_CANONICAL_UI__) {
 const TARGET = "H3StudioDirector";
 const STATUS_URL = "/h3studio/comfy-compat";
 let statusPromise = null;
@@ -128,3 +130,5 @@ app.registerExtension({
     attach(node);
   },
 });
+
+}

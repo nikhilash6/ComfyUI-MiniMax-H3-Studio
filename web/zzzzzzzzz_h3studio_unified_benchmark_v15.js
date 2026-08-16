@@ -1,6 +1,8 @@
 import { app } from "../../scripts/app.js";
 import { applyState, stateFromNode } from "./js/studio_extension.js";
 
+
+if (!globalThis.__H3_STUDIO_CANONICAL_UI__) {
 const BENCHMARK = "H3StudioSmartBenchmark";
 const DIRECTOR = "H3StudioDirector";
 const LOADER = "H3StudioLoader";
@@ -181,3 +183,5 @@ function observe(node){const root=node.comfyClass===BENCHMARK?node.__h3bRoot:nod
 function sweep(){for(const node of app.graph?._nodes||[])if(node?.comfyClass===BENCHMARK||node?.comfyClass===DIRECTOR)observe(node);}
 
 app.registerExtension({name:"H3Studio.UnifiedBenchmarkV15",setup(){installStyles();setTimeout(sweep,260);},nodeCreated(node){if(node?.comfyClass===BENCHMARK||node?.comfyClass===DIRECTOR)setTimeout(()=>observe(node),260);},afterConfigureGraph(){installStyles();setTimeout(sweep,320);}});
+
+}

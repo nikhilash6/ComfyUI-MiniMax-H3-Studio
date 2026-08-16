@@ -1,5 +1,7 @@
 import { app } from "../../scripts/app.js";
 
+
+if (!globalThis.__H3_STUDIO_CANONICAL_UI__) {
 const DIRECTOR = "H3StudioDirector";
 const BENCHMARK = "H3StudioSmartBenchmark";
 const STYLE_ID = "h3studio-ui-finish-v18-style";
@@ -294,3 +296,5 @@ app.registerExtension({
   },
   afterConfigureGraph() { installStyles(); setTimeout(sweep, 280); },
 });
+
+}

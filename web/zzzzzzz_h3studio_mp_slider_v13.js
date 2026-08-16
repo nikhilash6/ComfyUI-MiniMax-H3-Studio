@@ -1,5 +1,7 @@
 import { app } from "../../scripts/app.js";
 
+
+if (!globalThis.__H3_STUDIO_CANONICAL_UI__) {
 const TARGET = "H3StudioDirector";
 const STYLE_ID = "h3studio-mp-slider-v13-style";
 
@@ -65,3 +67,5 @@ app.registerExtension({
   nodeCreated(node) { if (node?.comfyClass === TARGET) setTimeout(() => refresh(node), 180); },
   afterConfigureGraph() { setTimeout(sweep, 240); },
 });
+
+}

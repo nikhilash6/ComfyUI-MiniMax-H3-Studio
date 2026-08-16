@@ -1,3 +1,5 @@
+
+if (!globalThis.__H3_STUDIO_CANONICAL_UI__) {
 /*
  * Director inspector compatibility alias.
  *
@@ -29,3 +31,5 @@ const observer = new MutationObserver((records) => {
 });
 
 observer.observe(document.documentElement, { childList: true, subtree: true });
+
+}

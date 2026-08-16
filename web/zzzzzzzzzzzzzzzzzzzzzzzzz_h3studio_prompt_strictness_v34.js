@@ -1,5 +1,7 @@
 import { app } from "../../scripts/app.js";
 
+
+if (!globalThis.__H3_STUDIO_CANONICAL_UI__) {
 const TARGET = "H3StudioDirector";
 const OLD_HELP = "Reference priority controls how strongly the written prompt tells H3 to preserve reference details; it is not a LoRA strength.";
 const NEW_HELP = "Prompt strictness only changes wording added by H3 Studio's prompt compiler. It does not change native reference-conditioning strength, CFG, denoise, or LoRA weight. With Keep my prompt selected, this control has no generation effect.";
@@ -82,3 +84,5 @@ app.registerExtension({
     queueMicrotask(relabelAll);
   },
 });
+
+}

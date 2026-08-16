@@ -46,7 +46,9 @@ function installStyles() {
     .h3s-fr-proof{margin-top:7px;border-radius:6px;overflow:hidden;border:1px solid #1e2327;background:#0d1113;padding:6px;display:flex;flex-direction:column;gap:5px}
     .h3s-fr-proof-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:8px}
     .h3s-fr-proof-title{font-weight:700;color:#dbe2e6}
-    .h3s-fr-proof-meta{color:#88959e;font-variant-numeric:tabular-nums}
+    .h3s-fr-toggle-markers{font-size:7.5px;line-height:1;padding:2px 5px;border-radius:3px;border:1px solid #2d353b;background:#151a1d;color:#8d98a0;cursor:pointer;transition:all .15s}
+    .h3s-fr-toggle-markers:hover{background:#20282e;color:#c9d0d5}
+    .h3s-fr-toggle-markers.is-active{color:#e6ad55;border-color:#524022;background:#241d13}
     .h3s-fr-proof-img{width:100%;max-height:180px;object-fit:contain;border-radius:4px;background:#000000;cursor:pointer;display:block;border:1px solid #181d21;transition:border-color .15s}
     .h3s-fr-proof-img:hover{border-color:#38d6af}
     .h3s-fr-empty{font-size:8px;line-height:1.4;color:#69747c;padding:3px 2px}
@@ -120,6 +122,7 @@ function renderTelemetry(node, container) {
   }
 
   const proofUrl = previewUrl(data.preview);
+  const cleanProofUrl = previewUrl(data.preview_clean);
   if (proofUrl) {
     const proof = document.createElement("div");
     proof.className = "h3s-fr-proof";
@@ -128,18 +131,46 @@ function renderTelemetry(node, container) {
     const title = document.createElement("span");
     title.className = "h3s-fr-proof-title";
     title.textContent = "Visual inspection";
+    const metaWrap = document.createElement("div");
+    metaWrap.style.display = "flex";
+    metaWrap.style.alignItems = "center";
+    metaWrap.style.gap = "6px";
+
+    let showMarkers = node.__h3studioShowFaceMarkers !== false;
+    let currentUrl = showMarkers ? proofUrl : (cleanProofUrl || proofUrl);
+
+    if (cleanProofUrl) {
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = `h3s-fr-toggle-markers${showMarkers ? " is-active" : ""}`;
+      toggle.textContent = showMarkers ? "Markers ON" : "Markers OFF";
+      toggle.title = "Toggle face bounding box overlays";
+      toggle.addEventListener("click", (e) => {
+        e.stopPropagation();
+        showMarkers = !showMarkers;
+        node.__h3studioShowFaceMarkers = showMarkers;
+        toggle.className = `h3s-fr-toggle-markers${showMarkers ? " is-active" : ""}`;
+        toggle.textContent = showMarkers ? "Markers ON" : "Markers OFF";
+        currentUrl = showMarkers ? proofUrl : cleanProofUrl;
+        img.src = currentUrl;
+      });
+      metaWrap.append(toggle);
+    }
+
     const meta = document.createElement("span");
     meta.className = "h3s-fr-proof-meta";
     meta.textContent = `${data.selected ?? 0} selected · ${data.refined ?? 0} refined`;
-    head.append(title, meta);
+    metaWrap.append(meta);
+    head.append(title, metaWrap);
+
     const img = document.createElement("img");
     img.className = "h3s-fr-proof-img";
-    img.src = proofUrl;
+    img.src = currentUrl;
     img.alt = "Face Refine before and after inspection";
     img.title = "Click to inspect at full size";
     img.addEventListener("click", (event) => {
       event.stopPropagation();
-      openImageLightbox(proofUrl, "H3 Face Refine · before / after");
+      openImageLightbox(currentUrl, showMarkers ? "H3 Face Refine · before / after (with markers)" : "H3 Face Refine · before / after (clean)");
     });
     proof.append(head, img);
     slot.appendChild(proof);

@@ -1,6 +1,8 @@
 import { app } from "../../../scripts/app.js";
 import { api } from "../../../scripts/api.js";
 
+globalThis.__H3_STUDIO_CANONICAL_UI__ = true;
+
 import {
   applyReferenceInferences,
   ASPECT_RATIOS,
@@ -706,7 +708,6 @@ function generationSection(node, state, refresh) {
     tierNote.textContent = tier.note;
     megapixelSlider.dataset.tier = tier.key;
     syncResolutionMode(state.generation.cap_native_resolution);
-    applyState(node, state);
   };
   const commitMp = (value) => {
     update({

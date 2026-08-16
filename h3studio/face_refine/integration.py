@@ -143,40 +143,64 @@ def _draw_boxes(image, boxes, selected_boxes, scale: float):
     return image
 
 
-def _save_visual_preview(before: Any, after: Any, result: FaceRefineResult, mode: str) -> dict[str, str] | None:
-    """Save one compact before/after diagnostic to ComfyUI's temp directory."""
+def _build_comparison_canvas(
+    source_img,
+    refined_img,
+    *,
+    is_landscape: bool,
+    panel_w: int,
+    panel_h: int,
+    mode: str,
+    result: FaceRefineResult,
+):
+    from PIL import Image, ImageDraw
 
-    try:
-        from PIL import Image, ImageDraw, ImageOps
-        import folder_paths
+    gap = 14
+    pad = 18
+    header_h = 36
+    footer_h = 42
 
-        source = _tensor_to_pil(before)
-        refined = _tensor_to_pil(after)
-        source_w, source_h = source.size
-        max_side = 720
-        scale = min(1.0, max_side / max(source_w, source_h))
-        target = (max(1, int(round(source_w * scale))), max(1, int(round(source_h * scale))))
-        source = source.resize(target, Image.Resampling.LANCZOS) if scale < 1.0 else source.copy()
-        refined = refined.resize(target, Image.Resampling.LANCZOS) if scale < 1.0 else refined.copy()
-        source = _draw_boxes(source, result.bounding_boxes, result.selected_boxes, scale)
-        refined = _draw_boxes(refined, result.bounding_boxes, result.selected_boxes, scale)
+    if is_landscape:
+        canvas_w = panel_w + pad * 2
+        canvas_h = header_h + panel_h + gap + header_h + panel_h + footer_h + pad * 2
+        canvas = Image.new("RGB", (canvas_w, canvas_h), (17, 20, 23))
+        draw = ImageDraw.Draw(canvas)
 
-        gap = 14
-        pad = 18
-        header_h = 42
-        footer_h = 46
-        panel_w, panel_h = target
+        # Top panel: BEFORE
+        top_img_y = pad + header_h
+        draw.text((pad, pad + 4), "SELECTED STILL · BEFORE", font=_preview_font(14, bold=True), fill=(220, 225, 229))
+        canvas.paste(source_img, (pad, top_img_y))
+        draw.rounded_rectangle((pad - 1, top_img_y - 1, pad + panel_w, top_img_y + panel_h), radius=5, outline=(62, 69, 75), width=1)
+
+        # Bottom panel: AFTER
+        bottom_header_y = top_img_y + panel_h + gap
+        bottom_img_y = bottom_header_y + header_h
+        draw.text((pad, bottom_header_y + 4), "AFTER H3 FACE REFINE", font=_preview_font(14, bold=True), fill=(220, 225, 229))
+        canvas.paste(refined_img, (pad, bottom_img_y))
+        draw.rounded_rectangle((pad - 1, bottom_img_y - 1, pad + panel_w, bottom_img_y + panel_h), radius=5, outline=(62, 69, 75), width=1)
+
+        # Footer
+        mask = "/".join(sorted(set(result.mask_modes))) if result.mask_modes else "feather"
+        footer = (
+            f"{str(mode).upper()} · {result.detector_name or 'detector unavailable'} · "
+            f"{result.faces_selected} selected / {result.faces_refined} refined · {mask} · {result.duration_ms / 1000.0:.1f}s"
+        )
+        draw.text((pad, bottom_img_y + panel_h + 14), footer, font=_preview_font(12), fill=(169, 178, 185))
+        return canvas
+    else:
         canvas_w = panel_w * 2 + gap + pad * 2
         canvas_h = header_h + panel_h + footer_h + pad * 2
         canvas = Image.new("RGB", (canvas_w, canvas_h), (17, 20, 23))
         draw = ImageDraw.Draw(canvas)
+
         left_x = pad
         right_x = pad + panel_w + gap
         image_y = pad + header_h
-        draw.text((left_x, pad + 5), "SELECTED STILL · BEFORE", font=_preview_font(15, bold=True), fill=(220, 225, 229))
-        draw.text((right_x, pad + 5), "AFTER H3 FACE REFINE", font=_preview_font(15, bold=True), fill=(220, 225, 229))
-        canvas.paste(source, (left_x, image_y))
-        canvas.paste(refined, (right_x, image_y))
+
+        draw.text((left_x, pad + 4), "SELECTED STILL · BEFORE", font=_preview_font(14, bold=True), fill=(220, 225, 229))
+        draw.text((right_x, pad + 4), "AFTER H3 FACE REFINE", font=_preview_font(14, bold=True), fill=(220, 225, 229))
+        canvas.paste(source_img, (left_x, image_y))
+        canvas.paste(refined_img, (right_x, image_y))
         draw.rounded_rectangle((left_x - 1, image_y - 1, left_x + panel_w, image_y + panel_h), radius=5, outline=(62, 69, 75), width=1)
         draw.rounded_rectangle((right_x - 1, image_y - 1, right_x + panel_w, image_y + panel_h), radius=5, outline=(62, 69, 75), width=1)
 
@@ -185,22 +209,71 @@ def _save_visual_preview(before: Any, after: Any, result: FaceRefineResult, mode
             f"{str(mode).upper()} · {result.detector_name or 'detector unavailable'} · "
             f"{result.faces_selected} selected / {result.faces_refined} refined · {mask} · {result.duration_ms / 1000.0:.1f}s"
         )
-        draw.text((pad, image_y + panel_h + 15), footer, font=_preview_font(13), fill=(169, 178, 185))
+        draw.text((pad, image_y + panel_h + 14), footer, font=_preview_font(12), fill=(169, 178, 185))
+        return canvas
+
+
+def _save_visual_preview(before: Any, after: Any, result: FaceRefineResult, mode: str) -> dict[str, Any] | None:
+    """Save marked and clean before/after diagnostics to ComfyUI's temp directory."""
+
+    try:
+        from PIL import Image
+        import folder_paths
+
+        source = _tensor_to_pil(before)
+        refined = _tensor_to_pil(after)
+        source_w, source_h = source.size
+        is_landscape = (float(source_w) / max(1.0, float(source_h))) >= 1.15
+        max_side = 840 if is_landscape else 640
+        scale = min(1.0, max_side / max(source_w, source_h))
+        target = (max(1, int(round(source_w * scale))), max(1, int(round(source_h * scale))))
+        source_clean = source.resize(target, Image.Resampling.LANCZOS) if scale < 1.0 else source.copy()
+        refined_clean = refined.resize(target, Image.Resampling.LANCZOS) if scale < 1.0 else refined.copy()
+
+        source_marked = _draw_boxes(source_clean.copy(), result.bounding_boxes, result.selected_boxes, scale)
+        refined_marked = _draw_boxes(refined_clean.copy(), result.bounding_boxes, result.selected_boxes, scale)
+
+        panel_w, panel_h = target
+        canvas_marked = _build_comparison_canvas(
+            source_marked, refined_marked,
+            is_landscape=is_landscape, panel_w=panel_w, panel_h=panel_h,
+            mode=mode, result=result,
+        )
+        canvas_clean = _build_comparison_canvas(
+            source_clean, refined_clean,
+            is_landscape=is_landscape, panel_w=panel_w, panel_h=panel_h,
+            mode=mode, result=result,
+        )
 
         temp_root = folder_paths.get_temp_directory()
         subfolder = "h3studio_face_refine"
         directory = os.path.join(temp_root, subfolder)
         os.makedirs(directory, exist_ok=True)
-        filename = f"face_refine_{uuid.uuid4().hex[:12]}.png"
-        path = os.path.join(directory, filename)
-        canvas.save(path, format="PNG", optimize=True)
-        return {"filename": filename, "subfolder": subfolder, "type": "temp"}
+        session_id = uuid.uuid4().hex[:12]
+        filename_marked = f"face_refine_{session_id}.png"
+        filename_clean = f"face_refine_{session_id}_clean.png"
+        canvas_marked.save(os.path.join(directory, filename_marked), format="PNG", optimize=True)
+        canvas_clean.save(os.path.join(directory, filename_clean), format="PNG", optimize=True)
+
+        return {
+            "filename": filename_marked,
+            "clean_filename": filename_clean,
+            "subfolder": subfolder,
+            "type": "temp",
+        }
     except Exception as exc:
         LOGGER.warning("[H3 Studio FaceRefine] Could not create visual inspection preview: %s", exc)
         return None
 
 
 def _result_payload(result: FaceRefineResult, *, mode: str, status: str, preview: Any = None) -> dict[str, Any]:
+    preview_clean = None
+    if isinstance(preview, dict) and preview.get("clean_filename"):
+        preview_clean = {
+            "filename": preview["clean_filename"],
+            "subfolder": preview.get("subfolder", ""),
+            "type": preview.get("type", "temp"),
+        }
     return {
         "status": status,
         "mode": str(mode),
@@ -212,9 +285,9 @@ def _result_payload(result: FaceRefineResult, *, mode: str, status: str, preview
         "mask": ", ".join(sorted(set(result.mask_modes))) if result.mask_modes else "",
         "duration_ms": round(float(result.duration_ms), 1),
         "boxes": [asdict(box) for box in result.bounding_boxes],
-        "selected_boxes": [asdict(box) for box in result.selected_boxes],
         "failures": list(result.failures),
         "preview": preview,
+        "preview_clean": preview_clean,
     }
 
 

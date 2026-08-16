@@ -1,5 +1,7 @@
 import { app } from "../../scripts/app.js";
 
+
+if (!globalThis.__H3_STUDIO_CANONICAL_UI__) {
 const ROOT_SELECTOR = ".h3b7.h3final-benchmark";
 const MP_SELECTOR = "[data-h3-director-mp='1']";
 const LEGACY_MP_SELECTOR = ".h3final-target-field > input[type='number'], .h3final-target-field > .h3b7-input[type='number']";
@@ -89,3 +91,5 @@ app.registerExtension({
     document.addEventListener("click", guard, true);
   },
 });
+
+}

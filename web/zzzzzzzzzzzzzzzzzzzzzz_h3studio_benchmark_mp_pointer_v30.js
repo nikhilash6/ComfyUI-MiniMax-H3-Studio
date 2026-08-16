@@ -1,6 +1,8 @@
 import { app } from "../../scripts/app.js";
 import { rangeValueFromPointer } from "./js/core/dom.js";
 
+
+if (!globalThis.__H3_STUDIO_CANONICAL_UI__) {
 const SELECTOR = ".h3b7.h3final-benchmark .h3final-mp-range";
 let observer = null;
 
@@ -90,3 +92,5 @@ app.registerExtension({
     observer.observe(document.body, { childList: true, subtree: true });
   },
 });
+
+}

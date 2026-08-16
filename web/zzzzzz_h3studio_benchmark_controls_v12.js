@@ -1,5 +1,7 @@
 import { app } from "../../scripts/app.js";
 
+
+if (!globalThis.__H3_STUDIO_CANONICAL_UI__) {
 const TARGET = "H3StudioSmartBenchmark";
 const MAX_SCENARIOS = 4;
 const SHARE_PREFIX = "H3B1:";
@@ -249,3 +251,5 @@ app.registerExtension({
     setTimeout(sweep, 300);
   },
 });
+
+}

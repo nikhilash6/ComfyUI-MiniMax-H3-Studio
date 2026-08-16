@@ -4,8 +4,8 @@
  * Adapted from ComfyUI-MiniMaxH3-Easy by nkxx188 under the MIT License.
  * See THIRD_PARTY_NOTICES.md. Studio-specific behavior is isolated in the
  * modules under web/js so upstream-derived interaction code stays auditable.
- */
 import { app } from "../../scripts/app.js";
+globalThis.__H3_STUDIO_CANONICAL_UI__ = true;
 import "./js/studio_extension.js";
 import "./js/preview_extension.js";
 import { backendResolutionValue } from "./js/core/state.js";

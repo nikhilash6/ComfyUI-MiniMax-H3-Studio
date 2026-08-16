@@ -1,5 +1,7 @@
 import { app } from "../../scripts/app.js";
 
+
+if (!globalThis.__H3_STUDIO_CANONICAL_UI__) {
 const TARGET = "H3StudioSmartBenchmark";
 const WIDGET_NAME = "h3studio_smart_benchmark";
 const STYLE_ID = "h3studio-smart-benchmark-container-v7";
@@ -118,3 +120,5 @@ app.registerExtension({
     }, 120);
   },
 });
+
+}

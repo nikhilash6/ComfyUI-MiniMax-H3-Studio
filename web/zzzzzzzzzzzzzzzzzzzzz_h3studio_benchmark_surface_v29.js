@@ -1,5 +1,7 @@
 import { app } from "../../scripts/app.js";
 
+
+if (!globalThis.__H3_STUDIO_CANONICAL_UI__) {
 const STYLE_ID = "h3studio-benchmark-surface-v29-style";
 
 function installStyles() {
@@ -288,3 +290,5 @@ app.registerExtension({
     for (const delay of [0, 120, 360, 800]) setTimeout(sweep, delay);
   },
 });
+
+}
