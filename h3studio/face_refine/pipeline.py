@@ -24,12 +24,12 @@ LOGGER = logging.getLogger("h3studio.face_refine.pipeline")
 class FaceRefineConfig:
     """Configuration for one selected still-image face-refine pass."""
 
-    mode: str = "auto"  # off | auto | strong
+    mode: str = "off"  # off | auto | strong
     crop_factor: float = 2.5
     guide_size: int = 768
     denoise: float = 0.22
     blend_feather: int = 16
-    max_faces: int = 4
+    max_faces: int = 1
     min_face_size: int = 16
     auto_max_face_px: int = 160
     color_match: bool = True

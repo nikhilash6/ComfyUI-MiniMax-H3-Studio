@@ -22,5 +22,5 @@ test("Face Refine UI shows detector, mask and before-after telemetry", () => {
   assert.match(faceRefineJs, /data\.mask/);
   assert.match(faceRefineJs, /data\.selected/);
   assert.match(faceRefineJs, /data\.refined/);
-  assert.match(faceRefineJs, /SAM if installed/);
+  assert.match(faceRefineJs, /sam_auto/);
 });

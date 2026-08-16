@@ -69,7 +69,7 @@ function ensureAdvanced(state) {
     : {};
   state.ui.face_refine = {
     blend_feather: Math.round(clampNumber(current.blend_feather, 16, 2, 96)),
-    max_faces: Math.round(clampNumber(current.max_faces, 4, 1, 16)),
+    max_faces: Math.round(clampNumber(current.max_faces, 1, 1, 16)),
     min_face_size: Math.round(clampNumber(current.min_face_size, 16, 8, 96)),
     auto_max_face_px: Math.round(clampNumber(current.auto_max_face_px, 160, 48, 320)),
     color_match: current.color_match !== false,
@@ -217,7 +217,7 @@ function createFaceRefineSection(node, state, applyCallback) {
   installStyles();
   state.generation ||= {};
   const generation = state.generation;
-  const advanced = ensureAdvanced(state);
+  ensureAdvanced(state);
   let mode = String(generation.face_refine_mode || "off").toLowerCase();
   if (!new Set(["off", "auto", "strong"]).has(mode)) mode = "off";
   generation.face_refine_mode = mode;
@@ -268,39 +268,12 @@ function createFaceRefineSection(node, state, applyCallback) {
       container.classList.add(`is-${key}`);
       badge.textContent = modeLabel(key);
       for (const [otherKey, otherButton] of buttons) otherButton.classList.toggle("is-active", otherKey === key);
-      controls.hidden = key === "off";
       commit();
     });
     buttons.set(key, button);
     modes.appendChild(button);
   }
   container.appendChild(modes);
-
-  const controls = document.createElement("div");
-  controls.hidden = mode === "off";
-
-  const details = document.createElement("details");
-  details.className = "h3s-fr-advanced";
-  const summary = document.createElement("summary");
-  summary.textContent = "Advanced face-refine controls";
-  details.appendChild(summary);
-  const grid = document.createElement("div");
-  grid.className = "h3s-fr-grid";
-
-  grid.append(
-    rangeControl("Crop context", generation.face_refine_crop_factor, 1.5, 4.0, 0.1, (v) => `${v.toFixed(1)}×`, (v) => { generation.face_refine_crop_factor = v; commit(); }),
-    selectBox("Refine canvas", String(generation.face_refine_guide_size), [["512", "512 px · faster"], ["768", "768 px · recommended"], ["1024", "1024 px · expensive"]], (v) => { generation.face_refine_guide_size = Number(v); commit(); }),
-    rangeControl("Base denoise", generation.face_refine_denoise, 0.10, 0.60, 0.01, (v) => v.toFixed(2), (v) => { generation.face_refine_denoise = v; commit(); }),
-    rangeControl("Max faces", advanced.max_faces, 1, 12, 1, (v) => String(Math.round(v)), (v) => { advanced.max_faces = Math.round(v); commit(); }),
-    rangeControl("Auto face ceiling", advanced.auto_max_face_px, 48, 240, 8, (v) => `${Math.round(v)} px`, (v) => { advanced.auto_max_face_px = Math.round(v); commit(); }),
-    rangeControl("Blend feather", advanced.blend_feather, 4, 48, 2, (v) => `${Math.round(v)} px`, (v) => { advanced.blend_feather = Math.round(v); commit(); }),
-    selectBox("Mask", advanced.mask_mode, [["feather", "Feathered face box · default"], ["sam_auto", "SAM if installed · fallback safe"]], (v) => { advanced.mask_mode = v; commit(); }),
-    switchBox("Adaptive denoise", advanced.adaptive_denoise, (v) => { advanced.adaptive_denoise = v; commit(); }),
-    switchBox("Color-match patch", advanced.color_match, (v) => { advanced.color_match = v; commit(); }),
-  );
-  details.appendChild(grid);
-  controls.appendChild(details);
-  container.appendChild(controls);
 
   const live = document.createElement("div");
   live.className = "h3s-fr-live";

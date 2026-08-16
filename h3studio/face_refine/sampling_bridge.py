@@ -240,13 +240,20 @@ def build_h3_face_sampler(
                 from comfy_extras.nodes_custom_sampler import BasicGuider
                 guider = BasicGuider().get_guider(sampling_model, positive)[0]
 
+        try:
+            import latent_preview
+            steps_count = sigmas.shape[0] - 1 if hasattr(sigmas, "shape") else len(sigmas) - 1
+            callback = latent_preview.prepare_callback(sampling_model, max(1, steps_count))
+        except Exception:
+            callback = None
+
         refined = guider.sample(
             noise,
             latent,
             sampler,
             sigmas,
             denoise_mask=h3_latent.get("noise_mask"),
-            callback=None,
+            callback=callback,
             disable_pbar=False,
             seed=seed,
         )
