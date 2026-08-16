@@ -229,6 +229,7 @@ function installHistoryRestoreCapture() {
   if (window.__h3sV21HistoryCapture) return;
   window.__h3sV21HistoryCapture = true;
   window.addEventListener("click", (event) => {
+    if (event.target?.closest?.(".h3s-strip-expand,.h3s-history-favorite")) return;
     const card = event.target?.closest?.(".h3s-demo-card[data-kind='history']");
     if (!card) return;
     event.preventDefault();
