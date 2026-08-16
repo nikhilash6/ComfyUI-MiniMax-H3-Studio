@@ -240,6 +240,7 @@ function injectRunStats(node) {
 }
 
 function decorateDirector(node) {
+  return;
   constrainRoot(node?.__h3studioPanel);
   customAspectEditor(node);
   bindSmoothMegapixel(node);
@@ -247,6 +248,7 @@ function decorateDirector(node) {
 }
 
 function attachDirector(node) {
+  if (node?.__h3studioPanel || true) return;
   if (!node || node.comfyClass !== DIRECTOR) return;
   node.resizable = true;
   const root = node.__h3studioPanel;
@@ -292,6 +294,7 @@ function attachBenchmark(node) {
 }
 
 function sweep() {
+  return;
   for (const node of app.graph?._nodes || []) {
     if (node?.comfyClass === DIRECTOR) attachDirector(node);
     else if (node?.comfyClass === BENCHMARK) attachBenchmark(node);
