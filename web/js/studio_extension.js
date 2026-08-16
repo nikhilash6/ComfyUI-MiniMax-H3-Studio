@@ -683,34 +683,42 @@ function generationSection(node, state, refresh) {
     text: formatMegapixels(generation.megapixels),
     attrs: { "aria-live": "polite" },
   });
+  const previewMp = (value) => {
+    state.generation.megapixels = value;
+    state.generation.cap_native_resolution = capNativeForTarget(
+      value,
+      state.generation.cap_native_resolution,
+    );
+    const next = planResolution(
+      state.generation.aspect_ratio,
+      value,
+      state.generation.custom_width,
+      state.generation.custom_height,
+      state.generation.cap_native_resolution,
+    );
+    megapixelValue.textContent = formatMegapixels(value);
+    preview.querySelector(".h3s-resolution-result strong").textContent = `${next.width} × ${next.height}`;
+    preview.querySelector(".h3s-resolution-result span").textContent = `${next.actualMegapixels.toFixed(2)} MP actual · ${next.capped ? "conservative" : "direct"}`;
+    const tier = resolutionTier(value, state.generation.cap_native_resolution);
+    tierBadge.className = `h3s-resolution-tier is-${tier.key}`;
+    tierBadge.textContent = tier.label;
+    tierNote.textContent = tier.note;
+    megapixelSlider.dataset.tier = tier.key;
+    syncResolutionMode(state.generation.cap_native_resolution);
+    applyState(node, state);
+  };
+  const commitMp = (value) => {
+    update({
+      megapixels: value,
+      cap_native_resolution: capNativeForTarget(value, state.generation.cap_native_resolution),
+    });
+  };
   const megapixelSlider = rangeControl(
     generation.megapixels,
     { min: MIN_MEGAPIXELS, max: MAX_MEGAPIXELS, step: MEGAPIXEL_STEP },
     `Target megapixels, minimum ${formatMegapixels(MIN_MEGAPIXELS)}, maximum ${formatMegapixels(MAX_MEGAPIXELS)}`,
-    (value) => {
-      state.generation.megapixels = value;
-      state.generation.cap_native_resolution = capNativeForTarget(
-        value,
-        state.generation.cap_native_resolution,
-      );
-      const next = planResolution(
-        state.generation.aspect_ratio,
-        value,
-        state.generation.custom_width,
-        state.generation.custom_height,
-        state.generation.cap_native_resolution,
-      );
-      megapixelValue.textContent = formatMegapixels(value);
-      preview.querySelector(".h3s-resolution-result strong").textContent = `${next.width} × ${next.height}`;
-      preview.querySelector(".h3s-resolution-result span").textContent = `${next.actualMegapixels.toFixed(2)} MP actual · ${next.capped ? "conservative" : "direct"}`;
-      const tier = resolutionTier(value, state.generation.cap_native_resolution);
-      tierBadge.className = `h3s-resolution-tier is-${tier.key}`;
-      tierBadge.textContent = tier.label;
-      tierNote.textContent = tier.note;
-      megapixelSlider.dataset.tier = tier.key;
-      syncResolutionMode(state.generation.cap_native_resolution);
-      applyState(node, state);
-    },
+    commitMp,
+    previewMp,
   );
   megapixelSlider.dataset.tier = initialTier.key;
   const presets = [
