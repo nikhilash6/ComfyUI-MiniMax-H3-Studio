@@ -102,5 +102,37 @@
     "subtitle": "Moving through the ruined town under flares.",
     "thumbnail": "cinematic_1917_ruins_flare.webp",
     "metadata_file": "cinematic_1917_ruins_flare.webp"
+  },
+  {
+    "id": "cinematic_breakingbad_chemistry",
+    "category": "CINEMATIC",
+    "title": "Breaking Bad \u00b7 Chemistry Classroom",
+    "subtitle": "Walter White teaching chemistry at J. P. Wynne High School.",
+    "thumbnail": "cinematic_breakingbad_chemistry.webp",
+    "metadata_file": "cinematic_breakingbad_chemistry.webp"
+  },
+  {
+    "id": "cinematic_bodycam_warehouse_search",
+    "category": "CINEMATIC",
+    "title": "Bodycam Thriller \u00b7 Warehouse Search",
+    "subtitle": "Nighttime flashlight search in an abandoned warehouse.",
+    "thumbnail": "cinematic_bodycam_warehouse_search.webp",
+    "metadata_file": "cinematic_bodycam_warehouse_search.webp"
+  },
+  {
+    "id": "cinematic_oppenheimer_trinity",
+    "category": "CINEMATIC",
+    "title": "Oppenheimer \u00b7 Trinity Observation Bunker",
+    "subtitle": "Cillian Murphy as J. Robert Oppenheimer before the detonation.",
+    "thumbnail": "cinematic_oppenheimer_trinity.webp",
+    "metadata_file": "cinematic_oppenheimer_trinity.webp"
+  },
+  {
+    "id": "anime_coastal_market_afternoon",
+    "category": "ANIME",
+    "title": "Anime \u00b7 Coastal Harbor Market",
+    "subtitle": "Late-summer afternoon in a small seaside shopping street.",
+    "thumbnail": "anime_coastal_market_afternoon.webp",
+    "metadata_file": "anime_coastal_market_afternoon.webp"
   }
 ]
