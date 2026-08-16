@@ -119,11 +119,15 @@ function isPermanentImage(item) {
 
 function itemSignature(item) {
   if (!item) return "";
-  const seed = item.state?.generation?.seed;
-  const prompt = String(item.state?.prompt ?? "").trim();
+  const prompt = String(item.state?.prompt ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+  const timeBucket = Math.floor(Number(item.timestamp || 0) / (3 * 60 * 1000));
   const dirId = item.state?.ui?.director_node_id ?? "";
+  if (prompt) {
+    return `run:${dirId}:${prompt.slice(0, 80)}:${timeBucket}`;
+  }
+  const seed = item.state?.generation?.seed;
   if (seed != null && Number.isFinite(Number(seed)) && Number(seed) >= 0) {
-    return `run:${dirId}:${Math.trunc(Number(seed))}:${prompt.slice(0, 48)}`;
+    return `seed:${dirId}:${Math.trunc(Number(seed))}`;
   }
   const cleanUrl = cleanImageUrl(item.url || item.image || "");
   return cleanUrl || String(item.id || "");
@@ -586,7 +590,17 @@ api.addEventListener("executed", ({ detail }) => {
 
   if (promptId) {
     const prior = recordedPromptRuns.get(promptId);
-    if (prior && (prior.isOutput || !isOutput)) {
+    if (prior) {
+      if (isOutput && !prior.isOutput) {
+        const list = history();
+        const existing = list.find((it) => it.id === prior.historyId);
+        if (existing) {
+          existing.url = url;
+          saveHistory(list);
+          updateActiveShelves();
+        }
+        recordedPromptRuns.set(promptId, { timestamp: Date.now(), isOutput: true, historyId: prior.historyId });
+      }
       return;
     }
   }
@@ -600,8 +614,9 @@ api.addEventListener("executed", ({ detail }) => {
   if (Number.isFinite(exactSeed) && exactSeed >= 0) saved.generation.seed = Math.trunc(exactSeed);
   saved.ui = { ...(saved.ui || {}), director_node_id: String(director.id) };
 
+  const historyId = `gen_${Date.now()}_${String(detail?.node ?? "")}`;
   if (promptId) {
-    recordedPromptRuns.set(promptId, { timestamp: Date.now(), isOutput });
+    recordedPromptRuns.set(promptId, { timestamp: Date.now(), isOutput, historyId });
     if (recordedPromptRuns.size > 50) {
       const oldestKey = recordedPromptRuns.keys().next().value;
       recordedPromptRuns.delete(oldestKey);
@@ -609,7 +624,7 @@ api.addEventListener("executed", ({ detail }) => {
   }
 
   addHistory({
-    id: `gen_${Date.now()}_${String(detail?.node ?? "")}`,
+    id: historyId,
     url,
     timestamp: Date.now(),
     state: saved,
