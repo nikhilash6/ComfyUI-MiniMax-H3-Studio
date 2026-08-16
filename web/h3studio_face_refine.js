@@ -11,50 +11,38 @@ function installStyles() {
   const style = document.createElement("style");
   style.id = STYLE_ID;
   style.textContent = `
-    .h3s-fr{border:1px solid #2a3035;border-radius:9px;background:#121619;overflow:hidden;color:#dbe1e5}
-    .h3s-fr-head{display:flex;align-items:center;justify-content:space-between;padding:9px 10px 7px;gap:10px}
-    .h3s-fr-heading{display:flex;align-items:center;gap:7px;min-width:0}
-    .h3s-fr-dot{width:7px;height:7px;border-radius:50%;background:#68747d;box-shadow:0 0 0 3px rgba(104,116,125,.11);flex:none}
-    .h3s-fr.is-auto .h3s-fr-dot{background:#c9a75e;box-shadow:0 0 0 3px rgba(201,167,94,.12)}
-    .h3s-fr.is-strong .h3s-fr-dot{background:#c78263;box-shadow:0 0 0 3px rgba(199,130,99,.12)}
-    .h3s-fr-title{font-size:10px;font-weight:720;letter-spacing:.015em;color:#eef2f4}
-    .h3s-fr-kicker{font-size:8px;color:#7f8a92;white-space:nowrap}
-    .h3s-fr-badge{font-size:8px;line-height:1;padding:4px 6px;border-radius:5px;border:1px solid #30373d;background:#1a1f23;color:#9ca6ad;white-space:nowrap}
-    .h3s-fr-modes{display:grid;grid-template-columns:1fr 1.18fr 1fr;gap:3px;margin:0 9px 8px;padding:2px;background:#0c0f11;border:1px solid #242a2f;border-radius:7px}
-    .h3s-fr-mode{appearance:none;border:0;border-radius:5px;background:transparent;color:#78848d;font-size:8.5px;font-weight:650;padding:5px 6px;cursor:pointer}
-    .h3s-fr-mode:hover{color:#c9d0d5;background:#151a1e}
-    .h3s-fr-mode.is-active{background:#242a30;color:#f0f3f5;box-shadow:0 1px 2px rgba(0,0,0,.28)}
-    .h3s-fr-copy{margin:0 10px 9px;font-size:8px;line-height:1.48;color:#929da5}
-    .h3s-fr-copy strong{color:#c7cfd4;font-weight:650}
-    .h3s-fr-note{display:flex;gap:6px;margin:0 10px 9px;padding:6px 7px;border-radius:6px;background:#171b1e;border:1px solid #252b30;font-size:7.7px;line-height:1.4;color:#87929a}
-    .h3s-fr-note b{color:#b4bec5;font-weight:650}
-    .h3s-fr-advanced{margin:0 9px 9px;border-top:1px solid #242a2f;padding-top:7px}
-    .h3s-fr-advanced>summary{display:flex;align-items:center;justify-content:space-between;list-style:none;cursor:pointer;color:#8d989f;font-size:8px;font-weight:620;user-select:none}
+    .h3s-fr{border:1px solid #23282c;border-radius:8px;background:#131619;padding:8px 10px;color:#dbe1e5;margin-top:6px}
+    .h3s-fr-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;gap:8px}
+    .h3s-fr-heading{display:flex;align-items:center;gap:6px;min-width:0}
+    .h3s-fr-sparkle{color:#e05b88;font-size:10px;line-height:1;flex:none}
+    .h3s-fr-title{font-size:10.5px;font-weight:700;letter-spacing:.01em;color:#f0f3f5}
+    .h3s-fr-kicker{font-size:9px;color:#6d7982;white-space:nowrap}
+    .h3s-fr-badge{font-size:8.5px;line-height:1;padding:3px 6px;border-radius:4px;border:1px solid #2d3339;background:#181d21;color:#8d98a0;white-space:nowrap}
+    .h3s-fr.is-auto .h3s-fr-badge{color:#d4b36a;border-color:#4a3f28;background:#201c13}
+    .h3s-fr.is-strong .h3s-fr-badge{color:#d68a68;border-color:#4d3226;background:#221813}
+    .h3s-fr-modes{display:grid;grid-template-columns:1fr 1.2fr 1fr;gap:3px;padding:2px;background:#0c0f11;border:1px solid #1f2428;border-radius:6px}
+    .h3s-fr-mode{appearance:none;border:0;border-radius:4px;background:transparent;color:#737f88;font-size:9px;font-weight:650;padding:5px 4px;cursor:pointer;text-align:center;transition:all .15s}
+    .h3s-fr-mode:hover{color:#c9d0d5;background:#161b1e}
+    .h3s-fr-mode.is-active{background:#262c33;color:#ffffff;box-shadow:0 1px 3px rgba(0,0,0,.35)}
+    .h3s-fr-advanced{margin-top:7px;border-top:1px solid #1e2327;padding-top:6px}
+    .h3s-fr-advanced>summary{display:flex;align-items:center;justify-content:space-between;list-style:none;cursor:pointer;color:#737f88;font-size:8px;font-weight:620;user-select:none}
     .h3s-fr-advanced>summary::-webkit-details-marker{display:none}
-    .h3s-fr-advanced>summary:after{content:'+';font-size:11px;color:#68747d}
+    .h3s-fr-advanced>summary:after{content:'+';font-size:10px;color:#5a656e}
     .h3s-fr-advanced[open]>summary:after{content:'−'}
-    .h3s-fr-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px 9px;margin-top:7px;padding:8px;background:#0d1113;border:1px solid #20262a;border-radius:7px}
+    .h3s-fr-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 8px;margin-top:6px;padding:7px;background:#0d1113;border:1px solid #1e2327;border-radius:6px}
     .h3s-fr-control{min-width:0}
-    .h3s-fr-label{display:flex;align-items:center;justify-content:space-between;gap:5px;margin-bottom:4px;color:#858f96;font-size:7.5px;font-weight:610}
+    .h3s-fr-label{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-bottom:3px;color:#7b858d;font-size:7.5px;font-weight:600}
     .h3s-fr-value{color:#bcc4c9;font-variant-numeric:tabular-nums}
     .h3s-fr-range{width:100%;height:3px;margin:0;display:block;accent-color:#7f8b93;cursor:pointer}
-    .h3s-fr-select{box-sizing:border-box;width:100%;height:24px;border:1px solid #2a3136;border-radius:5px;background:#151a1d;color:#c5cdd2;font-size:8px;padding:2px 5px;outline:none}
-    .h3s-fr-switch{display:flex;align-items:center;justify-content:space-between;gap:8px;height:24px;color:#9aa4ab;font-size:8px}
+    .h3s-fr-select{box-sizing:border-box;width:100%;height:22px;border:1px solid #262c31;border-radius:4px;background:#14181b;color:#c5cdd2;font-size:8px;padding:2px 4px;outline:none}
+    .h3s-fr-switch{display:flex;align-items:center;justify-content:space-between;gap:6px;height:22px;color:#8d979f;font-size:8px}
     .h3s-fr-switch input{accent-color:#87939b}
-    .h3s-fr-proof{margin:0 9px 9px;border:1px solid #293035;border-radius:8px;background:#0d1113;overflow:hidden}
-    .h3s-fr-proof-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 8px;border-bottom:1px solid #242a2f}
-    .h3s-fr-proof-title{font-size:8px;font-weight:680;color:#cbd2d6}
-    .h3s-fr-proof-meta{font-size:7.4px;color:#7f8a91;text-align:right}
-    .h3s-fr-proof-img{display:block;width:100%;max-height:310px;object-fit:contain;background:#090c0e;cursor:zoom-in}
-    .h3s-fr-status{display:flex;align-items:flex-start;gap:7px;padding:7px 8px;font-size:7.8px;line-height:1.42;color:#929ca3}
-    .h3s-fr-status-dot{width:6px;height:6px;border-radius:50%;margin-top:2px;background:#6f7a82;flex:none}
-    .h3s-fr-status.is-running .h3s-fr-status-dot{background:#c9a75e;animation:h3s-fr-pulse 1.2s ease-in-out infinite}
+    .h3s-fr-live{margin-top:6px}
+    .h3s-fr-status{display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:5px;background:#0d1113;border:1px solid #1e2327;font-size:7.8px;color:#8b969e}
+    .h3s-fr-status-dot{width:5px;height:5px;border-radius:50%;background:#6f7a82;flex:none}
+    .h3s-fr-status.is-running .h3s-fr-status-dot{background:#c9a75e}
     .h3s-fr-status.is-done .h3s-fr-status-dot{background:#6e9b80}
-    .h3s-fr-status.is-skipped .h3s-fr-status-dot{background:#7d888f}
     .h3s-fr-status.is-error .h3s-fr-status-dot{background:#b86d65}
-    .h3s-fr-status strong{display:block;color:#cbd2d6;font-size:8px;margin-bottom:1px}
-    .h3s-fr-empty{margin:0 9px 9px;padding:7px 8px;border:1px dashed #293036;border-radius:7px;font-size:7.7px;line-height:1.4;color:#748087}
-    @keyframes h3s-fr-pulse{0%,100%{opacity:.45}50%{opacity:1}}
   `;
   document.head.append(style);
 }
@@ -247,18 +235,19 @@ function createFaceRefineSection(node, state, applyCallback) {
   head.className = "h3s-fr-head";
   const heading = document.createElement("div");
   heading.className = "h3s-fr-heading";
-  const dot = document.createElement("span");
-  dot.className = "h3s-fr-dot";
+  const sparkle = document.createElement("span");
+  sparkle.className = "h3s-fr-sparkle";
+  sparkle.textContent = "✦";
   const title = document.createElement("span");
   title.className = "h3s-fr-title";
   title.textContent = "Face Refine";
   const kicker = document.createElement("span");
   kicker.className = "h3s-fr-kicker";
-  kicker.textContent = "selected-still post-process";
-  heading.append(dot, title, kicker);
+  kicker.textContent = "Distant & Wide";
+  heading.append(sparkle, title, kicker);
   const badge = document.createElement("span");
   badge.className = "h3s-fr-badge";
-  const modeLabel = (value) => value === "auto" ? "Auto · small faces" : value === "strong" ? "Strong · all faces" : "Off";
+  const modeLabel = (value) => value === "auto" ? "Auto" : value === "strong" ? "Strong" : "Off";
   badge.textContent = modeLabel(mode);
   head.append(heading, badge);
   container.appendChild(head);
@@ -266,7 +255,7 @@ function createFaceRefineSection(node, state, applyCallback) {
   const modes = document.createElement("div");
   modes.className = "h3s-fr-modes";
   const buttons = new Map();
-  for (const [key, text] of [["off", "Off"], ["auto", "Auto · recommended"], ["strong", "Strong"]]) {
+  for (const [key, text] of [["off", "Off"], ["auto", "✦ Auto"], ["strong", "Strong"]]) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `h3s-fr-mode${key === mode ? " is-active" : ""}`;
@@ -287,18 +276,8 @@ function createFaceRefineSection(node, state, applyCallback) {
   }
   container.appendChild(modes);
 
-  const copy = document.createElement("p");
-  copy.className = "h3s-fr-copy";
-  copy.innerHTML = "<strong>Runs after H3 has chosen the final still.</strong> Auto detects only small/distant faces, crops them with context, rerenders those crops through H3's real FL2VA path, then blends them back. Close faces are left untouched.";
-  container.appendChild(copy);
-
   const controls = document.createElement("div");
   controls.hidden = mode === "off";
-
-  const note = document.createElement("div");
-  note.className = "h3s-fr-note";
-  note.innerHTML = "<span>i</span><span><b>Detector order:</b> YOLOv8-Face when a local face model is installed, then MediaPipe, then the bundled Haar fallback. Feathered masks are dependency-free; SAM is optional and falls back safely. Each selected face adds another H3 sampling pass.</span>";
-  controls.appendChild(note);
 
   const details = document.createElement("details");
   details.className = "h3s-fr-advanced";

@@ -406,6 +406,8 @@ function richResultPrompt(value, state) {
 function resultsSection(node) {
   const result = node.__h3studioResult;
   if (!result?.prompt) return null;
+  const state = stateFromNode(node);
+  if (state.prompt_options.enhance_mode === "off" && !state.prompt_options.deep_enhancement) return null;
   const friendlyPrompt = friendlyReferences(result.prompt);
   const enhancedInstruction = friendlyReferences(result.enhancedPrompt || result.prompt);
   const copy = element("button", {
@@ -432,12 +434,12 @@ function resultsSection(node) {
       click: (event) => {
         event.preventDefault();
         event.stopPropagation();
-        const state = stateFromNode(node);
-        state.prompt = enhancedInstruction;
-        state.prompt_options = { ...state.prompt_options, deep_enhancement: false };
+        const curState = stateFromNode(node);
+        curState.prompt = enhancedInstruction;
+        curState.prompt_options = { ...curState.prompt_options, deep_enhancement: false };
         setWidget(node, "prompt", enhancedInstruction);
         node.__h3sDomWidget?.setValue?.(enhancedInstruction);
-        applyState(node, state);
+        applyState(node, curState);
         renderPanel(node);
         queueMicrotask(() => node.__h3sEditor?.focus?.({ preventScroll: false }));
       },
@@ -446,7 +448,6 @@ function resultsSection(node) {
   const labels = element("div", { className: "h3s-result-labels" }, result.labels.map((label) => (
     element("span", { className: "h3s-result-label", text: label, title: label })
   )));
-  const state = stateFromNode(node);
   const resultTitle = ({
     off: "Exact H3 instruction",
     single_prompt: "Direct one-line H3 instruction",
@@ -475,7 +476,7 @@ function resultsSection(node) {
       richResultPrompt(records, state),
     ]));
   }
-  return element("details", { className: "h3s-result", attrs: { open: "" } }, children);
+  return element("details", { className: "h3s-result" }, children);
 }
 
 async function queueDirectorWithSeed(node, seed) {
@@ -1148,6 +1149,21 @@ function renderPanel(node) {
   root.replaceChildren();
   const refresh = () => renderPanel(node);
   const resolvedMode = state.references.length ? "Reference ready" : "T2I ready";
+
+  const leftCol = element("div", { className: "h3s-col h3s-col-left" }, [
+    promptSection(node, state, refresh),
+    resultsSection(node),
+    referencesSection(node, state, refresh),
+  ].filter(Boolean));
+
+  const rightCol = element("div", { className: "h3s-col h3s-col-right" }, [
+    generationSection(node, state, refresh),
+    generatedOutputSection(node, state),
+    advancedSection(node, state, refresh),
+  ].filter(Boolean));
+
+  const workspace = element("div", { className: "h3s-workspace" }, [leftCol, rightCol]);
+
   const children = [
     element("header", { className: "h3s-studio-header" }, [
       element("div", { className: "h3s-studio-brand" }, [element("span", { className: "h3s-studio-mark" }), element("span", { className: "h3s-studio-title", text: "MiniMax H3 Studio" })]),
@@ -1158,12 +1174,7 @@ function renderPanel(node) {
       className: "h3s-state-warning",
       text: `${node.__h3studioStateError} The original value was preserved for recovery.`,
     }) : null,
-    generationSection(node, state, refresh),
-    promptSection(node, state, refresh),
-    generatedOutputSection(node, state),
-    resultsSection(node),
-    referencesSection(node, state, refresh),
-    advancedSection(node, state, refresh),
+    workspace,
   ].filter(Boolean);
   root.append(...children);
   node.__h3studioLinkSignature = linkSignature(node);
