@@ -189,7 +189,7 @@ function constrainNumericCombo(node, name, definition) {
   target.value = next;
   if (target._state) target._state.value = next;
   target.label = definition.label;
-  target.type = "combo";
+  try { target.type = "combo"; } catch {}
   target.options ||= {};
   target.options.values = [...definition.values];
 }

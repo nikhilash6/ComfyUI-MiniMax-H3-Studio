@@ -59,7 +59,7 @@ function constrainChoiceWidget(node, name, values, fallback, numeric = false) {
         : normalizeStringChoice(target.value, values, fallback);
     target.value = next;
     if (target._state) target._state.value = next;
-    target.type = "combo";
+    try { target.type = "combo"; } catch {}
     target.options ||= {};
     target.options.values = [...values];
 }

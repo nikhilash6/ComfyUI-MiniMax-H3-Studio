@@ -25,14 +25,31 @@ const ROOT_ONLY_OBSERVERS = [
   "__h3sMpScrollObserver",
 ];
 
-const tuned = new WeakSet();
+// Intercept MutationObserver.prototype.observe to globally prevent subtree observation storms
+// on the Studio panel and benchmark roots without altering any visual decoration code.
+if (typeof MutationObserver !== "undefined" && !MutationObserver.prototype.__h3PerfPatched) {
+  MutationObserver.prototype.__h3PerfPatched = true;
+  const originalObserve = MutationObserver.prototype.observe;
+  MutationObserver.prototype.observe = function (target, options) {
+    if (
+      target?.classList?.contains?.("h3s-studio-panel") ||
+      target?.classList?.contains?.("h3b7") ||
+      target?.closest?.(".h3s-studio-panel") ||
+      target?.closest?.(".h3b7")
+    ) {
+      if (options && options.subtree) {
+        options = { ...options, subtree: false };
+      }
+    }
+    return originalObserve.call(this, target, options);
+  };
+}
 
 function tuneObserver(observer, root) {
-  if (!observer || tuned.has(observer)) return false;
+  if (!observer) return false;
   try {
     observer.disconnect();
     observer.observe(root, { childList: true });
-    tuned.add(observer);
     return true;
   } catch {
     return false;
@@ -43,6 +60,10 @@ function optimizeDirector(node) {
   if (node?.comfyClass !== DIRECTOR && node?.comfyClass !== "H3StudioSmartBenchmark") return;
   const root = node.__h3studioPanel || node.__h3bRoot;
   if (!root?.isConnected) return;
+
+  // Clean up content-visibility which causes Chromium layer reallocation during canvas zoom
+  root.style.removeProperty("content-visibility");
+  root.style.removeProperty("contain-intrinsic-size");
 
   for (const key of ROOT_ONLY_OBSERVERS) {
     if (root[key]) tuneObserver(root[key], root);
