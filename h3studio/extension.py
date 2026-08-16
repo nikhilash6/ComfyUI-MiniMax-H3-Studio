@@ -45,6 +45,7 @@ from .prompt_prep_hotfix_v2 import install as install_prompt_prep_hotfix_v2
 from .prompt_writer_passthrough import install as install_prompt_writer_passthrough
 from .qwen35_gguf import install as install_qwen35_gguf
 from .qwen35_gguf_text_fallback import install as install_qwen35_gguf_text_fallback
+from .reference_integrity_fixes import install as install_reference_integrity_fixes
 from .runtime_contract_fixes import install as install_runtime_contract_fixes
 from .runtime_guards import install_runtime_guards
 from .runtime_policy_fixes import install as install_runtime_policy_fixes
@@ -80,6 +81,11 @@ install_qwen35_gguf()
 # llama-mtmd-cli is image-oriented; text-only prompt writing uses the shared
 # llama-server or llama-cli instead of ever falling into mtmd interactive mode.
 install_qwen35_gguf_text_fallback()
+# Multi-reference visual analysis must keep each card bound to its exact image
+# ordinal. This layer reuses the same warm GGUF server/cache but isolates fresh
+# image analyses so a malformed batched response cannot copy @Image1 facts into
+# @Image2; it also enforces exact ordered tags in the writer output.
+install_reference_integrity_fixes()
 # The fused analyzer+writer experiment can save a pass only when the backend
 # reliably returns the complete structured payload. Real L4 traces showed the
 # native Qwen3.5 fallback truncating after the reference record, retrying the
