@@ -3,7 +3,7 @@
 Historically the Director could resolve to text-to-image while the conditioner
 still noticed connected images and entered FL2VA source/keyframe conditioning.
 That accidental hybrid produced useful results: creative T2I prompt semantics
-plus strong visual grounding.  Keep that behavior intentionally for explicit
+plus strong visual grounding. Keep that behavior intentionally for explicit
 T2I with connected images, without changing pure T2I, I2I, or REF2VA.
 """
 
@@ -21,7 +21,7 @@ def _guide_positions(count: int, frame_count: int) -> tuple[int, ...]:
     """Spread FL2VA guides over the available still packet.
 
     One image stays at frame 0 exactly like the historical path. Multiple
-    images use the native H3 multi-keyframe mechanism and are distributed over
+    images use H3's native multi-keyframe mechanism and are distributed over
     the packet. Duplicate frame indices are allowed when there are more guides
     than decoded frames; PackedLayout keeps every condition block separately.
     """
@@ -125,9 +125,8 @@ def _install_pipeline_patch() -> None:
         prompt = str(studio_context.prompt)
         image_ids = cache.image_cache_key(studio_context, guides)
 
-        # Use the historical FL2VA source latent geometry. This deliberately
-        # keeps the old one-image behavior byte-for-byte at the latent-policy
-        # level, including its 20-frame stable-edit recommendation.
+        # Deliberately reuse the historical FL2VA source-latent policy. The only
+        # behavioral extension is that every connected image becomes a guide.
         latent, requested_frames, natural_frames, internal_frames, output_strategy, latent_state = cache._latent_stage(
             "image_to_image (FL2VA)", width, height, frame_preset
         )
@@ -173,14 +172,6 @@ def _install_pipeline_patch() -> None:
                 "minimax_frame_count": natural_frames,
             },
         )
-
-        # With several guides, frame 0 is intentionally no longer assumed to
-        # be the best final still. Let the existing decoder choose the earliest
-        # stable synthesis frame. One-guide behavior remains exactly historical.
-        if len(guides) > 1 and isinstance(latent, dict):
-            latent = dict(latent)
-            latent["h3_output_strategy"] = "first_stable_edit"
-            output_strategy = "first_stable_edit"
 
         fitted_source = fitted_guides[0]
         hits = sum(state == "HIT" for state in source_states)
