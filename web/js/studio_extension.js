@@ -1,8 +1,6 @@
 import { app } from "../../../scripts/app.js";
 import { api } from "../../../scripts/api.js";
 
-globalThis.__H3_STUDIO_CANONICAL_UI__ = true;
-
 import {
   applyReferenceInferences,
   ASPECT_RATIOS,
@@ -708,6 +706,7 @@ function generationSection(node, state, refresh) {
     tierNote.textContent = tier.note;
     megapixelSlider.dataset.tier = tier.key;
     syncResolutionMode(state.generation.cap_native_resolution);
+    applyState(node, state);
   };
   const commitMp = (value) => {
     update({
@@ -1136,28 +1135,30 @@ function referencesSection(node, state, refresh) {
 }
 
 function advancedSection(node, state, refresh) {
-  const content = element("div", { className: "h3s-section-stack" });
+  const content = element("div", { className: "h3s-advanced-content h3s-section-stack" });
+  content.hidden = !state.ui.advanced_open;
   const update = (generationPatch = {}, promptPatch = {}) => {
     state.generation = { ...state.generation, ...generationPatch };
     state.prompt_options = { ...state.prompt_options, ...promptPatch };
     applyState(node, state);
+    refresh();
   };
   content.append(element("div", { className: "h3s-grid" }, [
     controlRow("Model route", selectControl(state.generation.route, [
       ["auto", "Auto · choose for me"], ["fl2va", "Force FL2VA"], ["ref2va", "Force REF2VA"],
     ], "Conditioning route", (value) => update({ route: value }))),
   ]));
-  return section("Model Route", content);
+  content.append(element("p", { className: "h3s-context-help", text: "Resolution mode now lives beside the target-size control. Model route normally follows Mode; force a route only for controlled comparisons." }));
+  const toggle = element("button", {
+    className: "h3s-advanced-toggle", type: "button", attrs: { "aria-expanded": String(state.ui.advanced_open) },
+    on: { click: () => { state.ui.advanced_open = !state.ui.advanced_open; applyState(node, state); refresh(); } },
+  }, [element("span", { text: "Advanced controls" }), element("span", { text: state.ui.advanced_open ? "−" : "+" })]);
+  return element("section", { className: "h3s-section" }, [toggle, content]);
 }
 
 function renderPanel(node) {
   const root = node.__h3studioPanel;
   if (!root) return;
-  const prevLeftScroll = root.querySelector(".h3s-col-left")?.scrollTop ?? 0;
-  const prevRightScroll = root.querySelector(".h3s-col-right")?.scrollTop ?? 0;
-  const prevWorkspaceScroll = root.querySelector(".h3s-workspace")?.scrollTop ?? 0;
-  const prevRootScroll = root.scrollTop ?? 0;
-
   const existingShelf = root.querySelector(".h3s-demos-shelf") || node.__h3studioShelf;
   const state = applyState(node, stateFromNode(node), false);
   root.replaceChildren();
@@ -1174,7 +1175,7 @@ function renderPanel(node) {
 
   const rightCol = element("div", { className: "h3s-col h3s-col-right" }, [
     generationSection(node, state, refresh),
-    createFaceRefineSection(node, state, () => applyState(node, state)),
+    createFaceRefineSection(node, state, refresh),
     advancedSection(node, state, refresh),
   ].filter(Boolean));
   rightCol.addEventListener("wheel", (e) => { e.stopPropagation(); }, { capture: true, passive: true });
@@ -1195,23 +1196,6 @@ function renderPanel(node) {
   ].filter(Boolean);
   root.append(...children);
   node.__h3studioLinkSignature = linkSignature(node);
-
-  if (prevLeftScroll > 0) {
-    leftCol.scrollTop = prevLeftScroll;
-    requestAnimationFrame(() => { leftCol.scrollTop = prevLeftScroll; });
-  }
-  if (prevRightScroll > 0) {
-    rightCol.scrollTop = prevRightScroll;
-    requestAnimationFrame(() => { rightCol.scrollTop = prevRightScroll; });
-  }
-  if (prevWorkspaceScroll > 0) {
-    workspace.scrollTop = prevWorkspaceScroll;
-    requestAnimationFrame(() => { workspace.scrollTop = prevWorkspaceScroll; });
-  }
-  if (prevRootScroll > 0) {
-    root.scrollTop = prevRootScroll;
-    requestAnimationFrame(() => { root.scrollTop = prevRootScroll; });
-  }
 
   if (!existingShelf && typeof installDemosShelf === "function") {
     installDemosShelf(node);
