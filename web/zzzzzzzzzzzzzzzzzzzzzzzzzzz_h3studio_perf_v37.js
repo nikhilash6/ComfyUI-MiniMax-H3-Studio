@@ -45,6 +45,99 @@ if (typeof MutationObserver !== "undefined" && !MutationObserver.prototype.__h3P
   };
 }
 
+function injectPerfStyles() {
+  const PERF_STYLE_ID = "h3studio-perf-v38-styles";
+  if (document.getElementById(PERF_STYLE_ID)) return;
+  const style = document.createElement("style");
+  style.id = PERF_STYLE_ID;
+  style.textContent = `
+    .h3s-studio-panel,
+    .h3b7,
+    .h3s-prompt-mentions-wrap {
+      contain: layout style !important;
+      will-change: transform !important;
+      transform-style: preserve-3d !important;
+      backface-visibility: hidden !important;
+    }
+    body.h3s-canvas-navigating .h3s-studio-panel,
+    body.h3s-canvas-navigating .h3b7,
+    body.h3s-canvas-navigating .h3s-prompt-mentions-wrap {
+      pointer-events: none !important;
+      user-select: none !important;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+let navTimer = null;
+function setNavigating(active) {
+  if (active) {
+    if (!document.body.classList.contains("h3s-canvas-navigating")) {
+      document.body.classList.add("h3s-canvas-navigating");
+    }
+    clearTimeout(navTimer);
+    navTimer = setTimeout(() => {
+      document.body.classList.remove("h3s-canvas-navigating");
+      navTimer = null;
+    }, 120);
+  } else {
+    clearTimeout(navTimer);
+    navTimer = null;
+    document.body.classList.remove("h3s-canvas-navigating");
+  }
+}
+
+function installCanvasNavGuard() {
+  if (window.__h3CanvasNavGuardInstalled) return;
+  window.__h3CanvasNavGuardInstalled = true;
+
+  // 1. Hook LiteGraph zoom/scale methods so ANY zoom method activates navigation mode
+  const proto = globalThis.LGraphCanvas?.prototype;
+  if (proto) {
+    const origSetZoom = proto.setZoom;
+    if (typeof origSetZoom === "function") {
+      proto.setZoom = function () {
+        setNavigating(true);
+        return origSetZoom.apply(this, arguments);
+      };
+    }
+
+    const origChangeDeltaScale = proto.changeDeltaScale;
+    if (typeof origChangeDeltaScale === "function") {
+      proto.changeDeltaScale = function () {
+        setNavigating(true);
+        return origChangeDeltaScale.apply(this, arguments);
+      };
+    }
+  }
+
+  // 2. Global event listeners for wheel and drag
+  window.addEventListener(
+    "wheel",
+    (e) => {
+      // Zooming with modifier key or outside scrollable interior activates navigation mode
+      if (e.ctrlKey || e.metaKey || !e.target?.closest?.(".h3s-col, .h3b7-body, textarea")) {
+        setNavigating(true);
+      }
+    },
+    { capture: true, passive: true }
+  );
+
+  window.addEventListener(
+    "pointerdown",
+    (e) => {
+      const onWidget = e.target?.closest?.(".h3s-studio-panel, .h3b7, .h3s-prompt-mentions-wrap");
+      if (!onWidget) {
+        setNavigating(true);
+      }
+    },
+    { capture: true, passive: true }
+  );
+
+  window.addEventListener("pointerup", () => setNavigating(false), { capture: true, passive: true });
+  window.addEventListener("pointercancel", () => setNavigating(false), { capture: true, passive: true });
+}
+
 function tuneObserver(observer, root) {
   if (!observer) return false;
   try {
@@ -86,8 +179,10 @@ function scheduleSweep() {
 }
 
 app.registerExtension({
-  name: "H3Studio.PerformanceV37",
+  name: "H3Studio.PerformanceV38",
   setup() {
+    injectPerfStyles();
+    installCanvasNavGuard();
     scheduleSweep();
   },
   nodeCreated(node) {

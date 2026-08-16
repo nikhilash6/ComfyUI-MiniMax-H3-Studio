@@ -105,10 +105,8 @@ function forceLayout(node) {
 }
 
 function markMarquee(label) {
-  if (!label?.isConnected) return;
-  label.classList.remove("is-h3-marquee");
-  label.style.removeProperty("--h3s-marquee-shift");
-  label.style.removeProperty("--h3s-marquee-duration");
+  if (!label?.isConnected || label.__h3MarqueeChecked) return;
+  label.__h3MarqueeChecked = true;
   requestAnimationFrame(() => {
     if (!label?.isConnected) return;
     const overflow = Math.ceil(label.scrollWidth - label.clientWidth);
@@ -125,6 +123,7 @@ function markChoice(choice) {
 }
 
 document.addEventListener("pointerover", (event) => {
+  if (document.body.classList.contains("h3s-canvas-navigating")) return;
   const choice = event.target?.closest?.(".h3s-choice-trigger,.h3s-choice-option");
   if (choice) markChoice(choice);
 }, true);
