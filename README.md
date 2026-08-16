@@ -3,7 +3,7 @@
 
 ### A reference-aware still-image workspace for MiniMax H3 in ComfyUI.
 
-Build text-to-image, anchored edits, multi-reference compositions, and controlled benchmark matrices from one maintained workflow.
+Build text-to-image, anchored edits, multi-reference compositions, controlled face refinement, and benchmark matrices from one maintained workflow.
 
 <p>
   <a href="https://github.com/thaakeno/ComfyUI-MiniMax-H3-Studio/stargazers"><img alt="Star H3 Studio" src="https://img.shields.io/badge/%E2%98%85%20Star-H3%20Studio-34D3B5?style=for-the-badge&logo=github&logoColor=white&labelColor=171B1F"></a>
@@ -60,7 +60,7 @@ Auto selects the valid route from your requested mode and enabled references. Im
   <tr>
     <td width="50%" valign="top">
       <h3>⚡ Choose a real sampling recipe</h3>
-      Compare native Base RES20/RES12, Kijai's empirical LightX v0.1 four-step profiles, or Mamad8's external four-step PDD REF2VA students. Profile metadata states what is proven and what remains empirical.
+      Compare native Base RES20/RES12, Kijai's empirical LightX profiles, or Mamad8's external four-step PDD REF2VA students. Profile metadata states what is proven and what remains empirical.
     </td>
     <td width="50%" valign="top">
       <h3>🔬 Benchmark more than A/B</h3>
@@ -103,13 +103,13 @@ python -m pip install -r requirements.txt
 git log -1 --format='Installed H3 Studio %h · %s'
 ```
 
-Restart ComfyUI, hard-refresh the frontend, and open the maintained workflow. H3 Studio does not download models automatically.
+Restart ComfyUI, hard-refresh the frontend, and open the maintained workflow. H3 Studio does not download the core MiniMax H3 models automatically. Face Refine has a separate optional setup action that can install/download its detector and SAM dependencies only when you explicitly request it.
 
 For a reproducible shared install, pin the current release instead of following later development commits:
 
 ```bash
 cd /path/to/ComfyUI/custom_nodes
-git clone --branch v0.1.0-alpha.12 --depth 1 https://github.com/thaakeno/ComfyUI-MiniMax-H3-Studio.git
+git clone --branch v0.1.0-alpha.16 --depth 1 https://github.com/thaakeno/ComfyUI-MiniMax-H3-Studio.git
 cd ComfyUI-MiniMax-H3-Studio
 python -m pip install -r requirements.txt
 ```
@@ -130,10 +130,12 @@ git log -1 --format='Updated H3 Studio %h · %s'
 | MiniMax H3 32B conditioning encoder | `models/text_encoders/` | [Comfy-Org/MiniMax-H3](https://huggingface.co/Comfy-Org/MiniMax-H3) |
 | H3 video VAE | `models/vae/` | [Comfy-Org/MiniMax-H3](https://huggingface.co/Comfy-Org/MiniMax-H3) |
 | Qwen3-VL 4B/8B analyzer and prompt writer, optional | `models/text_encoders/` | [Comfy-Org/Qwen3-VL](https://huggingface.co/Comfy-Org/Qwen3-VL) |
-| LightX v0.1 LoRA, optional | `models/loras/` | [Kijai/MiniMax-H3_comfy](https://huggingface.co/Kijai/MiniMax-H3_comfy) |
+| LightX H3 LoRAs, optional | `models/loras/` | [Kijai/MiniMax-H3_comfy](https://huggingface.co/Kijai/MiniMax-H3_comfy) / [LightX2V/MiniMax-H3-Turbo](https://huggingface.co/lightx2v/Minimax-h3-Turbo) |
 | TAEH3 approximate preview, optional | `models/vae_approx/` | [Kijai/MiniMax-H3-TAE](https://huggingface.co/Kijai/MiniMax-H3-TAE) |
 | PDD LoRA + heads, optional | `models/loras/`, `models/pdd_heads/` | [Mamad8 PDD](https://huggingface.co/Mamad8/MiniMaxH3_R2V-PDD-Turbo-LoRA-Mamad8) |
 | T=1 Image VAE, experimental | `models/vae/` | [Mamad8 Image VAE](https://huggingface.co/Mamad8/MiniMax-H3-Image-VAE) |
+| Face Refine YOLO detector, optional/recommended | `models/ultralytics/bbox/` | [Bingsu/adetailer](https://huggingface.co/Bingsu/adetailer) |
+| Face Refine SAM mask model, optional | `models/sams/` | [Meta Segment Anything](https://github.com/facebookresearch/segment-anything) |
 
 PDD also requires the separately installed [ComfyUI-MiniMaxH3-PDD-Mamad8](https://github.com/mamad8c/ComfyUI-MiniMaxH3-PDD-Mamad8) package. H3 Studio integrates its registered execution surface; it does not copy or bundle that GPL implementation.
 
@@ -145,9 +147,11 @@ PDD also requires the separately installed [ComfyUI-MiniMaxH3-PDD-Mamad8](https:
 | Base Balanced | RES, 12 steps | Faster native comparison |
 | LightX ER-SDE | LightX v0.1 at `0.75`, 4 steps | Empirical Kijai ComfyUI recipe |
 | LightX SA-Solver | LightX v0.1 at `0.75`, 4 steps | Alternate stochastic empirical recipe |
+| LightX v1.0 FL2VA 8-step | Official full v1.0 adapter, 8 steps | Fast FL2VA generation and Face Refine fallback when selected |
+| LightX v1.0 FL2VA 4-step pruned | Kijai 768p rank-31 adapter, 4 steps | Optional faster Face Refine / FL2VA path when installed |
 | PDD 600 / 900 | Matching REF2VA student LoRA + heads, 4 steps | Optional accelerated reference work |
 
-The LightX labels are deliberately marked empirical: they reproduce a current working ComfyUI recipe, not an official guarantee that one sampler is universally best. PDD is REF2VA-only and cannot run without a valid reference context.
+The LightX labels are deliberately route- and artifact-specific: empirical Kijai recipes are marked as such, while the full v1.0 eight-step profile follows the published LightX adapter. PDD is REF2VA-only and cannot run without a valid reference context.
 
 Conditioning uses separate prompt, reference, VAE, and latent caches. Compatible current ComfyUI builds can use upstream chunked H3 VAE encode/decode without changing decoded output. NVFP4 32B conditioning is preferred when installed.
 
@@ -159,6 +163,22 @@ The Director offers two explicit planning modes:
 - **Direct:** sends the aligned target canvas to H3 from 0.2 MP through approximately 8.5 MP.
 
 The slider labels draft, recommended, extended, experimental, and extreme ranges and always shows the real aligned dimensions. Direct 2/4/8 MP generation is available for experimentation, but H3 Base is not a dedicated super-resolution model. Very large canvases can raise attention cost, decode time, RAM, VRAM, and failure risk without proportional detail gains.
+
+## Face Refine (optional)
+
+Face Refine runs after H3 Studio selects the final still. It detects small/distant faces, crops the real source region, and rerenders that crop through H3's native FL2VA image-conditioning path before blending it back into the selected still. It is not a generic ESRGAN/sharpen pass and does not replace the normal H3 generation route.
+
+- **Off** leaves the selected still untouched.
+- **Auto** is conservative and refines at most one eligible face per output.
+- **Strong** exposes multi-face refinement through the advanced `Max faces` control.
+- **Refine canvas** ranges from 512 to 1536 px with 768 px as the recommended default. Higher values can recover more face detail but each selected face adds another H3 diffusion pass, so time and memory cost increase quickly.
+- **Detection** prefers `face_yolov8m.pt` through Impact Subpack, then a local Ultralytics loader, MediaPipe if already installed, and finally the bundled OpenCV Haar cascade.
+- **Masking** defaults to a detector-anchored feather mask. Optional SAM masking uses Impact Pack + a checkpoint in `models/sams/` and falls back safely to feathering if unavailable.
+- **Acceleration** uses the dedicated LightX v1.0 four-step FL2VA adapter when installed. If it is absent, Face Refine can preserve/reuse a compatible installed FL2VA LightX profile, including the active v1.0 eight-step path, or fall back to Base Balanced instead of failing solely because the optional four-step asset is missing.
+- **Inspection** reports detector/selection/refinement status and can save a before/after proof view with marker toggling; failed face crops preserve the original pixels unchanged.
+
+The Face Refine setup action is optional and explicit. It can install Impact Subpack / Ultralytics for YOLO detection and, if requested, Impact Pack + Meta SAM. Those third-party components keep their own licenses; see [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) before redistribution or deployment.
+
 ## Decode choices
 
 The Director exposes the decoder separately from sampling speed:
@@ -193,7 +213,7 @@ Reference editing is semantic regeneration, not pixel-locked compositing or mask
 
 ## Validation and support
 
-Local checks cover Python and frontend syntax, deterministic compilation, state migration, workflow regeneration/schema, node registration, route validation, PNG metadata restoration, and artifact consistency. CUDA speed, peak memory, model availability, and visual quality still require a real GPU run with the exact installed ComfyUI build.
+Local checks cover Python and frontend syntax, deterministic compilation, state migration, workflow regeneration/schema, node registration, route validation, seed safety, PNG metadata restoration, Face Refine geometry/fallback behavior, and artifact consistency. CUDA speed, peak memory, optional third-party model availability, and visual quality still require a real GPU run with the exact installed ComfyUI build.
 
 If generation fails, open an [issue](https://github.com/thaakeno/ComfyUI-MiniMax-H3-Studio/issues) with the full traceback, ComfyUI version, GPU/VRAM, selected model filenames, route, profile, resolution, and a workflow JSON or metadata PNG when safe.
 
@@ -217,7 +237,7 @@ uv run python tools/release_check.py
 
 H3 Studio adapts the ordered media interaction and mention-editor foundations from [ComfyUI-MiniMaxH3-Easy](https://github.com/nkxx188/ComfyUI-MiniMaxH3-Easy) under MIT, and resolution/decode/workflow foundations from [ComfyUI-MiniMax-H3-Image-Studio](https://github.com/astropuzzo/ComfyUI-MiniMax-H3-Image-Studio) under the Unlicense.
 
-Kijai and Mamad8 model artifacts and optional nodes remain external works under their published terms. See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for the exact boundaries. This independent project is not endorsed by MiniMax, ComfyUI, or the referenced projects.
+Kijai and Mamad8 model artifacts plus optional Face Refine detector/mask components remain external works under their published terms. See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for the exact boundaries. This independent project is not endorsed by MiniMax, ComfyUI, or the referenced projects.
 
 ## Star history
 
