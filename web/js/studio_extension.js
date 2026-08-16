@@ -41,6 +41,7 @@ import {
   uploadImages,
 } from "./features/image_upload.js";
 import { createFaceRefineSection } from "../h3studio_face_refine.js";
+import { installDemosShelf } from "../h3studio_demos_metadata.js";
 
 const TARGET = "H3StudioDirector";
 const LINKS_PROPERTY = "h3studio_virtual_media_links";
@@ -1152,7 +1153,7 @@ function advancedSection(node, state, refresh) {
 function renderPanel(node) {
   const root = node.__h3studioPanel;
   if (!root) return;
-  const existingShelf = root.querySelector(".h3s-demos-shelf");
+  const existingShelf = root.querySelector(".h3s-demos-shelf") || node.__h3studioShelf;
   const state = applyState(node, stateFromNode(node), false);
   root.replaceChildren();
   const refresh = () => renderPanel(node);
@@ -1186,6 +1187,10 @@ function renderPanel(node) {
   ].filter(Boolean);
   root.append(...children);
   node.__h3studioLinkSignature = linkSignature(node);
+
+  if (!existingShelf && typeof installDemosShelf === "function") {
+    installDemosShelf(node);
+  }
 }
 
 api.addEventListener("executed", ({ detail }) => {
@@ -1221,6 +1226,8 @@ function installPanel(node) {
   installTheme();
   enforceNativeWidgetVisibility(node);
   const root = element("div", { className: "h3s-studio-panel", attrs: { role: "group", "aria-label": "MiniMax H3 Studio controls" } });
+  root.style.height = `${STUDIO_PANEL_HEIGHT}px`;
+  root.style.maxHeight = `${STUDIO_PANEL_HEIGHT}px`;
   node.__h3studioPanel = root;
   const panelWidget = node.addDOMWidget("h3studio_controls", "h3studio_controls", root, {
     serialize: false,

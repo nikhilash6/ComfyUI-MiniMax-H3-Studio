@@ -490,14 +490,20 @@ async function buildDemoShelf(node, selectedId = "") {
 
 async function installDemosShelf(node) {
   const panel = node?.__h3studioPanel;
-  if (!panel?.isConnected || panel.querySelector(".h3s-demos-shelf")) return;
-  const shelf = await buildDemoShelf(node);
-  if (!panel.isConnected || panel.querySelector(".h3s-demos-shelf")) return;
-  const layout = panel.querySelector(".h3s-v6-layout, .h3s-v7-layout, .h3s-layout");
+  if (!panel?.isConnected) return null;
+  let shelf = node.__h3studioShelf;
+  if (!shelf) {
+    shelf = await buildDemoShelf(node);
+    node.__h3studioShelf = shelf;
+  }
+  if (shelf.parentNode === panel) return shelf;
+  if (panel.querySelector(".h3s-demos-shelf")) return shelf;
+  const workspace = panel.querySelector(".h3s-workspace, .h3s-v6-layout, .h3s-v7-layout, .h3s-layout");
   const header = panel.querySelector(".h3s-studio-header");
-  if (layout?.parentNode === panel) panel.insertBefore(shelf, layout);
+  if (workspace?.parentNode === panel) panel.insertBefore(shelf, workspace);
   else if (header?.parentNode === panel) panel.insertBefore(shelf, header.nextSibling);
   else panel.prepend(shelf);
+  return shelf;
 }
 
 function updateActiveShelves() {
