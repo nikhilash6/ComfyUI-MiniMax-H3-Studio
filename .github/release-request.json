@@ -1,5 +1,5 @@
 {
-  "version": "0.1.0-alpha.16",
+  "version": "0.1.0-alpha.17",
   "date": "2026-08-16",
   "sections": {
     "added": [
@@ -17,6 +17,8 @@
       "Made failed Face Refine crops fail safe by preserving the original pixels and reporting detector, selection, refinement, timing, and failure details instead of corrupting the output.",
       "Restored and preserved the verified Director visual hierarchy after late frontend regressions, including complete column scrolling and stable Face Refine tier/readout sizing.",
       "Reduced redundant Director MutationObserver subtree work while retaining the legacy visual decorators required by the verified UI, cutting repeated DOM rescans during slider/readout updates without redesigning the interface.",
+      "Reduced near-Director canvas zoom/pan lag by isolating heavy DOM compositing, suppressing navigation-time hit testing, avoiding repeated marquee layout measurements, and removing redundant draw-loop size work.",
+      "Restored horizontal scrolling for the curated image strip and excluded Director interior interactions from the canvas navigation lock so shelf browsing remains responsive after the zoom-performance pass.",
       "Replaced fragile manual benchmark filename entry with installed-asset discovery and exact per-scenario LoRA configuration.",
       "Kept OG / Current as an explicit unchanged runtime path, made optimized runtime paths capability-detected, and prevented Auto from enabling experimental FFN chunking by default."
     ],
@@ -25,7 +27,7 @@
       "Expanded route-aware LightX handling for current FL2VA and REF2VA profiles and let Face Refine reuse compatible already-selected FL2VA acceleration rather than treating a dedicated four-step checkpoint as mandatory.",
       "Compressed shared preset and benchmark codes automatically when that produces a shorter payload while preserving backward-compatible uncompressed imports and safe missing-asset warnings.",
       "Documented Face Refine's optional Impact Subpack, Ultralytics, Impact Pack, Segment Anything, MediaPipe, detector-checkpoint, and bundled Haar-cascade license boundaries; none of the external custom nodes or model checkpoints are included in the H3 Studio source archive.",
-      "Updated release-facing installation and feature documentation for alpha.16, including the current release pin, Face Refine setup and cost behavior, optional detector/SAM assets, and the existing Nodes 1.0 compatibility boundary."
+      "Updated release-facing installation and feature documentation for alpha.17, including the current release pin, Face Refine setup and cost behavior, optional detector/SAM assets, and the existing Nodes 1.0 compatibility boundary."
     ]
   }
 }
