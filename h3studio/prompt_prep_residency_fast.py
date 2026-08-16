@@ -61,6 +61,7 @@ def _adaptive_server_ensure(self) -> str:
     """
 
     import requests
+
     from . import qwen35_gguf as gguf
 
     model = gguf.model_path()
