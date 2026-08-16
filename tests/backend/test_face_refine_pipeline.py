@@ -78,11 +78,17 @@ def test_pipeline_strong_refines_all_faces() -> None:
     pipeline = H3FaceRefinePipeline(detector=mock_detector)
 
     canvas = torch.zeros((1, 1000, 1000, 3), dtype=torch.float32)
-    config = FaceRefineConfig(mode="strong", crop_factor=2.0, guide_size=512)
+    config = FaceRefineConfig(mode="strong", crop_factor=2.0, guide_size=512, color_match=False)
 
-    result: FaceRefineResult = pipeline.refine_image(canvas, config)
+    def mock_sampler(crop_patch: torch.Tensor, region: CropRegion, cfg: FaceRefineConfig) -> torch.Tensor:
+        patch = crop_patch.clone()
+        patch[:, :, :, 0] = 1.0
+        return patch
+
+    result: FaceRefineResult = pipeline.refine_image(canvas, config, sampler_fn=mock_sampler)
 
     assert result.faces_detected == 2
+    assert result.faces_selected == 2
     assert result.faces_refined == 2
 
 
