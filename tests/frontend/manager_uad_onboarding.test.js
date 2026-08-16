@@ -18,7 +18,7 @@ test("current Extensions UI prevents a false Manager-not-detected state", () => 
   assert.match(source, /label === "extensions"/);
   assert.match(source, /source: uiAvailable \? "extensions-ui" : "unavailable"/);
   assert.match(source, /apiAvailable: false/);
-  assert.match(source, /ComfyUI Extensions is available/);
+  assert.match(source, /Install it from Extensions only if you want/);
   assert.match(source, /Open Extensions/);
 });
 

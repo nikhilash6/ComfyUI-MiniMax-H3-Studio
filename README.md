@@ -25,12 +25,15 @@ Text-to-image, image editing, multi-reference generation, LightX acceleration, s
 
 > [!IMPORTANT]
 > H3 Studio is still alpha. MiniMax H3 is an audio-video model being pushed into image-generation workflows here, so some paths are experimental and can change as ComfyUI and H3 support evolve. High-resolution generation is experimental; more pixels do not automatically mean more learned detail.
+
+**Universal Asset Downloader (UAD) is optional; existing manually installed models work.**
 <table>
 <tr>
 <td width="50%"><img src="https://github.com/user-attachments/assets/b9cf235a-6b3e-4abc-acca-c6226804bfcf" width="100%" /></td>
 <td width="50%"><img src="https://github.com/user-attachments/assets/f33c76e2-9d8d-40ce-8f23-e0b41c3ca44b" width="100%" /></td>
 </tr>
 </table>
+
 > [!WARNING]
 > **ComfyUI Nodes 2.0 is not supported yet.** H3 Studio's custom Director and Benchmark interfaces currently target classic Nodes 1.0. Nodes 2.0 UI support is still being worked on.
 
@@ -139,7 +142,7 @@ H3 Studio keeps the actual recipe visible.
 | **LightX v1.0 FL2VA** | FL2VA | **8** | Official full v1.0 adapter and main accelerated FL2VA path |
 | **LightX v1.0 pruned** | FL2VA | 4 | Kijai 768p rank-31 adapter |
 | **LightX ER-SDE** | FL2VA / REF2VA | 4 | Empirical Kijai LightX v0.1 recipe |
-| **LightX SA-Solver** | FL2VA / REF2VA | 4 | Alternate empirical LightX v0.1 recipe |
+| **LightX SA-Solver** | FL2VA / REF2VA | 4 | Alternate empirical Kijai LightX v0.1 recipe |
 | **Mamad8 PDD 600 / 900** | REF2VA | 4 | Matching student LoRA + heads |
 
 The LightX labels are intentionally artifact-specific. The full v1.0 eight-step profile follows the published LightX adapter, while the older v0.1 recipes are empirical ComfyUI recipes.
