@@ -14,24 +14,29 @@ from h3studio.face_refine.geometry import BoundingBox, CropRegion
 from h3studio.face_refine.masking import FeatherBlender, MaskGenerator
 
 
-def test_elliptical_mask_properties() -> None:
+def test_detector_anchored_face_mask_properties() -> None:
     generator = MaskGenerator(default_feather_radius=16)
-    box = BoundingBox(x=50, y=50, width=100, height=100)
+    box = BoundingBox(x=100, y=100, width=100, height=100)
     region = CropRegion(
         x=20,
         y=20,
-        width=160,
-        height=160,
+        width=260,
+        height=260,
         orig_box=box,
         canvas_width=500,
         canvas_height=500,
     )
 
-    mask = generator.create_elliptical_mask(region, feather_radius=16)
-    assert mask.shape == (160, 160)
-    assert mask[80, 80].item() > 0.95
+    mask = generator.create_face_region_mask(region, feather_radius=16)
+    assert mask.shape == (260, 260)
+    # The detected head remains fully covered while unrelated crop corners stay out.
+    assert mask[130, 130].item() > 0.95
     assert mask[0, 0].item() < 0.05
-    assert mask[159, 159].item() < 0.05
+    assert mask[259, 259].item() < 0.05
+
+    # The legacy public helper intentionally aliases the detector-anchored mask.
+    compat = generator.create_elliptical_mask(region, feather_radius=16)
+    assert torch.allclose(mask, compat)
 
 
 def test_feather_blender_compositing() -> None:
