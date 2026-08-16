@@ -1,8 +1,10 @@
 from unittest.mock import patch
+
 from h3studio.face_refine.setup import (
     get_face_refine_readiness,
     install_face_refine,
 )
+
 
 def test_face_refine_readiness_structure():
     status = get_face_refine_readiness()

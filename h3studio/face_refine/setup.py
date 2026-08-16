@@ -8,7 +8,7 @@ import subprocess
 import sys
 import urllib.request
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 LOGGER = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ YOLO_PREFERENCE = (
 )
 
 
-def _run(args: List[str], cwd: Optional[Path] = None, timeout: int = 240) -> subprocess.CompletedProcess[str]:
+def _run(args: list[str], cwd: Path | None = None, timeout: int = 240) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         args,
         cwd=str(cwd) if cwd else None,
@@ -84,9 +84,9 @@ def _check_ultralytics_pip() -> bool:
     return res.returncode == 0 and "ok" in res.stdout
 
 
-def _find_yolo_model_path() -> Optional[Path]:
+def _find_yolo_model_path() -> Path | None:
     models_dir = _models_path()
-    candidates: List[Path] = []
+    candidates: list[Path] = []
     try:
         import folder_paths
 
@@ -113,9 +113,9 @@ def _find_yolo_model_path() -> Optional[Path]:
     return candidates[0] if candidates else None
 
 
-def _find_sam_model_path() -> Optional[Path]:
+def _find_sam_model_path() -> Path | None:
     models_dir = _models_path()
-    candidates: List[Path] = []
+    candidates: list[Path] = []
     try:
         import folder_paths
 
@@ -141,7 +141,7 @@ def _find_sam_model_path() -> Optional[Path]:
     return candidates[0] if candidates else None
 
 
-def get_face_refine_readiness() -> Dict[str, Any]:
+def get_face_refine_readiness() -> dict[str, Any]:
     custom_nodes = _custom_nodes_path()
     subpack_dir = custom_nodes / IMPACT_SUBPACK_DIRNAME
     pack_dir = custom_nodes / IMPACT_PACK_DIRNAME
@@ -225,7 +225,7 @@ def _download_file(url: str, dest_path: Path, label: str) -> None:
         raise
 
 
-def _install_git_custom_node(repo_url: str, dirname: str, actions: List[str]) -> bool:
+def _install_git_custom_node(repo_url: str, dirname: str, actions: list[str]) -> bool:
     custom_nodes = _custom_nodes_path()
     custom_nodes.mkdir(parents=True, exist_ok=True)
     target = custom_nodes / dirname
@@ -253,7 +253,7 @@ def _install_git_custom_node(repo_url: str, dirname: str, actions: List[str]) ->
     return True
 
 
-def _pip_install_ultralytics(actions: List[str]) -> bool:
+def _pip_install_ultralytics(actions: list[str]) -> bool:
     if _check_ultralytics_pip():
         actions.append("ultralytics python package is already installed and importable.")
         return False
@@ -273,8 +273,8 @@ def install_face_refine(
     install_subpack: bool = True,
     install_pip_ultralytics: bool = True,
     install_sam: bool = False,
-) -> Dict[str, Any]:
-    actions: List[str] = []
+) -> dict[str, Any]:
+    actions: list[str] = []
     restart_required = False
     models_dir = _models_path()
 
