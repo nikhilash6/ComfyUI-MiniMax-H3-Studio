@@ -9,6 +9,7 @@ from .comfy_compat import register_routes as register_comfy_compat_routes
 from .dependency_web import register_dependency_routes
 from .face_refine.integration import install as install_face_refine_integration
 from .face_refine.sampling_bridge import install as install_face_refine_sampling_bridge
+from .face_refine.setup import register_face_setup_routes
 from .llama_cpp_dependency import register_routes as register_llama_cpp_routes
 from .llama_existing_runtime import adopt_existing_runtime
 from .nodes.benchmark import NODE_CLASS_MAPPINGS as BENCHMARK_NODE_CLASS_MAPPINGS
@@ -118,6 +119,7 @@ register_runtime_routes()
 register_dependency_routes()
 register_comfy_compat_routes()
 register_llama_cpp_routes()
+register_face_setup_routes()
 
 from .nodes.face_refine_node import H3StudioFaceRefine
 
