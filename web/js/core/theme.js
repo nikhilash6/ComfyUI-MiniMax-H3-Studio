@@ -27,10 +27,10 @@ export function installTheme() {
       flex-direction: column;
       gap: 7px;
       min-width: 0;
-      max-height: 420px;
+      max-height: 385px;
       overflow-y: auto !important;
       overflow-x: hidden !important;
-      padding: 0 8px 16px 8px;
+      padding: 0 8px 36px 8px;
       scrollbar-width: thin !important;
       scrollbar-color: #58646d transparent !important;
     }
