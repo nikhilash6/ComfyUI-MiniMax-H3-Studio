@@ -1,8 +1,7 @@
 import { app } from "../../scripts/app.js";
-import { guidedT2IModeHelp, referenceAiCues } from "./js/core/reference_ai_cues.js";
+import { guidedT2IModeHelp } from "./js/core/reference_ai_cues.js";
 
 const TARGET = "H3StudioDirector";
-const STYLE_ID = "h3studio-reference-ai-cues-v35-style";
 let observer = null;
 let queued = false;
 
@@ -23,63 +22,67 @@ function studioState(node) {
   }
 }
 
-function installStyles() {
-  if (document.getElementById(STYLE_ID)) return;
-  const style = document.createElement("style");
-  style.id = STYLE_ID;
-  style.textContent = `
-    .h3s-studio-panel .h3s-ai-cues{
-      display:flex;flex-wrap:wrap;gap:4px;align-items:center;min-width:0
-    }
-    .h3s-studio-panel .h3s-ai-cue{
-      display:inline-flex;align-items:center;gap:4px;width:fit-content;max-width:100%;
-      padding:2px 6px;border:1px solid color-mix(in srgb,var(--h3s-accent) 28%,transparent);
-      border-radius:999px;color:var(--h3s-accent);
-      background:color-mix(in srgb,var(--h3s-accent) 10%,transparent);
-      font-size:8px;font-weight:700;line-height:1.25;white-space:nowrap
-    }
-    .h3s-studio-panel .h3s-ai-cue::before{
-      content:"";width:5px;height:5px;flex:none;border-radius:999px;background:var(--h3s-accent);
-      box-shadow:0 0 0 2px color-mix(in srgb,var(--h3s-accent) 12%,transparent)
-    }
-    .h3s-studio-panel .h3s-reference-card.h3s-ai-managed{
-      border-color:color-mix(in srgb,var(--h3s-accent) 45%,var(--h3s-border));
-      box-shadow:inset 2px 0 0 color-mix(in srgb,var(--h3s-accent) 78%,transparent)
-    }
-  `;
-  document.head.append(style);
-}
-
-function cueCard(node, card, index, reference) {
+function legacyAutoChange(node, reference, index) {
   const changedNow = node.__h3studioAutoChanges?.[index] || null;
-  const cues = referenceAiCues(reference, changedNow);
-  const signature = JSON.stringify(cues);
-  if (card.dataset.h3sAiCueSignature === signature) return;
-  card.dataset.h3sAiCueSignature = signature;
-
-  card.querySelector(".h3s-ai-cues")?.remove();
-  card.classList.toggle("h3s-ai-managed", cues.length > 0);
-
-  const legacy = card.querySelector(".h3s-auto-role");
-  if (legacy) legacy.hidden = cues.length > 0;
-  if (!cues.length) return;
-
-  const row = document.createElement("div");
-  row.className = "h3s-ai-cues";
-  row.setAttribute("aria-label", "AI-selected reference settings");
-  for (const cue of cues) {
-    const pill = document.createElement("span");
-    pill.className = "h3s-ai-cue";
-    pill.dataset.kind = cue.key;
-    pill.textContent = cue.label;
-    pill.title = "This setting was selected or maintained automatically by H3 Studio's image analysis.";
-    row.append(pill);
+  if (changedNow) {
+    return {
+      analyzed: Boolean(changedNow.analyzed),
+      fresh: true,
+      role: String(changedNow.role || reference.role || "auto"),
+      retention: String(changedNow.retention || reference.retention || "attribute_transfer"),
+    };
   }
 
-  const controls = card.querySelector(".h3s-reference-controls");
-  const body = card.querySelector(".h3s-reference-body");
-  if (controls?.parentElement) controls.insertAdjacentElement("afterend", row);
-  else body?.append(row);
+  // The original green cue was meant to communicate that these settings came
+  // from H3 Studio rather than the user. Preserve that cue for every persisted
+  // auto-managed field, including the retention-only case where role remains
+  // "auto" and for an AI-written factual description.
+  const autoManaged = reference.role_auto === true
+    || reference.retention_auto === true
+    || (reference.description_auto === true && String(reference.description || "").trim());
+  const nonDefault = String(reference.role || "auto") !== "auto"
+    || String(reference.retention || "attribute_transfer") !== "attribute_transfer"
+    || (reference.description_auto === true && String(reference.description || "").trim());
+  if (!autoManaged || !nonDefault) return null;
+
+  return {
+    analyzed: Boolean(reference.description_auto && String(reference.description || "").trim()),
+    fresh: false,
+    role: String(reference.role || "auto"),
+    retention: String(reference.retention || "attribute_transfer"),
+  };
+}
+
+function restoreLegacyCue(node, card, index, reference) {
+  // Remove the newer split-pill experiment completely. The base Director still
+  // owns the exact old h3s-auto-role / h3s-reference-card-auto styling.
+  card.querySelector(".h3s-ai-cues")?.remove();
+  card.classList.remove("h3s-ai-managed");
+  for (const control of card.querySelectorAll(".h3s-ai-selected")) {
+    control.classList.remove("h3s-ai-selected");
+  }
+
+  const autoChange = legacyAutoChange(node, reference, index);
+  card.classList.toggle("h3s-reference-card-auto", Boolean(autoChange));
+
+  let label = card.querySelector(".h3s-auto-role");
+  if (!autoChange) {
+    label?.remove();
+    return;
+  }
+
+  if (!label) {
+    label = document.createElement("div");
+    label.className = "h3s-auto-role";
+    const controls = card.querySelector(".h3s-reference-controls");
+    if (controls?.parentElement) controls.insertAdjacentElement("afterend", label);
+    else card.querySelector(".h3s-reference-body")?.append(label);
+  }
+  label.hidden = false;
+  const prefix = autoChange.analyzed
+    ? "Image analyzed"
+    : autoChange.fresh ? "Prompt updated" : "Prompt-managed";
+  label.textContent = `${prefix} · ${autoChange.role} · ${autoChange.retention}`;
 }
 
 function fixModeHelp(root) {
@@ -94,13 +97,12 @@ function applyNode(node) {
   if (!root?.isConnected) return;
   const references = studioState(node)?.references || [];
   const cards = root.querySelectorAll(".h3s-reference-card");
-  cards.forEach((card, index) => cueCard(node, card, index, references[index] || {}));
+  cards.forEach((card, index) => restoreLegacyCue(node, card, index, references[index] || {}));
   fixModeHelp(root);
 }
 
 function sweep() {
   queued = false;
-  installStyles();
   for (const node of app.graph?._nodes || []) {
     if (node?.comfyClass === TARGET) applyNode(node);
   }
@@ -115,7 +117,9 @@ function queueSweep() {
 app.registerExtension({
   name: "H3Studio.ReferenceAICuesV35",
   setup() {
-    installStyles();
+    // Clean up the CSS from the short-lived split-pill experiment if a hard
+    // refresh has not yet discarded it.
+    document.getElementById("h3studio-reference-ai-cues-v35-style")?.remove();
     queueSweep();
     globalThis.addEventListener?.("h3studio:references-changed", queueSweep);
     if (!observer && document.body) {
