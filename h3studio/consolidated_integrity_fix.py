@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 import time
+from contextlib import suppress
 from dataclasses import replace
 from typing import Any
 
@@ -193,16 +194,14 @@ def _install_semantic_reference_resize() -> None:
             return tokenize(text, *args, **kwargs)
 
         try:
-            setattr(clip, "tokenize", semantic_tokenize)
+            clip.tokenize = semantic_tokenize
         except Exception:
             return original(self, h3_bundle, studio_context)
         try:
             return original(self, h3_bundle, studio_context)
         finally:
-            try:
-                setattr(clip, "tokenize", tokenize)
-            except Exception:
-                pass
+            with suppress(Exception):
+                clip.tokenize = tokenize
 
     setattr(condition, _MARKER, True)
     H3StudioCondition.condition = condition
