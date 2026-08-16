@@ -204,26 +204,9 @@ function showToast(severity, summary, detail) {
 
 function badgeText(badge) {
   if (!badge) return "Reading embedded metadata…";
-  const pieces = [];
-  if (badge.aspect || badge.resolution) {
-    pieces.push(`📷 ${[badge.aspect, badge.resolution].filter(Boolean).join(" · ")}`);
-  }
-  if (badge.profile) {
-    pieces.push(`⚡ ${shortSamplingLabel(badge.profile)}`);
-  }
-  if (badge.seed != null) {
-    pieces.push(`🎲 ${badge.seed}`);
-  }
-  return pieces.filter(Boolean).join("  ");
-}
-
-function categoryWithIcon(cat, kind) {
-  if (kind === "history") return "⏱ HISTORY";
-  const c = String(cat || "DEMO").toUpperCase();
-  if (c === "CINEMATIC") return "🎬 CINEMATIC";
-  if (c === "ANIME") return "🎨 ANIME";
-  if (c === "REALISTIC") return "📸 REALISTIC";
-  return `✨ ${c}`;
+  const pieces = [badge.aspect, badge.resolution, shortSamplingLabel(badge.profile)];
+  if (badge.seed != null) pieces.push(`seed ${badge.seed}`);
+  return pieces.filter(Boolean).join(" · ");
 }
 
 function cardShell({ id, kind, title, subtitle, imageUrl, category, selected }) {
@@ -243,17 +226,17 @@ function cardShell({ id, kind, title, subtitle, imageUrl, category, selected }) 
 
   const cat = document.createElement("span");
   cat.className = "h3s-demo-category-tag";
-  cat.textContent = categoryWithIcon(category, kind);
+  cat.textContent = category || (kind === "history" ? "HISTORY" : "DEMO");
   thumbBox.appendChild(cat);
 
   const source = document.createElement("span");
   source.className = "h3s-demo-source-tag";
-  source.textContent = kind === "history" ? "💾 Saved run" : "📦 Embedded PNG";
+  source.textContent = kind === "history" ? "Saved state" : "Embedded PNG";
   thumbBox.appendChild(source);
 
   const specs = document.createElement("span");
   specs.className = "h3s-demo-badge-specs";
-  specs.textContent = kind === "history" ? "💾 Saved run" : "Reading metadata…";
+  specs.textContent = kind === "history" ? "Saved run" : "Reading metadata…";
   thumbBox.appendChild(specs);
 
   const content = document.createElement("div");
@@ -267,7 +250,7 @@ function cardShell({ id, kind, title, subtitle, imageUrl, category, selected }) 
   const action = document.createElement("div");
   action.className = "h3s-demo-card-action";
   const provenance = document.createElement("span");
-  provenance.textContent = kind === "history" ? "⚡ Restore saved run" : "⚡ Restore exact PNG state";
+  provenance.textContent = kind === "history" ? "Restore exact saved run" : "Restore exact PNG state";
   const apply = document.createElement("span");
   apply.className = "h3s-demo-apply-btn";
   apply.textContent = selected ? "Applied ✓" : (kind === "history" ? "Restore →" : "Apply →");
