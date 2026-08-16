@@ -1,12 +1,17 @@
-"""Small post-merge fixes for guided T2I conditioning and automatic reference roles."""
+"""Small post-merge fixes for guided T2I conditioning, roles, and previews."""
 
 from __future__ import annotations
 
 import logging
+import time
 from contextlib import suppress
 
 LOGGER = logging.getLogger(__name__)
 _MARKER = "__h3studio_post_merge_v21__"
+_PREVIEW_MARKER = "__h3studio_native_preview_decode_v24__"
+_NATIVE_PREVIEW_MAX_PIXELS = 2_600_000
+_NATIVE_PREVIEW_MAX_EDGE = 2304
+_MIN_LARGE_PREVIEW_DECODE_EDGE = 1536
 
 
 def _install_single_reference_semantic_resize() -> None:
@@ -89,10 +94,112 @@ def _install_prompt_aware_auto_roles() -> None:
         director_module.analyze_references = analyze_references
 
 
+def _rgb_preview_limit(torch, image, max_resolution: int):
+    """Resize only decoded RGB pixels; never mix H3 latent neighborhoods for normal 2MP previews."""
+
+    height, width = int(image.shape[-2]), int(image.shape[-1])
+    longest = max(height, width)
+    if longest <= max_resolution:
+        return image
+    scale = float(max_resolution) / float(longest)
+    target_h = max(1, round(height * scale))
+    target_w = max(1, round(width * scale))
+    return torch.nn.functional.interpolate(image, size=(target_h, target_w), mode="area")
+
+
+def _latent_for_large_preview(torch, latent, max_resolution: int):
+    """Bound only genuinely large previews so CPU TAEH3 does not explode at 4MP/8MP."""
+
+    output_h = int(latent.shape[-2]) * 16
+    output_w = int(latent.shape[-1]) * 16
+    pixels = output_h * output_w
+    longest = max(output_h, output_w)
+    if pixels <= _NATIVE_PREVIEW_MAX_PIXELS and longest <= _NATIVE_PREVIEW_MAX_EDGE:
+        return latent, "native-latent"
+
+    decode_edge = max(_MIN_LARGE_PREVIEW_DECODE_EDGE, int(max_resolution) * 2)
+    if longest <= decode_edge:
+        return latent, "native-latent"
+
+    scale = float(decode_edge) / float(longest)
+    target_h = max(2, round(int(latent.shape[-2]) * scale))
+    target_w = max(2, round(int(latent.shape[-1]) * scale))
+    reduced = torch.nn.functional.interpolate(latent, size=(target_h, target_w), mode="area")
+
+    # Preserve per-channel first/second moments when a very large latent must be
+    # reduced. This path is intentionally reserved for >~2.5MP previews.
+    src_mean = latent.mean(dim=(-2, -1), keepdim=True)
+    src_std = latent.std(dim=(-2, -1), keepdim=True, unbiased=False).clamp_min(1e-6)
+    dst_mean = reduced.mean(dim=(-2, -1), keepdim=True)
+    dst_std = reduced.std(dim=(-2, -1), keepdim=True, unbiased=False).clamp_min(1e-6)
+    reduced = (reduced - dst_mean) * (src_std / dst_std).clamp(0.25, 4.0) + src_mean
+    return reduced, f"latent-cap-{decode_edge}"
+
+
+def _install_preview_decode_quality() -> None:
+    """Decode normal 2MP H3 previews before applying the display-size cap."""
+
+    from .nodes import preview as preview_module
+
+    current = preview_module._PreviewWrapper._send
+    if bool(getattr(current, _PREVIEW_MARKER, False)):
+        return
+
+    def _send(self, job):
+        if job.run_id != self.active_run_id:
+            return
+        import torch
+
+        started = time.perf_counter()
+        latent, decode_mode = _latent_for_large_preview(torch, job.latent, self.max_resolution)
+        decoder = self._load(torch)
+        with torch.inference_mode():
+            image = decoder(latent).clamp(0, 1)
+            image = _rgb_preview_limit(torch, image, self.max_resolution).clamp(0, 1)
+        if job.run_id != self.active_run_id:
+            return
+
+        data_url, width, height = preview_module._jpeg_data_url(torch, image, self.jpeg_quality)
+        from server import PromptServer
+
+        server = PromptServer.instance
+        server.send_sync(
+            "h3studio-preview",
+            {
+                "node_id": self.node_id,
+                "image": data_url,
+                "step": job.step + 1,
+                "total": job.total_steps,
+                "width": width,
+                "height": height,
+                "run_id": job.run_id,
+                "elapsed_seconds": job.elapsed_seconds,
+                "average_step_seconds": job.average_step_seconds,
+                "eta_seconds": max(0.0, job.average_step_seconds * (job.total_steps - job.step - 1)),
+                "preview_mode": f"{decode_mode}->rgb-{self.max_resolution}",
+            },
+            server.client_id,
+        )
+        if not self.first_frame_reported:
+            self.first_frame_reported = True
+            LOGGER.info(
+                "[H3 Studio] TAEH3 live preview active | first frame %dx%d | cpu %.3fs | decode=%s->rgb-%d",
+                width,
+                height,
+                time.perf_counter() - started,
+                decode_mode,
+                self.max_resolution,
+            )
+
+    setattr(_send, _PREVIEW_MARKER, True)
+    preview_module._PreviewWrapper._send = _send
+
+
 def install() -> None:
     _install_single_reference_semantic_resize()
     _install_prompt_aware_auto_roles()
-    LOGGER.info("[H3 Studio] Post-merge v21 conditioning/role fixes installed")
+    _install_preview_decode_quality()
+    LOGGER.info("[H3 Studio] Post-merge v21 conditioning/role/preview fixes installed")
 
 
 __all__ = ["install"]
