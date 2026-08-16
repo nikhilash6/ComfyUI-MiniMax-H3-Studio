@@ -9,6 +9,8 @@ const HISTORY_KEY = "h3studio-history-v2";
 const HISTORY_BACKUP_KEY = "h3studio-history-v18-unbounded";
 const LINKS_PROPERTY = "h3studio_virtual_media_links";
 const STYLE_ID = "h3studio-finish-v21-style";
+const FAST_HISTORY_ENDPOINT = "/h3studio/history/item";
+const fastHistoryCache = new Map();
 
 function parseList(value) {
   try {
@@ -65,12 +67,46 @@ function historyItemForCard(card) {
 
 function historyUrlForCard(card, item = null) {
   const image = card?.querySelector?.("img.h3s-demo-thumb");
-  for (const candidate of [item?.url, item?.image, image?.dataset?.fullSrc, image?.currentSrc, image?.src]) {
+  for (const candidate of [image?.dataset?.fullSrc, item?.url, item?.image, image?.currentSrc, image?.src]) {
     const value = String(candidate || "").trim();
     if (!value || value.includes("/h3studio/thumbnail?")) continue;
     return value;
   }
   return "";
+}
+
+function isFullHistoryState(state) {
+  return Boolean(state && typeof state === "object" && Array.isArray(state.references));
+}
+
+function fastHistoryKey(card) {
+  const local = historyItemForCard(card);
+  const url = canonicalUrl(historyUrlForCard(card, local));
+  const id = String(card?.dataset?.demoId || local?.id || "");
+  return url ? `url:${url}` : `id:${id}`;
+}
+
+function primeHistoryItem(card) {
+  const key = fastHistoryKey(card);
+  if (!key || key === "id:") return Promise.resolve(null);
+  if (fastHistoryCache.has(key)) return fastHistoryCache.get(key);
+
+  const local = historyItemForCard(card);
+  const url = canonicalUrl(historyUrlForCard(card, local));
+  const id = String(card?.dataset?.demoId || local?.id || "");
+  const query = new URLSearchParams();
+  if (url) query.set("url", url);
+  if (id) query.set("id", id);
+
+  const request = fetch(`${FAST_HISTORY_ENDPOINT}?${query.toString()}`, { cache: "no-store" })
+    .then(async (response) => {
+      if (!response.ok) return null;
+      const payload = await response.json();
+      return payload?.item && typeof payload.item === "object" ? payload.item : null;
+    })
+    .catch(() => null);
+  fastHistoryCache.set(key, request);
+  return request;
 }
 
 function plainFilename(value) {
@@ -142,17 +178,26 @@ async function restoreHistoryCard(card) {
   const node = app.graph?.getNodeById?.(Number(shelf?.dataset?.directorId));
   if (!node || node.comfyClass !== TARGET) return;
 
-  const item = historyItemForCard(card);
-  const imageUrl = historyUrlForCard(card, item);
-  let metadata = null;
-  if (imageUrl) {
+  const localItem = historyItemForCard(card);
+  const indexedItem = await primeHistoryItem(card);
+  const imageUrl = historyUrlForCard(card, indexedItem || localItem);
+
+  let sourceState = isFullHistoryState(indexedItem?.state) ? indexedItem.state : null;
+  let sourceLabel = "SQLite history";
+  if (!sourceState && isFullHistoryState(localItem?.state)) {
+    sourceState = localItem.state;
+    sourceLabel = "cached history";
+  }
+
+  if (!sourceState && imageUrl) {
     try {
-      metadata = await fetchStudioPngMetadata(imageUrl);
+      const metadata = await fetchStudioPngMetadata(imageUrl);
+      sourceState = metadata?.state || null;
+      sourceLabel = "PNG metadata";
     } catch (error) {
-      console.warn("[H3 Studio] Could not read history PNG metadata; using cached state:", error);
+      console.warn("[H3 Studio] Could not read history PNG metadata:", error);
     }
   }
-  const sourceState = metadata?.state || item?.state;
   if (!sourceState || typeof sourceState !== "object") {
     throw new Error("History image contains no restorable H3 Studio metadata.");
   }
@@ -183,27 +228,46 @@ async function restoreHistoryCard(card) {
   node.__h3studioFaceRefineTelemetry = null;
   try { renderPanel(node); } catch (error) { console.warn("[H3 Studio] history restore render error:", error); }
   app.graph?.setDirtyCanvas?.(true, true);
-  highlightRestored(card, item || { id: card.dataset.demoId });
+  highlightRestored(card, indexedItem || localItem || { id: card.dataset.demoId });
 
   if (unresolved.length) {
-    toast("warn", "History restored", `State restored from PNG metadata. Reconnect only: ${unresolved.join(", ")}.`);
+    toast("warn", "History restored", `Restored from ${sourceLabel}. Reconnect only: ${unresolved.join(", ")}.`);
   } else {
-    toast("success", "History restored", references.length ? `Restored state and ${references.length} saved reference${references.length === 1 ? "" : "s"}.` : "Restored saved Director state.");
+    toast(
+      "success",
+      "History restored",
+      references.length
+        ? `Restored from ${sourceLabel} with ${references.length} saved reference${references.length === 1 ? "" : "s"}.`
+        : `Restored saved Director state from ${sourceLabel}.`,
+    );
   }
+}
+
+function historyCardFromEvent(event) {
+  if (event.target?.closest?.(".h3s-strip-expand,.h3s-history-favorite")) return null;
+  return event.target?.closest?.(".h3s-demo-card[data-kind='history']") || null;
 }
 
 function installHistoryRestoreCapture() {
   if (window.__h3sV21HistoryCapture) return;
   window.__h3sV21HistoryCapture = true;
+
+  window.addEventListener("pointerdown", (event) => {
+    const card = historyCardFromEvent(event);
+    if (card) primeHistoryItem(card);
+  }, true);
+  window.addEventListener("pointerover", (event) => {
+    const card = historyCardFromEvent(event);
+    if (card) primeHistoryItem(card);
+  }, true);
   window.addEventListener("click", (event) => {
-    if (event.target?.closest?.(".h3s-strip-expand,.h3s-history-favorite")) return;
-    const card = event.target?.closest?.(".h3s-demo-card[data-kind='history']");
+    const card = historyCardFromEvent(event);
     if (!card) return;
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
     restoreHistoryCard(card).catch((error) => {
-      console.error("[H3 Studio] history metadata restore failed:", error);
+      console.error("[H3 Studio] history restore failed:", error);
       toast("error", "Could not restore history", String(error?.message || error));
     });
   }, true);
@@ -265,6 +329,7 @@ api.addEventListener("h3studio-preview-timing", ({ detail }) => {
   setTimeout(applyTimingUi, 0);
 });
 api.addEventListener("execution_success", () => setTimeout(applyTimingUi, 0));
+
 function directorRecord(node) {
   let fallback = null;
   for (const [previewId, record] of previewRuns.entries()) {
@@ -274,6 +339,7 @@ function directorRecord(node) {
   }
   return previewRuns.size === 1 ? fallback : null;
 }
+
 function duration(seconds) {
   const value = Number(seconds);
   if (!Number.isFinite(value) || value < 0) return null;
@@ -281,12 +347,15 @@ function duration(seconds) {
   const minutes = Math.floor(value / 60);
   return `${minutes}m ${String(Math.round(value - minutes * 60)).padStart(2, "0")}s`;
 }
+
 function applyTimingUi() {
   for (const node of app.graph?._nodes || []) {
     if (node?.comfyClass !== TARGET) continue;
     const record = directorRecord(node);
     if (!record) continue;
-    const steady = record.perStep.length ? record.perStep.reduce((sum, value) => sum + value, 0) / record.perStep.length : null;
+    const steady = record.perStep.length
+      ? record.perStep.reduce((sum, value) => sum + value, 0) / record.perStep.length
+      : null;
     node.__h3studioRunTiming ||= {};
     if (Number.isFinite(record.sampling)) node.__h3studioRunTiming.samplingSeconds = record.sampling;
     if (Number.isFinite(steady)) node.__h3studioRunTiming.steadyStepSeconds = steady;
