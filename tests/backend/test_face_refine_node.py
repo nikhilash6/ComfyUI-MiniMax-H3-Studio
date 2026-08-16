@@ -13,8 +13,8 @@ if pytest:
 else:
     import torch
 
-from h3studio.nodes.face_refine_node import H3StudioFaceRefine
 from h3studio.face_refine.sampling_bridge import build_h3_face_sampler
+from h3studio.nodes.face_refine_node import H3StudioFaceRefine
 
 
 def test_face_refine_node_input_types() -> None:
