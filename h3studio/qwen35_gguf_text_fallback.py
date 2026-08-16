@@ -4,6 +4,10 @@ llama-mtmd-cli's current non-interactive single-turn path requires an image, so
 it is not a valid fallback for H3 Studio's optional text-only prompt writer.
 Keep llama-server as the preferred shared analyzer/writer backend and use
 llama-cli only when the server path fails for a text-only request.
+
+Vision and text readiness are intentionally independent: a mtmd-only install is
+still a perfectly valid fast GGUF image analyzer. In that case only the writer
+falls back to native Qwen3.5; do not throw away the working GGUF vision backend.
 """
 
 from __future__ import annotations
@@ -147,14 +151,31 @@ def install() -> None:
     gguf._llama_cli = _llama_cli
     gguf.status = status
 
-    # The GGUF resolver was installed just before this module. Tighten only the
-    # writer side: mtmd-only installations may still use GGUF vision, but Auto
-    # prompt writing falls back to native Qwen3.5 instead of selecting a backend
-    # that cannot perform a text-only single turn.
+    # The GGUF resolver was installed just before this module. Split analyzer
+    # and writer capability decisions: mtmd-only is enough for image analysis,
+    # while text writing still needs llama-server or llama-cli.
     from . import analyzer_stack
     from .nodes import loader
 
+    original_resolve_analyzer = loader._resolve_analyzer
     original_resolve_writer = loader._resolve_prompt_writer
+
+    def resolve_analyzer(value: str | None) -> str | None:
+        normalized = gguf._normalize(value)
+        analyzer_status = status()
+        explicit_gguf = normalized == gguf.FASTEST_QWEN35_4B_GGUF
+        auto_values = {
+            getattr(analyzer_stack, "AUTO_QWEN35_4B", "Auto · Qwen3.5 4B"),
+            getattr(analyzer_stack, "OLD_AUTO_ANALYZER", "Auto · Qwen3-VL 4B"),
+        }
+        wants_gguf = explicit_gguf or normalized in auto_values
+        if wants_gguf and analyzer_status.get("vision_ready"):
+            if not analyzer_status.get("text_ready"):
+                LOGGER.info(
+                    "[H3 Studio - GGUF] Using working GGUF vision backend; text runtime is unavailable and only the writer will fall back."
+                )
+            return gguf.FASTEST_QWEN35_4B_GGUF
+        return original_resolve_analyzer(value)
 
     def resolve_writer(value: str | None, analyzer_name: str | None) -> str | None:
         normalized = gguf._normalize(value)
@@ -181,6 +202,7 @@ def install() -> None:
                 return None
         return original_resolve_writer(value, analyzer_name)
 
+    loader._resolve_analyzer = resolve_analyzer
     loader._resolve_prompt_writer = resolve_writer
     analyzer_stack.qwen35_gguf_status = status
 
