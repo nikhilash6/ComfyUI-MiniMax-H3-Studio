@@ -252,6 +252,64 @@ function createFaceRefineSection(node, state, applyCallback) {
   head.append(heading, badge);
   container.appendChild(head);
 
+  const advanced = ensureAdvanced(state);
+  const controls = document.createElement("div");
+  controls.className = "h3s-fr-controls";
+  controls.hidden = mode === "off";
+
+  const grid = document.createElement("div");
+  grid.className = "h3s-fr-grid";
+
+  grid.appendChild(rangeControl("Crop context", `${(Number(advanced.crop_factor) || 2.5).toFixed(1)}×`, 1.2, 5.0, 0.1, Number(advanced.crop_factor) || 2.5, (val) => {
+    advanced.crop_factor = val;
+    generation.face_refine_crop_factor = val;
+    commit();
+  }));
+
+  grid.appendChild(rangeControl("Refine canvas", `${Math.round(Number(advanced.guide_size) || 768)}px`, 256, 1536, 64, Math.round(Number(advanced.guide_size) || 768), (val) => {
+    advanced.guide_size = Math.round(val);
+    generation.face_refine_guide_size = Math.round(val);
+    commit();
+  }));
+
+  grid.appendChild(rangeControl("Base denoise", `${Math.round((Number(advanced.denoise) || 0.22) * 100)}%`, 0.05, 0.8, 0.01, Number(advanced.denoise) || 0.22, (val) => {
+    advanced.denoise = val;
+    generation.face_refine_denoise = val;
+    commit();
+  }));
+
+  grid.appendChild(rangeControl("Max faces", `${Math.round(Number(advanced.max_faces) || 4)}`, 1, 8, 1, Math.round(Number(advanced.max_faces) || 4), (val) => {
+    advanced.max_faces = Math.round(val);
+    commit();
+  }));
+
+  grid.appendChild(rangeControl("Auto face ceiling", `${Math.round(Number(advanced.auto_max_faces) || 1)}`, 1, 4, 1, Math.round(Number(advanced.auto_max_faces) || 1), (val) => {
+    advanced.auto_max_faces = Math.round(val);
+    commit();
+  }));
+
+  grid.appendChild(rangeControl("Blend feather", `${Math.round(Number(advanced.feather) || 32)}px`, 4, 128, 4, Math.round(Number(advanced.feather) || 32), (val) => {
+    advanced.feather = Math.round(val);
+    commit();
+  }));
+
+  grid.appendChild(selectBox("Mask mode", [["face_hull", "Tight face boundary"], ["smooth_box", "Soft crop box"]], advanced.mask_mode || "face_hull", (val) => {
+    advanced.mask_mode = val;
+    commit();
+  }));
+
+  grid.appendChild(switchControl("Adaptive denoise", "Scale denoise with face distance", Boolean(advanced.adaptive_denoise), (val) => {
+    advanced.adaptive_denoise = val;
+    commit();
+  }));
+
+  grid.appendChild(switchControl("Color-match patch", "Rebalance tone after sampling", Boolean(advanced.color_match), (val) => {
+    advanced.color_match = val;
+    commit();
+  }));
+
+  controls.appendChild(grid);
+
   const modes = document.createElement("div");
   modes.className = "h3s-fr-modes";
   const buttons = new Map();
@@ -268,12 +326,14 @@ function createFaceRefineSection(node, state, applyCallback) {
       container.classList.add(`is-${key}`);
       badge.textContent = modeLabel(key);
       for (const [otherKey, otherButton] of buttons) otherButton.classList.toggle("is-active", otherKey === key);
+      controls.hidden = key === "off";
       commit();
     });
     buttons.set(key, button);
     modes.appendChild(button);
   }
   container.appendChild(modes);
+  container.appendChild(controls);
 
   const live = document.createElement("div");
   live.className = "h3s-fr-live";
