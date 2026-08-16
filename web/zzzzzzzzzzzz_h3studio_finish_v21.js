@@ -7,7 +7,6 @@ import { fetchStudioPngMetadata } from "./js/features/png_metadata.js";
 const TARGET = "H3StudioDirector";
 const HISTORY_KEY = "h3studio-history-v2";
 const HISTORY_BACKUP_KEY = "h3studio-history-v18-unbounded";
-const HISTORY_HIDDEN_KEY = "h3studio-history-v18-hidden";
 const LINKS_PROPERTY = "h3studio_virtual_media_links";
 const STYLE_ID = "h3studio-finish-v21-style";
 
@@ -25,87 +24,44 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function cleanUrl(value) {
-  if (!value) return "";
+function canonicalUrl(value) {
   try {
-    const url = new URL(String(value), location.href);
+    const url = new URL(String(value || ""), location.href);
     url.searchParams.delete("rand");
+    url.searchParams.delete("preview");
+    if (url.pathname === "/view") {
+      const filename = url.searchParams.get("filename") || "";
+      const subfolder = url.searchParams.get("subfolder") || "";
+      const type = url.searchParams.get("type") || "output";
+      return `/view?${new URLSearchParams({ filename, subfolder, type }).toString()}`;
+    }
     return `${url.pathname}?${url.searchParams.toString()}`;
   } catch {
-    return String(value).replace(/[?&]rand=\d+/g, "");
+    return String(value || "").replace(/[?&](?:rand|preview)=[^&]*/g, "");
   }
 }
 
-function permanentImage(item) {
-  const value = String(item?.url || item?.image || "").toLowerCase();
-  return value.includes("type=output") || (!value.includes("type=temp") && !value.includes("comfyui_temp_"));
-}
-
-function runSignature(item) {
-  if (!item) return "";
-  const state = item.state || {};
-  const prompt = String(state.prompt || "").trim().toLowerCase().replace(/\s+/g, " ");
-  const director = state.ui?.director_node_id ?? "";
-  const bucket = Math.floor(Number(item.timestamp || 0) / (3 * 60 * 1000));
-  if (prompt) return `run:${director}:${prompt.slice(0, 100)}:${bucket}`;
-  const seed = Number(state.generation?.seed);
-  if (Number.isFinite(seed) && seed >= 0) return `seed:${director}:${Math.trunc(seed)}:${bucket}`;
-  return cleanUrl(item.url || item.image) || String(item.id || "");
-}
-
-function dedupeHistory(items) {
+function rawHistoryItems() {
   const map = new Map();
-  for (const item of items || []) {
-    const signature = runSignature(item);
-    if (!signature) continue;
-    const old = map.get(signature);
-    if (!old) {
-      map.set(signature, item);
-      continue;
-    }
-    const oldPermanent = permanentImage(old);
-    const nextPermanent = permanentImage(item);
-    if ((!oldPermanent && nextPermanent) || (oldPermanent === nextPermanent && Number(item.timestamp || 0) > Number(old.timestamp || 0))) {
-      map.set(signature, item);
-    }
-  }
-  return [...map.values()].sort((a, b) => Number(b?.timestamp || 0) - Number(a?.timestamp || 0));
-}
-
-function installHistoryDeduper() {
-  if (Storage.prototype.__h3sV21Dedupe) return;
-  Storage.prototype.__h3sV21Dedupe = true;
-  const previousSet = Storage.prototype.setItem;
-  let queued = false;
-
-  const sanitize = () => {
-    queued = false;
-    const merged = dedupeHistory([
-      ...parseList(localStorage.getItem(HISTORY_KEY)),
-      ...parseList(localStorage.getItem(HISTORY_BACKUP_KEY)),
-    ]);
-    previousSet.call(localStorage, HISTORY_BACKUP_KEY, JSON.stringify(merged));
-    if (localStorage.getItem(HISTORY_HIDDEN_KEY) !== "1") {
-      previousSet.call(localStorage, HISTORY_KEY, JSON.stringify(merged));
-    }
-  };
-
-  Storage.prototype.setItem = function h3studioV21SetItem(key, value) {
-    const result = previousSet.call(this, key, value);
-    if (this === localStorage && (key === HISTORY_KEY || key === HISTORY_BACKUP_KEY) && !queued) {
-      queued = true;
-      queueMicrotask(sanitize);
-    }
-    return result;
-  };
-  sanitize();
-}
-
-function allHistoryItems() {
-  return dedupeHistory([
+  for (const item of [
     ...parseList(localStorage.getItem(HISTORY_KEY)),
     ...parseList(localStorage.getItem(HISTORY_BACKUP_KEY)),
-  ]);
+  ]) {
+    const id = String(item?.id || "");
+    if (id && !map.has(id)) map.set(id, item);
+  }
+  return [...map.values()];
+}
+
+function historyItemForCard(card) {
+  const id = String(card?.dataset?.demoId || "");
+  const items = rawHistoryItems();
+  const exact = items.find((item) => String(item?.id || "") === id);
+  if (exact) return exact;
+  const image = card?.querySelector?.("img.h3s-demo-thumb");
+  const wanted = canonicalUrl(image?.dataset?.fullSrc || image?.src || "");
+  if (!wanted) return null;
+  return items.find((item) => canonicalUrl(item?.url || item?.image) === wanted) || null;
 }
 
 function plainFilename(value) {
@@ -177,11 +133,9 @@ async function restoreHistoryCard(card) {
   const node = app.graph?.getNodeById?.(Number(shelf?.dataset?.directorId));
   if (!node || node.comfyClass !== TARGET) return;
 
-  const item = allHistoryItems().find((entry) => String(entry?.id || "") === String(card.dataset.demoId || ""));
+  const item = historyItemForCard(card);
   if (!item) throw new Error("Saved history entry was not found.");
 
-  // The generated PNG/WebP is authoritative: it already contains H3 Studio
-  // state, including the saved reference records. LocalStorage is only fallback.
   let metadata = null;
   try {
     metadata = await fetchStudioPngMetadata(item.url);
@@ -221,7 +175,13 @@ async function restoreHistoryCard(card) {
   if (unresolved.length) {
     toast("warn", "History restored", `State restored from image metadata. Reconnect only: ${unresolved.join(", ")}.`);
   } else {
-    toast("success", "History restored", references.length ? `Restored state and ${references.length} saved reference${references.length === 1 ? "" : "s"}.` : "Restored saved Director state.");
+    toast(
+      "success",
+      "History restored",
+      references.length
+        ? `Restored state and ${references.length} saved reference${references.length === 1 ? "" : "s"}.`
+        : "Restored saved Director state.",
+    );
   }
 }
 
@@ -271,7 +231,9 @@ const previewRuns = new Map();
 
 function previewRecord(nodeId) {
   const key = String(nodeId || "");
-  if (!previewRuns.has(key)) previewRuns.set(key, { lastElapsed: null, lastStep: null, perStep: [], sampling: null });
+  if (!previewRuns.has(key)) {
+    previewRuns.set(key, { lastElapsed: null, lastStep: null, perStep: [], sampling: null });
+  }
   return previewRuns.get(key);
 }
 
@@ -325,7 +287,9 @@ function applyTimingUi() {
     if (node?.comfyClass !== TARGET) continue;
     const record = directorRecord(node);
     if (!record) continue;
-    const steady = record.perStep.length ? record.perStep.reduce((sum, value) => sum + value, 0) / record.perStep.length : null;
+    const steady = record.perStep.length
+      ? record.perStep.reduce((sum, value) => sum + value, 0) / record.perStep.length
+      : null;
     node.__h3studioRunTiming ||= {};
     if (Number.isFinite(record.sampling)) node.__h3studioRunTiming.samplingSeconds = record.sampling;
     if (Number.isFinite(steady)) node.__h3studioRunTiming.steadyStepSeconds = steady;
@@ -342,7 +306,6 @@ function applyTimingUi() {
   }
 }
 
-installHistoryDeduper();
 installHistoryRestoreCapture();
 installStyles();
 
