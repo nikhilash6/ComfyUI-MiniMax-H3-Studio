@@ -1175,7 +1175,7 @@ function renderPanel(node) {
 
   const rightCol = element("div", { className: "h3s-col h3s-col-right" }, [
     generationSection(node, state, refresh),
-    createFaceRefineSection(node, state, refresh),
+    createFaceRefineSection(node, state, () => applyState(node, state)),
     advancedSection(node, state, refresh),
   ].filter(Boolean));
   rightCol.addEventListener("wheel", (e) => { e.stopPropagation(); }, { capture: true, passive: true });
