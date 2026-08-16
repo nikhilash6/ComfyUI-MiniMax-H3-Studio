@@ -9,8 +9,10 @@ if __package__:
     # helper then stays warm across one Director pass without globally evicting
     # H3, and is released exactly once before downstream conditioning.
     from .h3studio.prompt_prep_residency_fast import install as install_prompt_prep_residency_fast
+    from .h3studio.consolidated_integrity_fix import install as install_consolidated_integrity_fix
 
     install_prompt_prep_residency_fast()
+    install_consolidated_integrity_fix()
 else:  # pragma: no cover - collection shim, not the ComfyUI execution path
     NODE_CLASS_MAPPINGS = {}
     NODE_DISPLAY_NAME_MAPPINGS = {}
