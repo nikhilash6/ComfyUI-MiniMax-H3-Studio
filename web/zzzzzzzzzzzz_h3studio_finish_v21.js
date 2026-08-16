@@ -35,7 +35,7 @@ function canonicalUrl(value) {
       const type = url.searchParams.get("type") || "output";
       return `/view?${new URLSearchParams({ filename, subfolder, type }).toString()}`;
     }
-    return `${url.pathname}?${url.searchParams.toString()}`;
+    return `${url.pathname}${url.search ? `?${url.searchParams.toString()}` : ""}`;
   } catch {
     return String(value || "").replace(/[?&](?:rand|preview)=[^&]*/g, "");
   }
@@ -60,8 +60,17 @@ function historyItemForCard(card) {
   if (exact) return exact;
   const image = card?.querySelector?.("img.h3s-demo-thumb");
   const wanted = canonicalUrl(image?.dataset?.fullSrc || image?.src || "");
-  if (!wanted) return null;
-  return items.find((item) => canonicalUrl(item?.url || item?.image) === wanted) || null;
+  return wanted ? items.find((item) => canonicalUrl(item?.url || item?.image) === wanted) || null : null;
+}
+
+function historyUrlForCard(card, item = null) {
+  const image = card?.querySelector?.("img.h3s-demo-thumb");
+  for (const candidate of [item?.url, item?.image, image?.dataset?.fullSrc, image?.currentSrc, image?.src]) {
+    const value = String(candidate || "").trim();
+    if (!value || value.includes("/h3studio/thumbnail?")) continue;
+    return value;
+  }
+  return "";
 }
 
 function plainFilename(value) {
@@ -134,18 +143,22 @@ async function restoreHistoryCard(card) {
   if (!node || node.comfyClass !== TARGET) return;
 
   const item = historyItemForCard(card);
-  if (!item) throw new Error("Saved history entry was not found.");
-
+  const imageUrl = historyUrlForCard(card, item);
   let metadata = null;
-  try {
-    metadata = await fetchStudioPngMetadata(item.url);
-  } catch (error) {
-    console.warn("[H3 Studio] Could not read history image metadata; using cached state:", error);
+  if (imageUrl) {
+    try {
+      metadata = await fetchStudioPngMetadata(imageUrl);
+    } catch (error) {
+      console.warn("[H3 Studio] Could not read history PNG metadata; using cached state:", error);
+    }
   }
-  const next = clone(metadata?.state || item.state || {});
-  if (!next || typeof next !== "object") throw new Error("History image contains no restorable Director state.");
-  next.ui = { ...(next.ui || {}), director_node_id: String(node.id) };
+  const sourceState = metadata?.state || item?.state;
+  if (!sourceState || typeof sourceState !== "object") {
+    throw new Error("History image contains no restorable H3 Studio metadata.");
+  }
 
+  const next = clone(sourceState);
+  next.ui = { ...(next.ui || {}), director_node_id: String(node.id) };
   const references = Array.isArray(next.references) ? next.references : [];
   const links = [];
   const unresolved = [];
@@ -170,18 +183,12 @@ async function restoreHistoryCard(card) {
   node.__h3studioFaceRefineTelemetry = null;
   try { renderPanel(node); } catch (error) { console.warn("[H3 Studio] history restore render error:", error); }
   app.graph?.setDirtyCanvas?.(true, true);
-  highlightRestored(card, item);
+  highlightRestored(card, item || { id: card.dataset.demoId });
 
   if (unresolved.length) {
-    toast("warn", "History restored", `State restored from image metadata. Reconnect only: ${unresolved.join(", ")}.`);
+    toast("warn", "History restored", `State restored from PNG metadata. Reconnect only: ${unresolved.join(", ")}.`);
   } else {
-    toast(
-      "success",
-      "History restored",
-      references.length
-        ? `Restored state and ${references.length} saved reference${references.length === 1 ? "" : "s"}.`
-        : "Restored saved Director state.",
-    );
+    toast("success", "History restored", references.length ? `Restored state and ${references.length} saved reference${references.length === 1 ? "" : "s"}.` : "Restored saved Director state.");
   }
 }
 
@@ -216,7 +223,6 @@ function installStyles() {
 }
 
 const expandSvg = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3H3v3M10 3h3v3M6 13H3v-3M10 13h3v-3"/></svg>`;
-
 function polishExpandButtons() {
   for (const button of document.querySelectorAll(".h3s-strip-expand")) {
     if (button.dataset.v21 === "1") continue;
@@ -228,15 +234,11 @@ function polishExpandButtons() {
 }
 
 const previewRuns = new Map();
-
 function previewRecord(nodeId) {
   const key = String(nodeId || "");
-  if (!previewRuns.has(key)) {
-    previewRuns.set(key, { lastElapsed: null, lastStep: null, perStep: [], sampling: null });
-  }
+  if (!previewRuns.has(key)) previewRuns.set(key, { lastElapsed: null, lastStep: null, perStep: [], sampling: null });
   return previewRuns.get(key);
 }
-
 api.addEventListener("execution_start", () => previewRuns.clear());
 api.addEventListener("h3studio-preview", ({ detail }) => {
   if (!detail?.node_id) return;
@@ -263,7 +265,6 @@ api.addEventListener("h3studio-preview-timing", ({ detail }) => {
   setTimeout(applyTimingUi, 0);
 });
 api.addEventListener("execution_success", () => setTimeout(applyTimingUi, 0));
-
 function directorRecord(node) {
   let fallback = null;
   for (const [previewId, record] of previewRuns.entries()) {
@@ -273,7 +274,6 @@ function directorRecord(node) {
   }
   return previewRuns.size === 1 ? fallback : null;
 }
-
 function duration(seconds) {
   const value = Number(seconds);
   if (!Number.isFinite(value) || value < 0) return null;
@@ -281,19 +281,15 @@ function duration(seconds) {
   const minutes = Math.floor(value / 60);
   return `${minutes}m ${String(Math.round(value - minutes * 60)).padStart(2, "0")}s`;
 }
-
 function applyTimingUi() {
   for (const node of app.graph?._nodes || []) {
     if (node?.comfyClass !== TARGET) continue;
     const record = directorRecord(node);
     if (!record) continue;
-    const steady = record.perStep.length
-      ? record.perStep.reduce((sum, value) => sum + value, 0) / record.perStep.length
-      : null;
+    const steady = record.perStep.length ? record.perStep.reduce((sum, value) => sum + value, 0) / record.perStep.length : null;
     node.__h3studioRunTiming ||= {};
     if (Number.isFinite(record.sampling)) node.__h3studioRunTiming.samplingSeconds = record.sampling;
     if (Number.isFinite(steady)) node.__h3studioRunTiming.steadyStepSeconds = steady;
-
     const panel = node.__h3studioPanel;
     if (!panel?.isConnected) continue;
     for (const card of panel.querySelectorAll(".h3s-run-time")) {
@@ -308,7 +304,6 @@ function applyTimingUi() {
 
 installHistoryRestoreCapture();
 installStyles();
-
 let queued = false;
 new MutationObserver(() => {
   if (queued) return;
@@ -319,10 +314,8 @@ new MutationObserver(() => {
     applyTimingUi();
   });
 }).observe(document.documentElement, { childList: true, subtree: true });
-
 queueMicrotask(() => {
   polishExpandButtons();
   applyTimingUi();
 });
-
 app.registerExtension({ name: "H3Studio.FinishV21" });
