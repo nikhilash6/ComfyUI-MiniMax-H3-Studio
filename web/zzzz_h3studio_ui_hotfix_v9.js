@@ -4,8 +4,6 @@ import { api } from "../../scripts/api.js";
 import { applyState, stateFromNode } from "./js/studio_extension.js";
 import { isNodeDownstream } from "./js/core/final_output.js";
 import {
-
-if (!globalThis.__H3_STUDIO_CANONICAL_UI__) {
   capNativeForTarget,
   formatMegapixels,
   planResolution,
@@ -341,5 +339,3 @@ app.registerExtension({
   },
   afterConfigureGraph() { installStyles(); setTimeout(sweep, 220); },
 });
-
-}

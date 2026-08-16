@@ -2,8 +2,6 @@ import { app } from "../../scripts/app.js";
 
 import { applyState, stateFromNode } from "./js/studio_extension.js";
 
-
-if (!globalThis.__H3_STUDIO_CANONICAL_UI__) {
 const DIRECTOR = "H3StudioDirector";
 const STYLE_ID = "h3studio-interaction-restore-v11-style";
 const CUSTOM_DIALOG_ID = "h3studio-custom-size-dialog";
@@ -269,5 +267,3 @@ app.registerExtension({
   },
   afterConfigureGraph() { installStyles(); setTimeout(sweep, 260); },
 });
-
-}

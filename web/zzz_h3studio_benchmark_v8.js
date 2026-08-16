@@ -1,8 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { stateFromNode } from "./js/studio_extension.js";
 
-
-if (!globalThis.__H3_STUDIO_CANONICAL_UI__) {
 const TARGET = "H3StudioSmartBenchmark";
 const DIRECTOR = "H3StudioDirector";
 const LOADER = "H3StudioLoader";
@@ -140,4 +138,3 @@ app.registerExtension({
   nodeCreated(node) { if (node?.comfyClass === TARGET) setTimeout(() => attach(node), 80); },
   afterConfigureGraph() { setTimeout(() => { for (const node of app.graph?._nodes || []) if (node?.comfyClass === TARGET) attach(node); }, 140); },
 });
-}

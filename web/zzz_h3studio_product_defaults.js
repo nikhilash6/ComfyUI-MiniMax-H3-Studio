@@ -1,7 +1,5 @@
 import { app } from "../../scripts/app.js";
 
-
-if (!globalThis.__H3_STUDIO_CANONICAL_UI__) {
 const TARGET = "H3StudioDirector";
 const STATE_PROPERTY = "h3studio_state";
 const DEFAULT_MEGAPIXELS = 1.5;
@@ -47,5 +45,3 @@ app.registerExtension({
     };
   },
 });
-
-}

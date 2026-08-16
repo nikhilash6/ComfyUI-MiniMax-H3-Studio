@@ -1,7 +1,5 @@
 import { app } from "../../scripts/app.js";
 
-
-if (!globalThis.__H3_STUDIO_CANONICAL_UI__) {
 const DIRECTOR = "H3StudioDirector";
 const BENCHMARK = "H3StudioSmartBenchmark";
 const STYLE_ID = "h3studio-product-ui-v6-style";
@@ -329,4 +327,3 @@ app.registerExtension({
     else if (node?.comfyClass === BENCHMARK) requestAnimationFrame(() => fixBenchmark(node));
   },
 });
-}

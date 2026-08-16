@@ -3,8 +3,6 @@ import { app } from "../../scripts/app.js";
 import { stateFromNode } from "./js/studio_extension.js";
 import { capNativeForTarget, planResolution, resolutionTier } from "./js/core/state.js";
 
-
-if (!globalThis.__H3_STUDIO_CANONICAL_UI__) {
 const BENCHMARK = "H3StudioSmartBenchmark";
 const DIRECTOR = "H3StudioDirector";
 const STYLE_ID = "h3studio-benchmark-lab-v14-style";
@@ -239,5 +237,3 @@ app.registerExtension({
   nodeCreated(node){ if (node?.comfyClass===BENCHMARK||node?.comfyClass===DIRECTOR) setTimeout(()=>attach(node),220); },
   afterConfigureGraph(){ installStyles(); setTimeout(sweep,300); },
 });
-
-}

@@ -1,7 +1,5 @@
 import { app } from "../../scripts/app.js";
 import {
-
-if (!globalThis.__H3_STUDIO_CANONICAL_UI__) {
   missingReferenceOrdinals,
   normalizeState,
   validateGenerationContract,
@@ -120,5 +118,3 @@ app.registerExtension({
     queueMicrotask(patchAll);
   },
 });
-
-}

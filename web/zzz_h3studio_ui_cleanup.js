@@ -1,7 +1,5 @@
 import { app } from "../../scripts/app.js";
 
-
-if (!globalThis.__H3_STUDIO_CANONICAL_UI__) {
 const DIRECTOR = "H3StudioDirector";
 const BENCHMARK = "H3StudioSmartBenchmark";
 const STYLE_ID = "h3studio-ui-cleanup-v1";
@@ -57,5 +55,3 @@ app.registerExtension({
     }, 120);
   },
 });
-
-}

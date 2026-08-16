@@ -2,8 +2,6 @@ import { app } from "../../scripts/app.js";
 import { stateFromNode } from "./js/studio_extension.js";
 import { capNativeForTarget, planResolution, resolutionTier } from "./js/core/state.js";
 
-
-if (!globalThis.__H3_STUDIO_CANONICAL_UI__) {
 const DIRECTOR = "H3StudioDirector";
 const BENCHMARK = "H3StudioSmartBenchmark";
 const STYLE_ID = "h3studio-ui-v20-style";
@@ -386,5 +384,3 @@ app.registerExtension({
   },
   afterConfigureGraph() { installStyles(); setTimeout(sweep, 320); },
 });
-
-}

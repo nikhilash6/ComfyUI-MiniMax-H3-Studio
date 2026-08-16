@@ -1,8 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { stateFromNode } from "./js/studio_extension.js";
 
-
-if (!globalThis.__H3_STUDIO_CANONICAL_UI__) {
 const BENCHMARK = "H3StudioSmartBenchmark";
 const STYLE_ID = "h3studio-ui-v21-style";
 
@@ -334,5 +332,3 @@ app.registerExtension({
   nodeCreated(node) { if (node?.comfyClass === BENCHMARK) setTimeout(() => observe(node), 300); },
   afterConfigureGraph() { installStyles(); setTimeout(sweep, 360); },
 });
-
-}

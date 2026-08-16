@@ -1,8 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { rangeControl } from "./js/core/dom.js";
 import {
-
-if (!globalThis.__H3_STUDIO_CANONICAL_UI__) {
   formatMegapixels,
   MAX_MEGAPIXELS,
   MEGAPIXEL_STEP,
@@ -357,4 +355,3 @@ app.registerExtension({
     for (const delay of [0, 160, 480]) setTimeout(scheduleSweep, delay);
   },
 });
-}

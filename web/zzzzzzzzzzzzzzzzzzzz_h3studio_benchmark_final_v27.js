@@ -1,7 +1,5 @@
 import { app } from "../../scripts/app.js";
 
-
-if (!globalThis.__H3_STUDIO_CANONICAL_UI__) {
 const BENCHMARK = "H3StudioSmartBenchmark";
 const WIDGET_NAME = "h3studio_smart_benchmark";
 const STYLE_ID = "h3studio-benchmark-final-v28-style";
@@ -430,5 +428,3 @@ app.registerExtension({
     for (const delay of [0, 160, 500]) setTimeout(scheduleSweep, delay);
   },
 });
-
-}
