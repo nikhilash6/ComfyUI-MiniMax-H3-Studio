@@ -10,6 +10,7 @@ from .dependency_web import register_dependency_routes
 from .face_refine.integration import install as install_face_refine_integration
 from .face_refine.sampling_bridge import install as install_face_refine_sampling_bridge
 from .face_refine.setup import register_face_setup_routes
+from .legacy_t2i_multiguide import install as install_legacy_t2i_multiguide
 from .llama_cpp_dependency import register_routes as register_llama_cpp_routes
 from .llama_existing_runtime import adopt_existing_runtime
 from .nodes.benchmark import NODE_CLASS_MAPPINGS as BENCHMARK_NODE_CLASS_MAPPINGS
@@ -92,6 +93,12 @@ install_product_defaults()
 # Clamp every manual/API Director seed to ComfyUI's safe <2^50 range and return
 # the exact executed seed to the frontend/history UI.
 install_seed_safety()
+# Restore the old high-quality T2I+image hybrid intentionally. Pure T2I remains
+# text-only; explicit T2I with 1-9 connected images keeps creative T2I compiler
+# semantics while feeding every image into real FL2VA visual conditioning.
+# Install before runtime_contract_fixes so its conditioner captures the patched
+# conditioning pipeline.
+install_legacy_t2i_multiguide()
 # The compiler's resolved generation mode is the final conditioning contract.
 # Install this after prompt-prep patches but before the runtime node subclasses
 # invoke H3StudioCondition.condition via super().
