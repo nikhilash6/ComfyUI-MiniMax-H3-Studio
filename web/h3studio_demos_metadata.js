@@ -112,32 +112,50 @@ function cleanImageUrl(url) {
   }
 }
 
+function isPermanentImage(item) {
+  const url = String(item?.url || item?.image || "").toLowerCase();
+  return url.includes("type=output") || (!url.includes("type=temp") && !url.includes("comfyui_temp_"));
+}
+
 function itemSignature(item) {
   if (!item) return "";
-  const cleanUrl = cleanImageUrl(item.url || item.image || "");
-  const seed = item.state?.generation?.seed ?? "";
+  const seed = item.state?.generation?.seed;
   const prompt = String(item.state?.prompt ?? "").trim();
-  if (cleanUrl) return cleanUrl;
-  return `${seed}:${prompt}`;
+  const dirId = item.state?.ui?.director_node_id ?? "";
+  if (seed != null && Number.isFinite(Number(seed)) && Number(seed) >= 0) {
+    return `run:${dirId}:${Math.trunc(Number(seed))}:${prompt.slice(0, 48)}`;
+  }
+  const cleanUrl = cleanImageUrl(item.url || item.image || "");
+  return cleanUrl || String(item.id || "");
 }
 
 function deduplicateHistory(items) {
-  const seen = new Set();
-  const result = [];
+  const map = new Map();
   for (const item of items) {
     if (!item) continue;
     const sig = itemSignature(item);
-    if (!sig || seen.has(sig)) continue;
-    seen.add(sig);
-    result.push(item);
+    if (!sig) continue;
+    const existing = map.get(sig);
+    if (!existing) {
+      map.set(sig, item);
+    } else {
+      if (!isPermanentImage(existing) && isPermanentImage(item)) {
+        map.set(sig, item);
+      }
+    }
   }
-  return result;
+  return Array.from(map.values()).sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0));
 }
 
 function history() {
   try {
-    const value = JSON.parse(localStorage.getItem(STORAGE_HISTORY_KEY) || "[]");
-    return Array.isArray(value) ? deduplicateHistory(value) : [];
+    const raw = JSON.parse(localStorage.getItem(STORAGE_HISTORY_KEY) || "[]");
+    if (!Array.isArray(raw)) return [];
+    const deduplicated = deduplicateHistory(raw);
+    if (deduplicated.length !== raw.length) {
+      saveHistory(deduplicated);
+    }
+    return deduplicated;
   } catch {
     return [];
   }
@@ -258,6 +276,10 @@ function cardShell({ id, kind, title, subtitle, imageUrl, category, selected }) 
   image.loading = "lazy";
   image.src = imageUrl;
   image.alt = title || "H3 Studio generation";
+  image.onerror = () => {
+    image.style.display = "none";
+    thumbBox.style.background = "linear-gradient(135deg, #181d21 0%, #0d1012 100%)";
+  };
   thumbBox.appendChild(image);
 
   const cat = document.createElement("span");
