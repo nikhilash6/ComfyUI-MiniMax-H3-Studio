@@ -40,19 +40,23 @@ test("sampling badges distinguish LightX 4/8 and PDD profiles", () => {
 
 test("Manifest includes cinematic and anime catalog entries from authentic generations", () => {
   const ids = manifestJson.map((demo) => demo.id);
-  assert.ok(ids.includes("cinematic_interstellar_miller"));
-  assert.ok(ids.includes("cinematic_interstellar_docking"));
-  assert.ok(ids.includes("cinematic_interstellar_wormhole"));
-  assert.ok(ids.includes("cinematic_sicario_border"));
-  assert.ok(ids.includes("cinematic_nocountry_cointoss"));
-  assert.ok(ids.includes("cinematic_nocountry_motel"));
-  assert.ok(ids.includes("cinematic_1917_ruins_flare"));
-  assert.ok(ids.includes("anime_naruto_team7_bridge"));
-  assert.ok(ids.includes("anime_bleach_downtime"));
-  assert.ok(ids.includes("anime_dragonball_adventure"));
-  assert.ok(ids.includes("anime_aot_reconnaissance"));
-  assert.ok(ids.includes("anime_hxh_yorknew_surveillance"));
-  assert.ok(ids.includes("anime_gits_sac_surveillance"));
+  assert.ok(ids.includes("cinematic_shallow_ocean_horizon"));
+  assert.ok(ids.includes("cinematic_orbital_spin_docking"));
+  assert.ok(ids.includes("cinematic_saturn_spherical_wormhole"));
+  assert.ok(ids.includes("cinematic_border_bridge_gridlock"));
+  assert.ok(ids.includes("cinematic_gas_station_counter"));
+  assert.ok(ids.includes("cinematic_texas_motel_room"));
+  assert.ok(ids.includes("cinematic_burning_french_ruins"));
+  assert.ok(ids.includes("cinematic_chemistry_classroom"));
+  assert.ok(ids.includes("cinematic_trinity_observation_bunker"));
+  assert.ok(ids.includes("cinematic_warehouse_bodycam_search"));
+  assert.ok(ids.includes("anime_mist_timber_bridge"));
+  assert.ok(ids.includes("anime_stone_temple_corridor"));
+  assert.ok(ids.includes("anime_desert_highway_trip"));
+  assert.ok(ids.includes("anime_redwood_canopy_patrol"));
+  assert.ok(ids.includes("anime_rainy_neon_stakeout"));
+  assert.ok(ids.includes("anime_cyberpunk_highway_overpass"));
+  assert.ok(ids.includes("anime_coastal_town_market"));
 
   const categories = new Set(manifestJson.map((demo) => demo.category));
   assert.ok(categories.has("CINEMATIC"));
