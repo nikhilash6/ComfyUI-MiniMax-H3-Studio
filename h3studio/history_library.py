@@ -1,6 +1,6 @@
 """Persistent searchable H3 Studio generation history.
 
-Generated PNG metadata remains the source of truth.  This module only keeps a
+Generated PNG metadata remains the source of truth. This module only keeps a
 small SQLite index in ComfyUI's user directory so history survives browser
 profiles and can be searched/favorited without duplicating image files.
 """
@@ -241,8 +241,9 @@ def _state_from_png(path: Path) -> dict[str, Any] | None:
     try:
         with Image.open(path) as image:
             h3studio = _decode_json(image.info.get("h3studio"))
-            if isinstance(h3studio?.get("state") if h3studio else None, dict):
-                return h3studio["state"]
+            state = h3studio.get("state") if h3studio else None
+            if isinstance(state, dict):
+                return state
     except (OSError, ValueError):
         return None
     return None
@@ -296,9 +297,13 @@ def register_history_routes() -> None:
             )
             with _LOCK, _connect() as connection:
                 total = int(connection.execute("SELECT COUNT(*) FROM generations").fetchone()[0])
-                samplers = [row[0] for row in connection.execute(
-                    "SELECT DISTINCT sampling_profile FROM generations WHERE sampling_profile <> '' ORDER BY sampling_profile"
-                ).fetchall()]
+                samplers = [
+                    row[0]
+                    for row in connection.execute(
+                        "SELECT DISTINCT sampling_profile FROM generations "
+                        "WHERE sampling_profile <> '' ORDER BY sampling_profile"
+                    ).fetchall()
+                ]
             return web.json_response({"items": items, "count": len(items), "total": total, "samplers": samplers})
         except Exception as exc:
             return web.json_response({"items": [], "count": 0, "total": 0, "error": str(exc)}, status=500)
