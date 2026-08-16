@@ -5,6 +5,94 @@
     "title": "Interstellar \u00b7 Miller's Water Planet",
     "subtitle": "Those aren't mountains... they're waves.",
     "thumbnail": "cinematic_interstellar_miller.webp",
-    "metadata_file": "cinematic_interstellar_miller.png"
+    "metadata_file": "cinematic_interstellar_miller.webp"
+  },
+  {
+    "id": "cinematic_interstellar_wormhole",
+    "category": "CINEMATIC",
+    "title": "Interstellar \u00b7 Saturn Wormhole Approach",
+    "subtitle": "It's a spherical hole. Who put it there?",
+    "thumbnail": "cinematic_interstellar_wormhole.webp",
+    "metadata_file": "cinematic_interstellar_wormhole.webp"
+  },
+  {
+    "id": "cinematic_sicario_border",
+    "category": "CINEMATIC",
+    "title": "Sicario \u00b7 Juarez Bridge Extraction",
+    "subtitle": "Stay in your vehicles. Weapons free.",
+    "thumbnail": "cinematic_sicario_border.webp",
+    "metadata_file": "cinematic_sicario_border.webp"
+  },
+  {
+    "id": "cinematic_nocountry_cointoss",
+    "category": "CINEMATIC",
+    "title": "No Country for Old Men \u00b7 The Coin Toss",
+    "subtitle": "What's the most you ever lost on a coin toss?",
+    "thumbnail": "cinematic_nocountry_cointoss.webp",
+    "metadata_file": "cinematic_nocountry_cointoss.webp"
+  },
+  {
+    "id": "cinematic_nocountry_motel",
+    "category": "CINEMATIC",
+    "title": "No Country for Old Men \u00b7 Del Rio Motel",
+    "subtitle": "Which room did you give him?",
+    "thumbnail": "cinematic_nocountry_motel.webp",
+    "metadata_file": "cinematic_nocountry_motel.webp"
+  },
+  {
+    "id": "cinematic_1917_ruins_flare",
+    "category": "CINEMATIC",
+    "title": "1917 \u00b7 Night in the Burning Ruins",
+    "subtitle": "Keep moving through the ruins.",
+    "thumbnail": "cinematic_1917_ruins_flare.webp",
+    "metadata_file": "cinematic_1917_ruins_flare.webp"
+  },
+  {
+    "id": "anime_gits_rainy_overpass",
+    "category": "ANIME",
+    "title": "Ghost in the Shell \u00b7 Rainy Neon Overpass",
+    "subtitle": "They're early.",
+    "thumbnail": "anime_gits_rainy_overpass.webp",
+    "metadata_file": "anime_gits_rainy_overpass.webp"
+  },
+  {
+    "id": "anime_naruto_bridge",
+    "category": "ANIME",
+    "title": "Naruto \u00b7 Team 7 on Bridge",
+    "subtitle": "I can't believe he's late again...",
+    "thumbnail": "anime_naruto_bridge.webp",
+    "metadata_file": "anime_naruto_bridge.webp"
+  },
+  {
+    "id": "anime_hxh_night_street",
+    "category": "ANIME",
+    "title": "Hunter x Hunter \u00b7 Yorknew Night Ramen",
+    "subtitle": "You're staring too much.",
+    "thumbnail": "anime_hxh_night_street.webp",
+    "metadata_file": "anime_hxh_night_street.webp"
+  },
+  {
+    "id": "anime_aot_forest",
+    "category": "ANIME",
+    "title": "Attack on Titan \u00b7 Giant Forest Concealment",
+    "subtitle": "Stay still... it hasn't noticed us yet.",
+    "thumbnail": "anime_aot_forest.webp",
+    "metadata_file": "anime_aot_forest.webp"
+  },
+  {
+    "id": "anime_bleach_seireitei",
+    "category": "ANIME",
+    "title": "Bleach \u00b7 Seireitei Corridor Lost",
+    "subtitle": "We've passed this wall four times.",
+    "thumbnail": "anime_bleach_seireitei.webp",
+    "metadata_file": "anime_bleach_seireitei.webp"
+  },
+  {
+    "id": "realistic_night_diner",
+    "category": "REALISTIC",
+    "title": "Cinematic 35mm \u00b7 Rainy Roadside Diner",
+    "subtitle": "You should've left an hour ago.",
+    "thumbnail": "realistic_night_diner.webp",
+    "metadata_file": "realistic_night_diner.webp"
   }
 ]

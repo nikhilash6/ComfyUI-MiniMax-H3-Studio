@@ -89,6 +89,60 @@ export async function readPngTextChunks(arrayBuffer) {
   return result;
 }
 
+export async function readWebpChunks(arrayBuffer) {
+  const bytes = new Uint8Array(arrayBuffer);
+  const decoder = new TextDecoder("utf-8");
+  const view = new DataView(arrayBuffer);
+
+  const riff = decoder.decode(bytes.subarray(0, 4));
+  const webp = decoder.decode(bytes.subarray(8, 12));
+  if (riff !== "RIFF" || webp !== "WEBP") {
+    throw new Error("The demo metadata source is not a valid WebP file.");
+  }
+
+  const result = {};
+  let offset = 12;
+  while (offset + 8 <= bytes.length) {
+    const fourCC = decoder.decode(bytes.subarray(offset, offset + 4));
+    const size = view.getUint32(offset + 4, true);
+    const dataStart = offset + 8;
+    const dataEnd = dataStart + size;
+    if (dataEnd > bytes.length) break;
+
+    if (fourCC === "XMP " || fourCC === "EXIF") {
+      const text = decoder.decode(bytes.subarray(dataStart, dataEnd));
+      try {
+        const jsonStart = text.indexOf("{");
+        const jsonEnd = text.lastIndexOf("}");
+        if (jsonStart !== -1 && jsonEnd !== -1) {
+          const parsed = JSON.parse(text.substring(jsonStart, jsonEnd + 1));
+          if (parsed && typeof parsed === "object") {
+            if (parsed.h3studio) result.h3studio = parsed.h3studio;
+            if (parsed.prompt) result.prompt = parsed.prompt;
+            if (parsed.workflow) result.workflow = parsed.workflow;
+            if (parsed.state && !result.h3studio) result.h3studio = { state: parsed.state };
+          }
+        }
+      } catch {}
+    }
+
+    offset = dataEnd + (size % 2);
+  }
+  return result;
+}
+
+export async function readImageMetadataChunks(arrayBuffer) {
+  const bytes = new Uint8Array(arrayBuffer);
+  if (bytesEqual(bytes, 0, PNG_SIGNATURE)) {
+    return readPngTextChunks(arrayBuffer);
+  }
+  const decoder = new TextDecoder("utf-8");
+  if (bytes.length >= 12 && decoder.decode(bytes.subarray(0, 4)) === "RIFF" && decoder.decode(bytes.subarray(8, 12)) === "WEBP") {
+    return readWebpChunks(arrayBuffer);
+  }
+  throw new Error("Unsupported image metadata format. Expected PNG or WebP.");
+}
+
 function json(value) {
   if (value == null || value === "") return null;
   if (typeof value === "object") return value;
@@ -169,10 +223,10 @@ export function studioMetadataFromChunks(chunks) {
 export async function fetchStudioPngMetadata(url) {
   const response = await fetch(url, { cache: "no-cache" });
   if (!response.ok) {
-    if (response.status === 404) throw new Error("Original metadata PNG is not installed.");
-    throw new Error(`Could not read demo PNG metadata (HTTP ${response.status}).`);
+    if (response.status === 404) throw new Error("Original metadata image is not installed.");
+    throw new Error(`Could not read demo image metadata (HTTP ${response.status}).`);
   }
-  const chunks = await readPngTextChunks(await response.arrayBuffer());
+  const chunks = await readImageMetadataChunks(await response.arrayBuffer());
   return studioMetadataFromChunks(chunks);
 }
 
