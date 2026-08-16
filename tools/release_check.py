@@ -1,4 +1,4 @@
-"""Fail closed when the tracked source is not suitable for a private release."""
+"""Fail closed when the tracked source is not suitable for a public release."""
 
 from __future__ import annotations
 
