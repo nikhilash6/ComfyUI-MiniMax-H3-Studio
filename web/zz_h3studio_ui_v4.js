@@ -167,6 +167,7 @@ function placeDirectorSections(root) {
   if (!main || !inspector) return;
 
   for (const section of [...root.querySelectorAll(".h3s-section, .h3s-fr")]) {
+    if (section.parentElement === main || section.parentElement === inspector) continue;
     const isFaceRefine = section.classList.contains("h3s-fr");
     const key = isFaceRefine ? "face_refine" : sectionKey(section);
     section.dataset.h3Section = key;
