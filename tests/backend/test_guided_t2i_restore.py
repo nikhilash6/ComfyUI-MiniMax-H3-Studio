@@ -7,6 +7,7 @@ import pytest
 from h3studio.constants import MODE_TEXT_TO_IMAGE
 from h3studio.legacy_t2i_multiguide import (
     _guide_positions,
+    _guided_writer_instruction,
     _install_compiler_diagnostics_patch,
 )
 from h3studio.prompting.compiler import PromptCompiler
@@ -29,6 +30,24 @@ def test_guided_t2i_multi_refs_are_simultaneous_frame_zero_anchors() -> None:
     assert _guide_positions(1, 5) == (0,)
     assert _guide_positions(4, 5) == (0, 0, 0, 0)
     assert _guide_positions(9, 20) == (0,) * 9
+
+
+def test_guided_t2i_writer_restores_old_reference_priority_without_forcing_mentions() -> None:
+    instruction = _guided_writer_instruction(0.85, 1)
+
+    assert "85% reference priority" in instruction
+    assert "active visual grounding" in instruction
+    assert "default visual subject guide" in instruction
+    assert "reference_only" in instruction
+    assert "do not add them merely for bookkeeping" in instruction
+    assert "locked-source edit wording" in instruction
+
+
+def test_guided_t2i_writer_scales_to_nine_connected_visual_guides() -> None:
+    instruction = _guided_writer_instruction(0.65, 9)
+
+    assert "9 connected FL2VA visual references" in instruction
+    assert "65% reference priority" in instruction
 
 
 def test_explicit_t2i_diagnostic_says_reference_is_guided_not_ignored() -> None:
