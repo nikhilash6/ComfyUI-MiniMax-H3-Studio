@@ -67,7 +67,7 @@ function clone(value) {
 async function loadManifest() {
   if (manifestCache) return manifestCache;
   try {
-    const response = await fetch(MANIFEST_URL, { cache: "no-cache" });
+    const response = await fetch(`${MANIFEST_URL}?_t=${Date.now()}`, { cache: "no-cache" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const payload = await response.json();
     manifestCache = Array.isArray(payload) ? payload : [];
@@ -134,17 +134,26 @@ function timeAgo(timestamp) {
 }
 
 function setPromptSurfaces(node, text) {
+  if (!node) return;
   node.properties ||= {};
   node.properties.h3_prompt_doc = null;
   const promptWidget = node.widgets?.find((item) => item.name === "prompt");
   if (promptWidget) {
     promptWidget.value = text;
-    promptWidget.callback?.(text, app.canvas, node, [0, 0], {});
+    if (promptWidget._state) promptWidget._state.value = text;
   }
-  node.__h3sDomWidget?.setValue?.(text);
+  try {
+    node.__h3sDomWidget?.setValue?.(text);
+  } catch (err) {
+    console.warn("[H3 Studio] DomWidget setValue error:", err);
+  }
   if (node.__h3sEditor) {
-    node.__h3sEditor.textContent = text;
-    node.__h3sEditor.dispatchEvent(new Event("input", { bubbles: true }));
+    try {
+      node.__h3sEditor.textContent = text;
+      node.__h3sEditor.dispatchEvent(new Event("input", { bubbles: true }));
+    } catch (err) {
+      console.warn("[H3 Studio] Editor dispatch error:", err);
+    }
   }
 }
 
@@ -178,9 +187,15 @@ function applyExactState(node, state, id, shelf) {
   setPromptSurfaces(node, prompt);
   applyState(node, next, true);
   node.__h3studioFaceRefineTelemetry = null;
-  renderPanel(node);
+  try {
+    renderPanel(node);
+  } catch (err) {
+    console.warn("[H3 Studio] renderPanel error during applyExactState:", err);
+  }
   highlightSelection(shelf, id);
-  app.graph?.setDirtyCanvas?.(true, true);
+  try {
+    app.graph?.setDirtyCanvas?.(true, true);
+  } catch {}
 }
 
 function showToast(severity, summary, detail) {
@@ -189,9 +204,26 @@ function showToast(severity, summary, detail) {
 
 function badgeText(badge) {
   if (!badge) return "Reading embedded metadata…";
-  const pieces = [badge.aspect, badge.resolution, shortSamplingLabel(badge.profile)];
-  if (badge.seed != null) pieces.push(`seed ${badge.seed}`);
-  return pieces.filter(Boolean).join(" · ");
+  const pieces = [];
+  if (badge.aspect || badge.resolution) {
+    pieces.push(`📷 ${[badge.aspect, badge.resolution].filter(Boolean).join(" · ")}`);
+  }
+  if (badge.profile) {
+    pieces.push(`⚡ ${shortSamplingLabel(badge.profile)}`);
+  }
+  if (badge.seed != null) {
+    pieces.push(`🎲 ${badge.seed}`);
+  }
+  return pieces.filter(Boolean).join("  ");
+}
+
+function categoryWithIcon(cat, kind) {
+  if (kind === "history") return "⏱ HISTORY";
+  const c = String(cat || "DEMO").toUpperCase();
+  if (c === "CINEMATIC") return "🎬 CINEMATIC";
+  if (c === "ANIME") return "🎨 ANIME";
+  if (c === "REALISTIC") return "📸 REALISTIC";
+  return `✨ ${c}`;
 }
 
 function cardShell({ id, kind, title, subtitle, imageUrl, category, selected }) {
@@ -211,17 +243,17 @@ function cardShell({ id, kind, title, subtitle, imageUrl, category, selected }) 
 
   const cat = document.createElement("span");
   cat.className = "h3s-demo-category-tag";
-  cat.textContent = category || (kind === "history" ? "HISTORY" : "DEMO");
+  cat.textContent = categoryWithIcon(category, kind);
   thumbBox.appendChild(cat);
 
   const source = document.createElement("span");
   source.className = "h3s-demo-source-tag";
-  source.textContent = kind === "history" ? "Saved state" : "Embedded PNG";
+  source.textContent = kind === "history" ? "💾 Saved run" : "📦 Embedded PNG";
   thumbBox.appendChild(source);
 
   const specs = document.createElement("span");
   specs.className = "h3s-demo-badge-specs";
-  specs.textContent = kind === "history" ? "Saved run" : "Reading metadata…";
+  specs.textContent = kind === "history" ? "💾 Saved run" : "Reading metadata…";
   thumbBox.appendChild(specs);
 
   const content = document.createElement("div");
@@ -235,7 +267,7 @@ function cardShell({ id, kind, title, subtitle, imageUrl, category, selected }) 
   const action = document.createElement("div");
   action.className = "h3s-demo-card-action";
   const provenance = document.createElement("span");
-  provenance.textContent = kind === "history" ? "Restore exact saved run" : "Restore exact PNG state";
+  provenance.textContent = kind === "history" ? "⚡ Restore saved run" : "⚡ Restore exact PNG state";
   const apply = document.createElement("span");
   apply.className = "h3s-demo-apply-btn";
   apply.textContent = selected ? "Applied ✓" : (kind === "history" ? "Restore →" : "Apply →");
@@ -367,11 +399,11 @@ async function buildDemoShelf(node, selectedId = "") {
   const demosTab = document.createElement("button");
   demosTab.type = "button";
   demosTab.className = `h3s-shelf-tab${activeTab === "demos" ? " is-active" : ""}`;
-  demosTab.textContent = `Demos ${demos.length}`;
+  demosTab.textContent = `✦ Demos (${demos.length})`;
   const historyTab = document.createElement("button");
   historyTab.type = "button";
   historyTab.className = `h3s-shelf-tab${activeTab === "history" ? " is-active" : ""}`;
-  historyTab.textContent = `History ${history().length}`;
+  historyTab.textContent = `⏱ History (${history().length})`;
   tabs.append(demosTab, historyTab);
   left.appendChild(tabs);
 
