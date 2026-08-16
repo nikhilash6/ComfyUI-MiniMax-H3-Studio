@@ -115,8 +115,9 @@ function installCanvasNavGuard() {
   window.addEventListener(
     "wheel",
     (e) => {
-      // Zooming with modifier key or outside scrollable interior activates navigation mode
-      if (e.ctrlKey || e.metaKey || !e.target?.closest?.(".h3s-col, .h3b7-body, textarea")) {
+      // Zooming with modifier key or outside Director DOM widget activates navigation mode
+      const insideWidget = e.target?.closest?.(".h3s-studio-panel, .h3b7, .h3s-prompt-mentions-wrap");
+      if (e.ctrlKey || e.metaKey || !insideWidget) {
         setNavigating(true);
       }
     },

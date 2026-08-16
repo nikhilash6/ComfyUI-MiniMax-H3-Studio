@@ -509,6 +509,12 @@ async function buildDemoShelf(node, selectedId = "") {
 
   const body = document.createElement("div");
   body.className = "h3s-demos-body";
+  body.addEventListener("wheel", (event) => {
+    if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
+      body.scrollLeft += event.deltaY;
+      event.stopPropagation();
+    }
+  }, { passive: true });
   shelf.append(header, body);
   renderShelfContent(node, shelf, demos);
   return shelf;
