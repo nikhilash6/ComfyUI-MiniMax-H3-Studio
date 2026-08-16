@@ -1,13 +1,16 @@
-"""Text-only fallback for the stage-scoped Qwen3.5 GGUF helper.
+"""Robust text writing for the stage-scoped Qwen3.5 GGUF helper.
 
-llama-mtmd-cli's current non-interactive single-turn path requires an image, so
-it is not a valid fallback for H3 Studio's optional text-only prompt writer.
-Keep llama-server as the preferred shared analyzer/writer backend and use
-llama-cli only when the server path fails for a text-only request.
+Prefer llama-server because it can stay warm across analyzer + writer.  Use
+llama-cli for a true text-only one-shot fallback.  Some installs expose only
+llama-mtmd-cli; that executable insists on media even for a text task, so H3
+Studio supplies a tiny neutral placeholder image and explicitly tells the model
+to ignore it.  This keeps prompt writing on the same fast Q4_K_XL checkpoint
+instead of loading the much larger native BF16 helper just because one llama.cpp
+binary is missing.
 
-Vision and text readiness are intentionally independent: a mtmd-only install is
-still a perfectly valid fast GGUF image analyzer. In that case only the writer
-falls back to native Qwen3.5; do not throw away the working GGUF vision backend.
+Vision and text readiness are intentionally independent.  A working mtmd-only
+runtime remains a valid fast image analyzer and, through the neutral-placeholder
+adapter below, a valid deterministic prompt writer too.
 """
 
 from __future__ import annotations
@@ -85,6 +88,27 @@ def _complete_text_cli(text: str, max_tokens: int) -> str:
     return str(result.stdout).strip()
 
 
+def _complete_text_mtmd(text: str, max_tokens: int) -> str:
+    """Run a text task through mtmd without letting the placeholder affect prose."""
+
+    if not gguf._mtmd_cli():
+        raise RuntimeError("llama-mtmd-cli is unavailable")
+    if not gguf.mmproj_path().is_file():
+        raise FileNotFoundError(f"Missing Qwen3.5 GGUF mmproj: {gguf.mmproj_path()}")
+
+    # mtmd currently rejects a non-interactive turn with zero media.  A tiny
+    # flat mid-gray image is deliberately information-free and only satisfies
+    # the CLI contract.  The instruction makes its non-semantic role explicit.
+    import numpy as np
+
+    neutral = np.full((16, 16, 3), 127, dtype=np.uint8)
+    adapted = (
+        "TEXT-ONLY TASK. The attached flat gray placeholder contains no source information; "
+        "ignore it completely and answer only from the text below.\n\n" + str(text)
+    )
+    return gguf._complete_cli(adapted, [neutral], max_tokens)
+
+
 def install() -> None:
     if bool(getattr(gguf, "__h3studio_text_fallback_installed__", False)):
         return
@@ -95,14 +119,26 @@ def install() -> None:
     def status():
         result = dict(original_status())
         cli = _llama_cli()
+        mtmd = bool(result.get("mtmd_cli_available"))
         result["llama_cli_available"] = bool(cli)
         result["llama_cli"] = cli or ""
-        # Vision may use server OR mtmd-cli. Text generation intentionally uses
-        # server OR llama-cli because mtmd-cli's single-turn path requires media.
         result["vision_ready"] = bool(result.get("ready"))
         result["text_ready"] = bool(
-            result.get("model_present") and (result.get("server_available") or cli)
+            result.get("model_present")
+            and (
+                result.get("server_available")
+                or cli
+                or (mtmd and result.get("mmproj_present"))
+            )
         )
+        if result.get("server_available"):
+            result["text_backend"] = "llama-server"
+        elif cli:
+            result["text_backend"] = "llama-cli"
+        elif mtmd and result.get("mmproj_present"):
+            result["text_backend"] = "llama-mtmd-cli neutral-placeholder adapter"
+        else:
+            result["text_backend"] = "unavailable"
         return result
 
     def generate(self, tokens, *args, **kwargs):
@@ -114,7 +150,8 @@ def install() -> None:
         requested = int(kwargs.get("max_length") or 192)
         max_tokens = max(32, min(768, requested))
         started = time.perf_counter()
-        server_error = ""
+        failures: list[str] = []
+
         if gguf._server_command():
             try:
                 output = gguf._SERVER.complete(text, [], max_tokens)
@@ -125,35 +162,52 @@ def install() -> None:
                 )
                 return output
             except Exception as error:
-                server_error = f"{type(error).__name__}: {error}"
+                failures.append(f"llama-server={type(error).__name__}: {error}")
                 gguf._SERVER.stop()
                 LOGGER.warning(
-                    "[H3 Studio - GGUF] Text-only llama-server path failed; trying llama-cli | %s",
-                    server_error,
+                    "[H3 Studio - GGUF] Text-only llama-server path failed; trying one-shot fallback | %s",
+                    failures[-1],
                 )
 
         if _llama_cli():
-            output = _complete_text_cli(text, max_tokens)
-            LOGGER.info(
-                "[H3 Studio - GGUF] Text-only writer complete via llama-cli | %.2fs%s",
-                time.perf_counter() - started,
-                f" | server fallback={server_error}" if server_error else "",
-            )
-            return output
+            try:
+                output = _complete_text_cli(text, max_tokens)
+                LOGGER.info(
+                    "[H3 Studio - GGUF] Text-only writer complete via llama-cli | %.2fs%s",
+                    time.perf_counter() - started,
+                    f" | fallback={'; '.join(failures)}" if failures else "",
+                )
+                return output
+            except Exception as error:
+                failures.append(f"llama-cli={type(error).__name__}: {error}")
+                LOGGER.warning(
+                    "[H3 Studio - GGUF] llama-cli text path failed; trying mtmd adapter | %s",
+                    failures[-1],
+                )
 
-        raise RuntimeError(
-            "Qwen3.5 GGUF text writer needs llama-server or llama-cli. "
-            + (f"llama-server failed: {server_error}. " if server_error else "")
-            + "H3 Studio deliberately does not call llama-mtmd-cli for text-only requests because its current single-turn path requires an image."
-        )
+        if gguf._mtmd_cli() and gguf.mmproj_path().is_file():
+            try:
+                output = _complete_text_mtmd(text, max_tokens)
+                LOGGER.info(
+                    "[H3 Studio - GGUF] Text-only writer complete via mtmd neutral-placeholder adapter | %.2fs%s",
+                    time.perf_counter() - started,
+                    f" | fallback={'; '.join(failures)}" if failures else "",
+                )
+                return output
+            except Exception as error:
+                failures.append(f"llama-mtmd-cli={type(error).__name__}: {error}")
+
+        details = "; ".join(failures) if failures else "no compatible llama.cpp text executable found"
+        raise RuntimeError(f"Qwen3.5 GGUF text writer unavailable: {details}")
 
     gguf.Qwen35GGUFClipProxy.generate = generate
     gguf._llama_cli = _llama_cli
+    gguf._complete_text_mtmd = _complete_text_mtmd
     gguf.status = status
 
     # The GGUF resolver was installed just before this module. Split analyzer
-    # and writer capability decisions: mtmd-only is enough for image analysis,
-    # while text writing still needs llama-server or llama-cli.
+    # and writer capability decisions: a working vision path must never be
+    # discarded merely because the preferred text executable differs.
     from . import analyzer_stack
     from .nodes import loader
 
@@ -170,10 +224,6 @@ def install() -> None:
         }
         wants_gguf = explicit_gguf or normalized in auto_values
         if wants_gguf and analyzer_status.get("vision_ready"):
-            if not analyzer_status.get("text_ready"):
-                LOGGER.info(
-                    "[H3 Studio - GGUF] Using working GGUF vision backend; text runtime is unavailable and only the writer will fall back."
-                )
             return gguf.FASTEST_QWEN35_4B_GGUF
         return original_resolve_analyzer(value)
 
@@ -190,11 +240,17 @@ def install() -> None:
         would_use_gguf = explicit_gguf or normalized in auto_values or (
             same_as and gguf._is_gguf_choice(analyzer_name)
         )
-        if would_use_gguf and not writer_status.get("text_ready"):
+        if would_use_gguf and writer_status.get("text_ready"):
+            LOGGER.info(
+                "[H3 Studio - GGUF] Prompt writer stays on Qwen3.5-4B Q4_K_XL | backend=%s",
+                writer_status.get("text_backend"),
+            )
+            return gguf.FASTEST_QWEN35_4B_GGUF
+        if would_use_gguf:
             fallback = analyzer_stack.preferred_qwen35("4b")
             if fallback:
                 LOGGER.warning(
-                    "[H3 Studio - GGUF] Vision backend is ready but text runtime is not; prompt writer falls back to native %s",
+                    "[H3 Studio - GGUF] GGUF text runtime is genuinely unavailable; prompt writer falls back to native %s",
                     fallback,
                 )
                 return fallback
@@ -207,4 +263,4 @@ def install() -> None:
     analyzer_stack.qwen35_gguf_status = status
 
 
-__all__ = ["_complete_text_cli", "_llama_cli", "install"]
+__all__ = ["_complete_text_cli", "_complete_text_mtmd", "_llama_cli", "install"]
