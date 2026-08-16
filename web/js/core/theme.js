@@ -16,21 +16,21 @@ export function installTheme() {
       --h3s-accent: #34d3b5;
       --h3s-warning: #e6ad55;
       display: flex; flex-direction: column; gap: 7px; width: 100%; height: 100%; max-height: 100%; min-height: 0;
-      box-sizing: border-box; padding: 10px 14px 20px 14px; overflow: hidden; overscroll-behavior: contain;
+      box-sizing: border-box; padding: 10px 16px 14px 16px; overflow: hidden; overscroll-behavior: contain;
       color: var(--h3s-text); background: color-mix(in srgb, var(--h3s-bg) 97%, black 3%); border: 1px solid var(--h3s-border); border-radius: 8px;
       font: 12px/1.4 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
     }
     .h3s-studio-panel *, .h3s-studio-panel *::before, .h3s-studio-panel *::after { box-sizing: border-box; }
-    .h3s-workspace { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 12px; align-items: start; width: 100%; min-width: 0; min-height: 0; }
+    .h3s-workspace { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 14px; align-items: start; width: 100%; min-width: 0; min-height: 0; }
     .h3s-col {
       display: flex;
       flex-direction: column;
       gap: 7px;
       min-width: 0;
-      max-height: 380px;
+      max-height: 420px;
       overflow-y: auto !important;
       overflow-x: hidden !important;
-      padding: 0 6px 70px 2px;
+      padding: 0 8px 16px 8px;
       scrollbar-width: thin !important;
       scrollbar-color: #58646d transparent !important;
     }
