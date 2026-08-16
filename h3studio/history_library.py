@@ -1,8 +1,9 @@
 """Persistent searchable H3 Studio generation history.
 
-Generated PNG metadata remains the source of truth. This module only keeps a
-small SQLite index in ComfyUI's user directory so history survives browser
-profiles and can be searched/favorited without duplicating image files.
+Generated PNG metadata remains the source of truth. This module keeps only a
+small SQLite index in ComfyUI's user directory. A physical output image is one
+library item even when it was discovered through both browser history and an
+output-folder rebuild.
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ import threading
 import time
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlencode
+from urllib.parse import parse_qsl, urlencode, urlsplit
 
 _LOCK = threading.RLock()
 _SCHEMA = """
@@ -38,6 +39,7 @@ CREATE TABLE IF NOT EXISTS generations (
 CREATE INDEX IF NOT EXISTS idx_h3_history_timestamp ON generations(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_h3_history_favorite ON generations(favorite, timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_h3_history_sampler ON generations(sampling_profile, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_h3_history_url ON generations(url);
 """
 
 
@@ -61,6 +63,32 @@ def _connect() -> sqlite3.Connection:
     connection.execute("PRAGMA synchronous=NORMAL")
     connection.executescript(_SCHEMA)
     return connection
+
+
+def _canonical_url(value: Any) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    try:
+        parsed = urlsplit(text)
+        if parsed.path == "/view":
+            params = dict(parse_qsl(parsed.query, keep_blank_values=True))
+            filename = str(params.get("filename") or "").strip()
+            subfolder = str(params.get("subfolder") or "").strip().strip("/")
+            media_type = str(params.get("type") or "output").strip() or "output"
+            if filename:
+                return "/view?" + urlencode(
+                    {"filename": filename, "subfolder": subfolder, "type": media_type}
+                )
+        kept = [
+            (key, val)
+            for key, val in parse_qsl(parsed.query, keep_blank_values=True)
+            if key not in {"rand", "preview"}
+        ]
+        query = urlencode(sorted(kept))
+        return parsed.path + (f"?{query}" if query else "")
+    except (TypeError, ValueError):
+        return text
 
 
 def _state_fields(state: dict[str, Any]) -> dict[str, Any]:
@@ -89,15 +117,15 @@ def _state_fields(state: dict[str, Any]) -> dict[str, Any]:
 def _normalize_item(item: dict[str, Any]) -> dict[str, Any]:
     state = item.get("state") if isinstance(item.get("state"), dict) else {}
     fields = _state_fields(state)
-    timestamp = item.get("timestamp")
     try:
-        timestamp = int(timestamp)
+        timestamp = int(item.get("timestamp"))
     except (TypeError, ValueError):
         timestamp = int(time.time() * 1000)
     item_id = str(item.get("id") or "").strip()
-    url = str(item.get("url") or item.get("image") or "").strip()
+    url = _canonical_url(item.get("url") or item.get("image"))
     if not item_id or not url:
         raise ValueError("History item requires id and url.")
+
     sampling_seconds = item.get("sampling_seconds")
     total_seconds = item.get("total_seconds")
     try:
@@ -108,6 +136,7 @@ def _normalize_item(item: dict[str, Any]) -> dict[str, Any]:
         total_seconds = float(total_seconds) if total_seconds is not None else None
     except (TypeError, ValueError):
         total_seconds = None
+
     favorite = item.get("favorite")
     favorite = None if favorite is None else int(bool(favorite))
     return {
@@ -124,8 +153,50 @@ def _normalize_item(item: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _row_score(row: sqlite3.Row) -> tuple[int, int, int, int]:
+    item_id = str(row["id"] or "")
+    state_size = len(str(row["state_json"] or ""))
+    has_timing = int(row["sampling_seconds"] is not None) + int(row["total_seconds"] is not None)
+    return (int(item_id.startswith("gen_")), has_timing, state_size, int(row["timestamp"] or 0))
+
+
+def _compact_duplicates(connection: sqlite3.Connection) -> int:
+    rows = connection.execute("SELECT * FROM generations ORDER BY timestamp DESC").fetchall()
+    groups: dict[str, list[sqlite3.Row]] = {}
+    for row in rows:
+        key = _canonical_url(row["url"])
+        if key:
+            groups.setdefault(key, []).append(row)
+
+    removed = 0
+    for canonical, matches in groups.items():
+        if len(matches) == 1:
+            row = matches[0]
+            if row["url"] != canonical:
+                connection.execute("UPDATE generations SET url = ? WHERE id = ?", (canonical, row["id"]))
+            continue
+
+        winner = max(matches, key=_row_score)
+        favorite = max(int(row["favorite"] or 0) for row in matches)
+        sampling = winner["sampling_seconds"]
+        total = winner["total_seconds"]
+        if sampling is None:
+            sampling = next((row["sampling_seconds"] for row in matches if row["sampling_seconds"] is not None), None)
+        if total is None:
+            total = next((row["total_seconds"] for row in matches if row["total_seconds"] is not None), None)
+        connection.execute(
+            "UPDATE generations SET url = ?, favorite = ?, sampling_seconds = ?, total_seconds = ?, updated_at = ? WHERE id = ?",
+            (canonical, favorite, sampling, total, int(time.time() * 1000), winner["id"]),
+        )
+        losers = [str(row["id"]) for row in matches if row["id"] != winner["id"]]
+        if losers:
+            connection.executemany("DELETE FROM generations WHERE id = ?", ((item_id,) for item_id in losers))
+            removed += len(losers)
+    return removed
+
+
 def _upsert_items(items: list[dict[str, Any]]) -> int:
-    normalized = []
+    normalized: list[dict[str, Any]] = []
     for item in items:
         if not isinstance(item, dict):
             continue
@@ -135,11 +206,30 @@ def _upsert_items(items: list[dict[str, Any]]) -> int:
             continue
     if not normalized:
         return 0
+
     with _LOCK, _connect() as connection:
+        _compact_duplicates(connection)
         for item in normalized:
+            same_media = connection.execute(
+                "SELECT * FROM generations WHERE url = ? ORDER BY timestamp DESC LIMIT 1",
+                (item["url"],),
+            ).fetchone()
+            if same_media is not None and same_media["id"] != item["id"]:
+                existing_id = str(same_media["id"])
+                incoming_is_live = str(item["id"]).startswith("gen_")
+                existing_is_live = existing_id.startswith("gen_")
+                item["favorite"] = max(int(same_media["favorite"] or 0), int(item["favorite"] or 0))
+                item["sampling_seconds"] = item["sampling_seconds"] or same_media["sampling_seconds"]
+                item["total_seconds"] = item["total_seconds"] or same_media["total_seconds"]
+                if incoming_is_live and not existing_is_live:
+                    connection.execute("DELETE FROM generations WHERE id = ?", (existing_id,))
+                else:
+                    item["id"] = existing_id
+
             if item["favorite"] is None:
                 row = connection.execute("SELECT favorite FROM generations WHERE id = ?", (item["id"],)).fetchone()
                 item["favorite"] = int(row[0]) if row is not None else 0
+
             connection.execute(
                 """
                 INSERT INTO generations (
@@ -161,7 +251,7 @@ def _upsert_items(items: list[dict[str, Any]]) -> int:
                     aspect_ratio=excluded.aspect_ratio,
                     sampling_profile=excluded.sampling_profile,
                     ref_count=excluded.ref_count,
-                    favorite=excluded.favorite,
+                    favorite=MAX(generations.favorite, excluded.favorite),
                     state_json=excluded.state_json,
                     sampling_seconds=COALESCE(excluded.sampling_seconds, generations.sampling_seconds),
                     total_seconds=COALESCE(excluded.total_seconds, generations.total_seconds),
@@ -169,6 +259,7 @@ def _upsert_items(items: list[dict[str, Any]]) -> int:
                 """,
                 item,
             )
+        _compact_duplicates(connection)
         connection.commit()
     return len(normalized)
 
@@ -194,7 +285,7 @@ def _row_payload(row: sqlite3.Row) -> dict[str, Any]:
     }
 
 
-def _query_items(query: str, favorite_only: bool, sampler: str, sort: str, limit: int) -> list[dict[str, Any]]:
+def _query_items(query: str, favorite_only: bool, sampler: str, sort: str, limit: int) -> tuple[list[dict[str, Any]], int, list[str]]:
     where: list[str] = []
     params: list[Any] = []
     text = str(query or "").strip()
@@ -218,9 +309,19 @@ def _query_items(query: str, favorite_only: bool, sampler: str, sort: str, limit
         sql += " WHERE " + " AND ".join(where)
     sql += f" ORDER BY {order} LIMIT ?"
     params.append(max(1, min(5000, int(limit))))
+
     with _LOCK, _connect() as connection:
+        _compact_duplicates(connection)
         rows = connection.execute(sql, params).fetchall()
-    return [_row_payload(row) for row in rows]
+        total = int(connection.execute("SELECT COUNT(*) FROM generations").fetchone()[0])
+        samplers = [
+            row[0]
+            for row in connection.execute(
+                "SELECT DISTINCT sampling_profile FROM generations WHERE sampling_profile <> '' ORDER BY sampling_profile"
+            ).fetchall()
+        ]
+        connection.commit()
+    return [_row_payload(row) for row in rows], total, samplers
 
 
 def _decode_json(value: Any) -> dict[str, Any] | None:
@@ -242,14 +343,12 @@ def _state_from_png(path: Path) -> dict[str, Any] | None:
         with Image.open(path) as image:
             h3studio = _decode_json(image.info.get("h3studio"))
             state = h3studio.get("state") if h3studio else None
-            if isinstance(state, dict):
-                return state
+            return state if isinstance(state, dict) else None
     except (OSError, ValueError):
         return None
-    return None
 
 
-def _rebuild_from_outputs() -> int:
+def _rebuild_from_outputs() -> tuple[int, int]:
     import folder_paths
 
     root = Path(folder_paths.get_output_directory()).resolve()
@@ -264,13 +363,19 @@ def _rebuild_from_outputs() -> int:
         items.append(
             {
                 "id": item_id,
-                "url": "/view?" + urlencode({"filename": relative.name, "subfolder": subfolder, "type": "output"}),
+                "url": "/view?" + urlencode(
+                    {"filename": relative.name, "subfolder": subfolder, "type": "output"}
+                ),
                 "timestamp": int(path.stat().st_mtime * 1000),
                 "title": path.stem,
                 "state": state,
             }
         )
-    return _upsert_items(items)
+    indexed = _upsert_items(items)
+    with _LOCK, _connect() as connection:
+        removed = _compact_duplicates(connection)
+        connection.commit()
+    return indexed, removed
 
 
 def register_history_routes() -> None:
@@ -288,22 +393,13 @@ def register_history_routes() -> None:
     async def h3studio_history_library(request):
         try:
             query = request.rel_url.query
-            items = _query_items(
+            items, total, samplers = _query_items(
                 query.get("q", ""),
                 query.get("favorite", "") in {"1", "true", "yes"},
                 query.get("sampler", ""),
                 query.get("sort", "newest"),
                 int(query.get("limit", "2000")),
             )
-            with _LOCK, _connect() as connection:
-                total = int(connection.execute("SELECT COUNT(*) FROM generations").fetchone()[0])
-                samplers = [
-                    row[0]
-                    for row in connection.execute(
-                        "SELECT DISTINCT sampling_profile FROM generations "
-                        "WHERE sampling_profile <> '' ORDER BY sampling_profile"
-                    ).fetchall()
-                ]
             return web.json_response({"items": items, "count": len(items), "total": total, "samplers": samplers})
         except Exception as exc:
             return web.json_response({"items": [], "count": 0, "total": 0, "error": str(exc)}, status=500)
@@ -334,5 +430,5 @@ def register_history_routes() -> None:
 
     @server.routes.post("/h3studio/history/rebuild")
     async def h3studio_history_rebuild(_request):
-        count = _rebuild_from_outputs()
-        return web.json_response({"ok": True, "indexed": count})
+        indexed, removed = _rebuild_from_outputs()
+        return web.json_response({"ok": True, "indexed": indexed, "duplicates_removed": removed})
