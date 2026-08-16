@@ -1,6 +1,6 @@
 [project]
 name = "comfyui-minimax-h3-studio"
-version = "0.1.0a17"
+version = "0.1.0-alpha.17"
 description = "A reference-aware MiniMax H3 still-image studio for ComfyUI"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -77,5 +77,4 @@ ignore = ["E501"]
 "tests/backend/test_color_transfer.py" = ["F401"]
 "tests/backend/test_crop_geometry.py" = ["F401"]
 "tests/backend/test_face_detector.py" = ["F401"]
-"tests/backend/test_face_refine_node.py" = ["I001"]
 "tests/backend/test_lightx_v1.py" = ["F401"]
