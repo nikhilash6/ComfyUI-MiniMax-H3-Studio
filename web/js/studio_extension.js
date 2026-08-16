@@ -767,12 +767,9 @@ function generationSection(node, state, refresh) {
     conservativeMode,
     directMode,
   ]);
-  const route = selectControl(generation.route, [
-    ["auto", "Auto · choose for me"], ["fl2va", "Force FL2VA"], ["ref2va", "Force REF2VA"],
-  ], "Conditioning route", (value) => update({ route: value }));
   const grid = element("div", { className: "h3s-grid" }, [
     controlRow("Mode", mode), controlRow("Aspect", ratio), controlRow("Target size", megapixelControl), controlRow("Seed", seedWrap),
-    controlRow("Speed", sampling), controlRow("Model route", route), controlRow("Decoder", decoder), controlRow("Temporal quality", frames),
+    controlRow("Speed", sampling), controlRow("Decoder", decoder), controlRow("Temporal quality", frames),
     controlRow("Comparison image", comparisonToggle),
   ]);
   const sizeHelp = element("p", {
@@ -1137,6 +1134,27 @@ function referencesSection(node, state, refresh) {
   return section("References", body, accessory);
 }
 
+function advancedSection(node, state, refresh) {
+  const content = element("div", { className: "h3s-advanced-content h3s-section-stack" });
+  content.hidden = !state.ui.advanced_open;
+  const update = (generationPatch = {}, promptPatch = {}) => {
+    state.generation = { ...state.generation, ...generationPatch };
+    state.prompt_options = { ...state.prompt_options, ...promptPatch };
+    applyState(node, state);
+    refresh();
+  };
+  content.append(element("div", { className: "h3s-grid" }, [
+    controlRow("Model route", selectControl(state.generation.route, [
+      ["auto", "Auto · choose for me"], ["fl2va", "Force FL2VA"], ["ref2va", "Force REF2VA"],
+    ], "Conditioning route", (value) => update({ route: value }))),
+  ]));
+  content.append(element("p", { className: "h3s-context-help", text: "Resolution mode now lives beside the target-size control. Model route normally follows Mode; force a route only for controlled comparisons." }));
+  const toggle = element("button", {
+    className: "h3s-advanced-toggle", type: "button", attrs: { "aria-expanded": String(state.ui.advanced_open) },
+    on: { click: () => { state.ui.advanced_open = !state.ui.advanced_open; applyState(node, state); refresh(); } },
+  }, [element("span", { text: "Advanced controls" }), element("span", { text: state.ui.advanced_open ? "−" : "+" })]);
+  return element("section", { className: "h3s-section" }, [toggle, content]);
+}
 
 function renderPanel(node) {
   const root = node.__h3studioPanel;
@@ -1158,6 +1176,7 @@ function renderPanel(node) {
   const rightCol = element("div", { className: "h3s-col h3s-col-right" }, [
     generationSection(node, state, refresh),
     createFaceRefineSection(node, state, refresh),
+    advancedSection(node, state, refresh),
   ].filter(Boolean));
   rightCol.addEventListener("wheel", (e) => { e.stopPropagation(); }, { capture: true, passive: true });
 

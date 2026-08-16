@@ -225,7 +225,6 @@ function decoratePanel(node) {
 }
 
 function attachDirector(node) {
-  if (node?.__h3studioPanel || true) return;
   if (!node || node.comfyClass !== DIRECTOR) return;
   forceHideNativeWidgets(node);
   decoratePanel(node);
@@ -266,7 +265,6 @@ function attachDirector(node) {
 }
 
 function fixBenchmark(node) {
-  return;
   if (node?.comfyClass !== BENCHMARK) return;
   for (const w of node.widgets || []) {
     if (w?.name === "h3studio_smart_benchmark") continue;
@@ -298,7 +296,6 @@ function fixBenchmark(node) {
 }
 
 function sweep() {
-  return;
   for (const node of app.graph?._nodes || []) {
     if (node?.comfyClass === DIRECTOR) attachDirector(node);
     else if (node?.comfyClass === BENCHMARK) fixBenchmark(node);

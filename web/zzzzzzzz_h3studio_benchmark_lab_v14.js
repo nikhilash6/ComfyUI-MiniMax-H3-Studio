@@ -227,10 +227,8 @@ function observeDirector(node) {
   const root=node?.__h3studioPanel; if (!root?.isConnected) return; fixDirectorScroll(node); if (root.__h3b14DirectorObserver) return;
   let queued=false; const observer=new MutationObserver(()=>{ if (queued) return; queued=true; requestAnimationFrame(()=>{ queued=false; fixDirectorScroll(node); }); }); observer.observe(root,{childList:true,subtree:true}); root.__h3b14DirectorObserver=observer;
 }
-function attach(node) {
-  return; if (!node?.graph) return; if (node.comfyClass===BENCHMARK) node.__h3bRoot?.isConnected ? observeBenchmark(node) : setTimeout(()=>attach(node),120); else if (node.comfyClass===DIRECTOR) node.__h3studioPanel?.isConnected ? observeDirector(node) : setTimeout(()=>attach(node),120); }
-function sweep() {
-  return; for (const node of app.graph?._nodes||[]) if (node?.comfyClass===BENCHMARK||node?.comfyClass===DIRECTOR) attach(node); filterDirectorPicker(); }
+function attach(node) { if (!node?.graph) return; if (node.comfyClass===BENCHMARK) node.__h3bRoot?.isConnected ? observeBenchmark(node) : setTimeout(()=>attach(node),120); else if (node.comfyClass===DIRECTOR) node.__h3studioPanel?.isConnected ? observeDirector(node) : setTimeout(()=>attach(node),120); }
+function sweep() { for (const node of app.graph?._nodes||[]) if (node?.comfyClass===BENCHMARK||node?.comfyClass===DIRECTOR) attach(node); filterDirectorPicker(); }
 const bodyObserver=new MutationObserver(()=>filterDirectorPicker());
 
 app.registerExtension({

@@ -55,7 +55,6 @@ function refresh(node) {
 }
 
 function sweep() {
-  return;
   installStyles();
   for (const node of app.graph?._nodes || []) if (node?.comfyClass === TARGET) refresh(node);
 }

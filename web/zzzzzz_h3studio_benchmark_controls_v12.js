@@ -131,7 +131,6 @@ function syncRoot(node) {
 }
 
 function attach(node) {
-  return;
   if (!node || node.comfyClass !== TARGET) return;
   const root = node.__h3bRoot;
   if (!root?.isConnected) {
@@ -155,7 +154,6 @@ function attach(node) {
 }
 
 function sweep() {
-  return;
   for (const node of app.graph?._nodes || []) {
     if (node?.comfyClass === TARGET) attach(node);
   }
