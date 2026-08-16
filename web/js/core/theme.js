@@ -15,12 +15,29 @@ export function installTheme() {
       --h3s-border: var(--border-default, rgba(255,255,255,.13));
       --h3s-accent: #34d3b5;
       --h3s-warning: #e6ad55;
-      display: flex; flex-direction: column; gap: 7px; width: 100%; height: 100%; min-height: 0;
-      box-sizing: border-box; padding: 9px; overflow: auto; overscroll-behavior: contain;
+      display: flex; flex-direction: column; gap: 7px; width: 100%; height: 100%; max-height: 100%; min-height: 0;
+      box-sizing: border-box; padding: 10px 16px 14px 16px; overflow: hidden; overscroll-behavior: contain;
       color: var(--h3s-text); background: color-mix(in srgb, var(--h3s-bg) 97%, black 3%); border: 1px solid var(--h3s-border); border-radius: 8px;
       font: 12px/1.4 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
     }
     .h3s-studio-panel *, .h3s-studio-panel *::before, .h3s-studio-panel *::after { box-sizing: border-box; }
+    .h3s-workspace { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 14px; align-items: start; width: 100%; min-width: 0; min-height: 0; }
+    .h3s-col {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      min-width: 0;
+      max-height: 385px;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      padding: 0 8px 24px 8px;
+      scrollbar-width: thin !important;
+      scrollbar-color: #58646d transparent !important;
+    }
+    .h3s-col::-webkit-scrollbar { width: 6px !important; display: block !important; }
+    .h3s-col::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.25) !important; border-radius: 4px; }
+    .h3s-col::-webkit-scrollbar-thumb { background: #58646d !important; border-radius: 4px; }
+    .h3s-col::-webkit-scrollbar-thumb:hover { background: #8896a1 !important; }
     .h3s-studio-header { position: sticky; top: -9px; z-index: 4; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 30px; padding: 3px 1px; background: color-mix(in srgb, var(--h3s-bg) 97%, black 3%); }
     .h3s-studio-brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
     .h3s-studio-mark { width: 4px; height: 16px; border-radius: 999px; background: var(--h3s-accent); }

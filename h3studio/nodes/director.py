@@ -459,6 +459,16 @@ class H3StudioCondition:
             if studio_context.state.generation.frame_profile == "image_vae_1"
             else h3_bundle.video_vae
         )
+        if isinstance(stages.latent, dict):
+            stages.latent["h3_face_refine_mode"] = studio_context.state.generation.face_refine_mode
+            stages.latent["h3_face_refine_crop_factor"] = studio_context.state.generation.face_refine_crop_factor
+            stages.latent["h3_face_refine_guide_size"] = studio_context.state.generation.face_refine_guide_size
+            stages.latent["h3_face_refine_denoise"] = studio_context.state.generation.face_refine_denoise
+            stages.latent["h3_prompt"] = studio_context.prompt
+            stages.latent["h3_model"] = model
+            stages.latent["h3_bundle"] = h3_bundle
+            stages.latent["h3_clip"] = getattr(h3_bundle, "clip", None)
+
         generation = H3StudioGeneration(
             model=model,
             conditioning=stages.conditioning,

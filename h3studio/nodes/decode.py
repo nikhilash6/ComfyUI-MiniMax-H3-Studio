@@ -577,6 +577,35 @@ class H3StudioDecode:
             plan_note,
             decode_seconds,
         )
+        # Automatic Face Refinement pass if enabled in Director / samples metadata
+        face_refine_mode = str(samples.get("h3_face_refine_mode", "off")).lower() if isinstance(samples, dict) else "off"
+        if face_refine_mode in ("auto", "strong"):
+            try:
+                from ..face_refine import FaceRefineConfig, H3FaceRefinePipeline
+                from .face_refine_node import build_h3_face_sampler
+
+                fr_config = FaceRefineConfig(
+                    mode=face_refine_mode,
+                    crop_factor=float(samples.get("h3_face_refine_crop_factor", 2.5)),
+                    guide_size=int(samples.get("h3_face_refine_guide_size", 768)),
+                    denoise=float(samples.get("h3_face_refine_denoise", 0.22)),
+                )
+                fr_pipeline = H3FaceRefinePipeline()
+                sampler_fn = build_h3_face_sampler(
+                    h3_bundle=samples.get("h3_bundle") if isinstance(samples, dict) else None,
+                    model=samples.get("h3_model") if isinstance(samples, dict) else None,
+                    vae=vae,
+                    clip=samples.get("h3_clip") if isinstance(samples, dict) else None,
+                    prompt=str(samples.get("h3_prompt", "")) if isinstance(samples, dict) else "",
+                )
+                refine_result = fr_pipeline.refine_image(images_out, fr_config, sampler_fn=sampler_fn)
+                if refine_result.faces_refined > 0:
+                    images_out = refine_result.image
+                    LOGGER.info("[H3 Studio - Decode] Face Refine post-processing: %s", refine_result.status_message)
+                    info += f" Face Refine: {refine_result.status_message}"
+            except Exception as ex:
+                LOGGER.warning("[H3 Studio - Decode] Face Refine post-process failed gracefully: %s", ex)
+
         progress.completed = progress.total
         progress.emit(force=True, status="done")
         return images_out, decoded_frames, info, preferred_indices[0]

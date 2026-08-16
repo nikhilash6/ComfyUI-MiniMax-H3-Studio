@@ -1,72 +1,138 @@
 [
   {
-    "id": "anime_naruto_bridge",
-    "category": "ANIME",
-    "title": "Naruto \u00b7 Team 7 on Bridge",
-    "subtitle": "I can't believe he's three hours late...",
-    "file": "anime_naruto_bridge.webp",
-    "aspect": "16:9",
-    "target_mp": 1.0,
-    "route": "auto",
-    "sampling": "base_quality_20",
-    "summary": "[image generation] A classic 16:9 wide-angle 2D anime broadcast still, replicating a nostalgic, comedic downtime scene of Team 7 waiting for their sensei in an early-2000s \"Naruto\" episode.",
-    "detailed_description": "The target image is an authentic early-2000s TV broadcast anime still, perfectly capturing the classic Studio Pierrot 2D cel-animation style. The aesthetic features crisp, thin ink linework, flat cel shading without modern digital gradients, slightly soft DVD-era image quality, and a highly detailed, hand-painted watercolor background.\n\nThe camera provides a wide, deep-focus establishing shot of the iconic red arched wooden bridge in the Hidden Leaf Village. A calm, stylized blue river flows beneath it, surrounded by lush green trees and traditional wooden village architecture in the hazy, warm light of early morning. The composition spreads the three young genin across the wide frame to highlight their differing personalities.\n\nIn the dead center of the wooden bridge planks, 12-year-old Naruto Uzumaki (in his bright orange and blue jumpsuit) is lying completely flat on his back in a starfish pose, fast asleep. A classic, translucent anime snot-bubble is expanding from his nose.\n\nOn the far left, Sakura Haruno (in her red qipao dress) is slumped heavily over the red wooden railing, her arms dangling loosely toward the water. Her head is hung in total exhaustion, with a comical, oversized blue anime sweat-drop graphic painted on her forehead.\n\nOn the right side of the frame, Sasuke Uchiha (in his blue high-collar shirt and white shorts) sits precariously on the top of the wooden railing. He has one knee drawn up to his chest, resting his chin on his folded hands, glaring down at the river with a profound, brooding scowl of intense irritation.\n\nIn the far background, perfectly centered down the dirt path leading to the bridge, the tiny figure of Kakashi Hatake can be seen slowly strolling toward them. He is completely unbothered, his face buried in his small orange book.\n\nSynchronized yellow English subtitles with a crisp black drop-shadow appear centered near the bottom edge, reading: \"I can't believe he's three hours late...\" The scene evokes the genuine, lighthearted character dynamics and world-building of the classic anime era.",
-    "size_kb": 125.3
+    "id": "cinematic_chemistry_classroom",
+    "category": "CINEMATIC",
+    "title": "Chemistry Classroom Lecture",
+    "subtitle": "Chalkboard demonstration in a high school lab.",
+    "thumbnail": "cinematic_chemistry_classroom.webp",
+    "metadata_file": "cinematic_chemistry_classroom.webp"
   },
   {
-    "id": "anime_hxh_night_street",
-    "category": "ANIME",
-    "title": "Hunter x Hunter \u00b7 Yorknew Night Ramen",
-    "subtitle": "You're staring too much.",
-    "file": "anime_hxh_night_street.webp",
-    "aspect": "21:9",
-    "target_mp": 1.0,
-    "route": "auto",
-    "sampling": "base_quality_20",
-    "summary": "[image generation] An authentic 21:9 cinematic 2D anime broadcast still from \"Hunter x Hunter\" (2011), capturing a vibrant night scene in Yorknew City with Gon and Killua sitting at an outdoor ramen stall while peculiar characters pass through the crowded commercial alley.",
-    "detailed_description": "The target image faithfully recreates the Nippon Animation and Madhouse 2D cel aesthetic of early 2010s anime. Crisp outlines, atmospheric nighttime neon lighting, warm glow from street food lanterns, and detailed background crowd dynamics.\n\nOn the left foreground, Gon Freecss sits on a wooden stool in his green outfit eating a steaming bowl of ramen with chopsticks, looking curiously over his shoulder toward the bustling street. Next to him, Killua Zoldyck sits calmly with his hands on a glass of water, speaking calmly under his breath.\n\nIn the center and right background, a diverse crowd moves along the narrow Tokyo-style alley with neon signs, glowing shop windows, and a traditional swordsman with a sheathed katana walking past modern businessmen and civilians.\n\nCrisp white English subtitles with a black drop-shadow appear centered along the bottom edge: \"You're staring too much.\"",
-    "size_kb": 71.2
+    "id": "cinematic_trinity_observation_bunker",
+    "category": "CINEMATIC",
+    "title": "Trinity Test Observation Bunker",
+    "subtitle": "Moments before detonation in the 1945 desert test.",
+    "thumbnail": "cinematic_trinity_observation_bunker.webp",
+    "metadata_file": "cinematic_trinity_observation_bunker.webp"
   },
   {
-    "id": "anime_aot_forest",
-    "category": "ANIME",
-    "title": "Attack on Titan \u00b7 Giant Forest Concealment",
-    "subtitle": "Stay still... it hasn't noticed us yet.",
-    "file": "anime_aot_forest.webp",
-    "aspect": "21:9",
-    "target_mp": 0.4,
-    "route": "auto",
-    "sampling": "lightx_v1_fl2v_8",
-    "summary": "[image generation] A classic 21:9 2D anime television broadcast still from an early \"Attack on Titan\" episode, capturing a tense hiding moment during the Trost District arc. The frame feels like a genuine paused shot from the actual TV anime rather than poster art: asymmetrical staging, practical suspense, heavy foreground obstruction, characters distributed across different depths, and tension created through silence, concealment, and line of sight.",
-    "detailed_description": "The target image is an authentic early-2010s Japanese television anime frame, faithfully recreating the look of \"Attack on Titan\" as produced by Wit Studio. Preserve the anime's characteristic visual language: sharp angular linework, controlled cel shading, serious facial acting, and textured watercolor forest foliage.\n\nIn the deep left foreground, Captain Levi crouches on a massive horizontal mossy tree branch behind a giant tree trunk, clad in the Survey Corps scout cloak and 3D maneuver gear, watching cautiously with intense focus. Armin Arlert and other scout members crouch at varying depths on surrounding branches among the towering redwood-like trunks.\n\nThrough the mist in the right background, a tall eerie 15-meter Titan stands motionless between the tree trunks, peering blankly into the forest.\n\nCrisp white subtitles with a black outline appear along the bottom center: \"Stay still... it hasn't noticed us yet.\"",
-    "size_kb": 94.2
+    "id": "cinematic_warehouse_bodycam_search",
+    "category": "CINEMATIC",
+    "title": "Abandoned Warehouse Night Search",
+    "subtitle": "Flashlight search captured on bodycam.",
+    "thumbnail": "cinematic_warehouse_bodycam_search.webp",
+    "metadata_file": "cinematic_warehouse_bodycam_search.webp"
   },
   {
-    "id": "anime_bleach_seireitei",
+    "id": "anime_coastal_town_market",
     "category": "ANIME",
-    "title": "Bleach \u00b7 Seireitei Corridor Lost",
-    "subtitle": "We've passed this wall four times. No, we haven't.",
-    "file": "anime_bleach_seireitei.webp",
-    "aspect": "21:9",
-    "target_mp": 1.0,
-    "route": "auto",
-    "sampling": "base_quality_20",
-    "summary": "[image generation] A nostalgic 21:9 widescreen 2D anime broadcast still from the Soul Society infiltration arc in \"Bleach\", capturing a comedic downtime argument between Ichigo, Renji, and Rukia lost in the identical white plaster corridors of Seireitei.",
-    "detailed_description": "The target image faithfully captures the Studio Pierrot mid-2000s Bleach anime look. Clean cel shading, crisp dynamic outlines, bright sunny midday lighting, and pristine white fortress plaster walls with tiled eaves stretching into the distance.\n\nIn the foreground right, Ichigo Kurosaki in his classic black Shihakusho with Zangetsu strapped to his back carries Kon perched angrily on his shoulder, looking annoyed. Next to him, Renji Abarai leans over Rukia Kuchiki with an exasperated red-faced expression while Rukia earnestly inspects a crudely hand-drawn bunny map on parchment.\n\nIn the distance down the quiet corridor, Byakuya Kuchiki stands silently observing them from afar with his signature white captain haori.\n\nCrisp white subtitles centered at the bottom read:\n\"We've passed this wall four times.\nNo, we haven't.\"",
-    "size_kb": 68.8
+    "title": "Coastal Town Shopping Street",
+    "subtitle": "Late-summer afternoon along a seaside market street.",
+    "thumbnail": "anime_coastal_town_market.webp",
+    "metadata_file": "anime_coastal_town_market.webp"
   },
   {
-    "id": "realistic_night_diner",
-    "category": "REALISTIC",
-    "title": "Cinematic 35mm \u00b7 Rainy Roadside Diner",
-    "subtitle": "You should've left an hour ago.",
-    "file": "realistic_night_diner.webp",
-    "aspect": "21:9",
-    "target_mp": 1.0,
-    "route": "auto",
-    "sampling": "base_quality_20",
-    "summary": "[image generation] A cinematic 21:9 wide-angle 35mm film photograph capturing an atmospheric, moody night scene outside an illuminated roadside American diner in the pouring rain, with glowing red and blue neon reflections on the wet asphalt and glossy car hood.",
-    "detailed_description": "A moody cinematic 35mm anamorphic still from a neo-noir film. In the foreground right, a weary man in a dark jacket and jeans stands in the open glass doorway of a vintage roadside diner holding a takeout coffee cup, looking out into the rain-swept parking lot. Inside the warm diner, red vinyl booths and a solitary woman seated at a corner table are visible through the misted glass.\n\nOutside, rain streaks across the windowpanes and creates vivid red and blue neon reflections across the wet asphalt pavement, painted parking lines, and the hood of a parked 90s sedan under distant orange sodium streetlights.\n\nAuthentic film grain, natural shallow depth of field, rich shadow roll-off, and glowing specular highlights on wet surfaces.\n\nSubtitles at the bottom center: \"You should've left an hour ago.\"",
-    "size_kb": 75.4
+    "id": "cinematic_shallow_ocean_horizon",
+    "category": "CINEMATIC",
+    "title": "Shallow Ocean Wave Horizon",
+    "subtitle": "Those aren't mountains... they're waves.",
+    "thumbnail": "cinematic_shallow_ocean_horizon.webp",
+    "metadata_file": "cinematic_shallow_ocean_horizon.webp"
+  },
+  {
+    "id": "cinematic_orbital_spin_docking",
+    "category": "CINEMATIC",
+    "title": "Orbital Station Spin Docking",
+    "subtitle": "Spinning docking maneuver above the planet.",
+    "thumbnail": "cinematic_orbital_spin_docking.webp",
+    "metadata_file": "cinematic_orbital_spin_docking.webp"
+  },
+  {
+    "id": "cinematic_saturn_spherical_wormhole",
+    "category": "CINEMATIC",
+    "title": "Saturn Spherical Wormhole",
+    "subtitle": "Approaching the spherical spacetime anomaly.",
+    "thumbnail": "cinematic_saturn_spherical_wormhole.webp",
+    "metadata_file": "cinematic_saturn_spherical_wormhole.webp"
+  },
+  {
+    "id": "anime_mist_timber_bridge",
+    "category": "ANIME",
+    "title": "Mist-Covered Timber Bridge",
+    "subtitle": "Waiting on the bridge in the early morning.",
+    "thumbnail": "anime_mist_timber_bridge.webp",
+    "metadata_file": "anime_mist_timber_bridge.webp"
+  },
+  {
+    "id": "anime_stone_temple_corridor",
+    "category": "ANIME",
+    "title": "Traditional White Stone Corridor",
+    "subtitle": "Quiet moment inside the walled estate.",
+    "thumbnail": "anime_stone_temple_corridor.webp",
+    "metadata_file": "anime_stone_temple_corridor.webp"
+  },
+  {
+    "id": "anime_desert_highway_trip",
+    "category": "ANIME",
+    "title": "Desert Highway Road Trip",
+    "subtitle": "Classic capsule buggy on the desert road.",
+    "thumbnail": "anime_desert_highway_trip.webp",
+    "metadata_file": "anime_desert_highway_trip.webp"
+  },
+  {
+    "id": "anime_redwood_canopy_patrol",
+    "category": "ANIME",
+    "title": "Redwood Canopy Patrol",
+    "subtitle": "Scouts perched quietly in giant trees.",
+    "thumbnail": "anime_redwood_canopy_patrol.webp",
+    "metadata_file": "anime_redwood_canopy_patrol.webp"
+  },
+  {
+    "id": "anime_rainy_neon_stakeout",
+    "category": "ANIME",
+    "title": "Rainy Neon Alleyway Stakeout",
+    "subtitle": "Quiet observation above the rainy metropolis.",
+    "thumbnail": "anime_rainy_neon_stakeout.webp",
+    "metadata_file": "anime_rainy_neon_stakeout.webp"
+  },
+  {
+    "id": "anime_cyberpunk_highway_overpass",
+    "category": "ANIME",
+    "title": "Cyberpunk Highway Overpass",
+    "subtitle": "Tactical surveillance on a wet elevated highway.",
+    "thumbnail": "anime_cyberpunk_highway_overpass.webp",
+    "metadata_file": "anime_cyberpunk_highway_overpass.webp"
+  },
+  {
+    "id": "cinematic_border_bridge_gridlock",
+    "category": "CINEMATIC",
+    "title": "Bridge of the Americas Gridlock",
+    "subtitle": "Tense federal convoy in border traffic.",
+    "thumbnail": "cinematic_border_bridge_gridlock.webp",
+    "metadata_file": "cinematic_border_bridge_gridlock.webp"
+  },
+  {
+    "id": "cinematic_texas_motel_room",
+    "category": "CINEMATIC",
+    "title": "1980 West Texas Motel Room",
+    "subtitle": "Searching the room under dim fluorescent light.",
+    "thumbnail": "cinematic_texas_motel_room.webp",
+    "metadata_file": "cinematic_texas_motel_room.webp"
+  },
+  {
+    "id": "cinematic_gas_station_counter",
+    "category": "CINEMATIC",
+    "title": "Rural Gas Station Counter",
+    "subtitle": "What's the most you ever lost on a coin toss?",
+    "thumbnail": "cinematic_gas_station_counter.webp",
+    "metadata_file": "cinematic_gas_station_counter.webp"
+  },
+  {
+    "id": "cinematic_burning_french_ruins",
+    "category": "CINEMATIC",
+    "title": "Burning French Town Under Flares",
+    "subtitle": "Moving through the ruined town under midnight flares.",
+    "thumbnail": "cinematic_burning_french_ruins.webp",
+    "metadata_file": "cinematic_burning_french_ruins.webp"
   }
 ]

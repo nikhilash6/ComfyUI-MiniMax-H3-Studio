@@ -3721,6 +3721,7 @@ function ensurePromptEditor(node) {
         },
         margin: 10,
         serialize: false,
+        hideOnZoom: true,
         getMinHeight: () => 50,
         afterResize: () => {
             applyNativeEditorTheme(wrap);

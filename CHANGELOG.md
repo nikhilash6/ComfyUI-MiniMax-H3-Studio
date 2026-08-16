@@ -2,26 +2,35 @@
 
 All notable changes are recorded here. The format follows Keep a Changelog; versions use semantic versioning with prerelease identifiers while runtime validation is incomplete.
 
-## [0.1.0-alpha.16] - 2026-08-14
+## [0.1.0-alpha.16] - 2026-08-16
 
 ### Added
 
 - Added a workload-aware Runtime Optimization layer with Auto, OG / Current, Quality, Fast, Low VRAM, and Extreme Low VRAM presets while keeping Base, LightX, PDD, steps, and LoRA sampling profiles independent.
 - Added explainable runtime detection and console reporting for GPU/VRAM, actual packed H3 sequence length, route/reference pressure, selected attention backend, head chunking, VAE path, model assets, fallbacks, and the reason Auto chose its effective configuration.
-- Added one-click H3S1/H3S1Z Discord preset sharing for runtime settings, sampling profile, resolution, connected logical model choices, and ordered custom LoRAs with exact strengths without including prompts, reference images, absolute paths, or secrets.
 - Added H3 Studio Smart Benchmark Lab with searchable installed transformer and LoRA discovery, per-LoRA strengths, route-aware sampling profiles, runtime A/B helpers, scenario duplication and validation, same-seed execution, labeled comparison grids, and shareable H3B1/H3B1Z benchmark configurations.
+- Added one-click H3S1/H3S1Z preset sharing for runtime settings, sampling profile, resolution, connected logical model choices, and ordered custom LoRAs with exact strengths without including prompts, reference images, absolute paths, or secrets.
+- Added a curated Director demos shelf with session history and metadata-backed examples that can be reused without turning the main Director renderer into a large static gallery.
+- Added H3-native Face Refine after still selection: YOLO-first face detection, source-anchored FL2VA crop rerendering, Auto and Strong modes, optional SAM masking, adaptive denoise/color matching, and visual before/after inspection.
+- Added Face Refine setup/readiness tooling plus a Director-style 512-1536 px refine-canvas slider, presets, landscape inspection stacking, and marker on/off inspection controls.
 
 ### Fixed
 
+- Hardened Director seed handling end to end by keeping seeds below ComfyUI's safe 2^50 ceiling, synchronizing the queued and visible value, and preserving the exact executed seed through generated-image metadata restoration.
+- Fixed Face Refine Auto to select at most one eligible face and made missing dedicated four-step LightX assets fall back to a compatible installed FL2VA LightX profile, including the active eight-step v1 profile, or Base Balanced instead of failing solely because the optional four-step LoRA is absent.
+- Made failed Face Refine crops fail safe by preserving the original pixels and reporting detector, selection, refinement, timing, and failure details instead of corrupting the output.
+- Restored and preserved the verified Director visual hierarchy after late frontend regressions, including complete column scrolling and stable Face Refine tier/readout sizing.
+- Reduced redundant Director MutationObserver subtree work while retaining the legacy visual decorators required by the verified UI, cutting repeated DOM rescans during slider/readout updates without redesigning the interface.
 - Replaced fragile manual benchmark filename entry with installed-asset discovery and exact per-scenario LoRA configuration.
-- Kept OG / Current as an explicit unchanged runtime path and made every optimized path capability-detected so older ComfyUI or missing optional kernels fall back instead of silently assuming an unavailable backend.
-- Prevented Auto from enabling H3 FFN chunking by default; FFN chunking remains an explicit experimental override while attention-head chunking is reserved for actual memory pressure.
+- Kept OG / Current as an explicit unchanged runtime path, made optimized runtime paths capability-detected, and prevented Auto from enabling experimental FFN chunking by default.
 
 ### Changed
 
 - Made Auto the recommended runtime default and made its policy workload-aware: short FL2VA still packets avoid excessive chunking, constrained REF2VA workloads escalate memory protection, and larger cards prefer Comfy Kitchen when it is actually available.
-- Compressed Discord preset and benchmark codes automatically when that produces a shorter payload while preserving backward-compatible uncompressed imports and safe missing-asset warnings.
-- Kept newer native H3 denoise-mask and optional FaceRefine capabilities visible to detection without silently injecting experimental editing/refinement behavior into normal Studio generation.
+- Expanded route-aware LightX handling for current FL2VA and REF2VA profiles and let Face Refine reuse compatible already-selected FL2VA acceleration rather than treating a dedicated four-step checkpoint as mandatory.
+- Compressed shared preset and benchmark codes automatically when that produces a shorter payload while preserving backward-compatible uncompressed imports and safe missing-asset warnings.
+- Documented Face Refine's optional Impact Subpack, Ultralytics, Impact Pack, Segment Anything, MediaPipe, detector-checkpoint, and bundled Haar-cascade license boundaries; none of the external custom nodes or model checkpoints are included in the H3 Studio source archive.
+- Updated release-facing installation and feature documentation for alpha.16, including the current release pin, Face Refine setup and cost behavior, optional detector/SAM assets, and the existing Nodes 1.0 compatibility boundary.
 
 ## [0.1.0-alpha.15] - 2026-08-14
 

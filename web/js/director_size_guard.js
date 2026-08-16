@@ -6,17 +6,27 @@ const TARGET = "H3StudioDirector";
 
 function clampDirectorSize(node) {
   if (!node) return;
-  const [width, height] = clampStudioNodeSize(node.size);
-  if (!Array.isArray(node.size)) node.size = [width, height];
-  else {
-    node.size[0] = width;
-    node.size[1] = height;
-  }
-
-  for (const target of node.widgets || []) {
-    if (target?.__h3studioHidden) target.computeSize = () => [0, 0];
+  const size = node.size;
+  if (Array.isArray(size)) {
+    const [w, h] = size;
+    const [clampedW, clampedH] = clampStudioNodeSize(size);
+    if (w !== clampedW) size[0] = clampedW;
+    if (h !== clampedH) size[1] = clampedH;
+  } else {
+    node.size = clampStudioNodeSize(size);
   }
 }
+
+function enforceHiddenWidgetSizes(node) {
+  if (!node?.widgets) return;
+  for (const target of node.widgets) {
+    if (target?.__h3studioHidden && target.computeSize !== hiddenComputeSize) {
+      target.computeSize = hiddenComputeSize;
+    }
+  }
+}
+
+const hiddenComputeSize = () => [0, 0];
 
 function installSizeGuard(node) {
   if (!node || node.__h3studioSizeGuardInstalled) return;
@@ -35,6 +45,7 @@ function installSizeGuard(node) {
     }
     const result = originalResize?.apply(this, arguments);
     clampDirectorSize(this);
+    enforceHiddenWidgetSizes(this);
     return result;
   };
 
@@ -48,6 +59,7 @@ function installSizeGuard(node) {
   };
 
   clampDirectorSize(node);
+  enforceHiddenWidgetSizes(node);
 }
 
 app.registerExtension({

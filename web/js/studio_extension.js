@@ -40,6 +40,8 @@ import {
   previewUrlForStorage,
   uploadImages,
 } from "./features/image_upload.js";
+import { createFaceRefineSection } from "../h3studio_face_refine.js";
+import { installDemosShelf } from "../h3studio_demos_metadata.js";
 
 const TARGET = "H3StudioDirector";
 const LINKS_PROPERTY = "h3studio_virtual_media_links";
@@ -60,11 +62,13 @@ function setWidget(node, name, value, invoke = false) {
   if (invoke) target.callback?.(value, app.canvas, node, [0, 0], {});
 }
 
+const MAX_SAFE_COMFY_SEED = 1125899906842623;
+
 function randomSeed() {
   const values = new Uint32Array(2);
   globalThis.crypto?.getRandomValues?.(values);
-  const combined = values[0] * 0x200000 + (values[1] & 0x1fffff);
-  return combined || Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+  const combined = (values[0] & 0x3ffff) * 0x100000000 + values[1];
+  return (combined % MAX_SAFE_COMFY_SEED) || Math.floor(Math.random() * MAX_SAFE_COMFY_SEED);
 }
 
 function hideWidget(target) {
@@ -403,6 +407,8 @@ function richResultPrompt(value, state) {
 function resultsSection(node) {
   const result = node.__h3studioResult;
   if (!result?.prompt) return null;
+  const state = stateFromNode(node);
+  if (state.prompt_options.enhance_mode === "off" && !state.prompt_options.deep_enhancement) return null;
   const friendlyPrompt = friendlyReferences(result.prompt);
   const enhancedInstruction = friendlyReferences(result.enhancedPrompt || result.prompt);
   const copy = element("button", {
@@ -429,12 +435,12 @@ function resultsSection(node) {
       click: (event) => {
         event.preventDefault();
         event.stopPropagation();
-        const state = stateFromNode(node);
-        state.prompt = enhancedInstruction;
-        state.prompt_options = { ...state.prompt_options, deep_enhancement: false };
+        const curState = stateFromNode(node);
+        curState.prompt = enhancedInstruction;
+        curState.prompt_options = { ...curState.prompt_options, deep_enhancement: false };
         setWidget(node, "prompt", enhancedInstruction);
         node.__h3sDomWidget?.setValue?.(enhancedInstruction);
-        applyState(node, state);
+        applyState(node, curState);
         renderPanel(node);
         queueMicrotask(() => node.__h3sEditor?.focus?.({ preventScroll: false }));
       },
@@ -443,7 +449,6 @@ function resultsSection(node) {
   const labels = element("div", { className: "h3s-result-labels" }, result.labels.map((label) => (
     element("span", { className: "h3s-result-label", text: label, title: label })
   )));
-  const state = stateFromNode(node);
   const resultTitle = ({
     off: "Exact H3 instruction",
     single_prompt: "Direct one-line H3 instruction",
@@ -472,7 +477,7 @@ function resultsSection(node) {
       richResultPrompt(records, state),
     ]));
   }
-  return element("details", { className: "h3s-result", attrs: { open: "" } }, children);
+  return element("details", { className: "h3s-result" }, children);
 }
 
 async function queueDirectorWithSeed(node, seed) {
@@ -679,34 +684,42 @@ function generationSection(node, state, refresh) {
     text: formatMegapixels(generation.megapixels),
     attrs: { "aria-live": "polite" },
   });
+  const previewMp = (value) => {
+    state.generation.megapixels = value;
+    state.generation.cap_native_resolution = capNativeForTarget(
+      value,
+      state.generation.cap_native_resolution,
+    );
+    const next = planResolution(
+      state.generation.aspect_ratio,
+      value,
+      state.generation.custom_width,
+      state.generation.custom_height,
+      state.generation.cap_native_resolution,
+    );
+    megapixelValue.textContent = formatMegapixels(value);
+    preview.querySelector(".h3s-resolution-result strong").textContent = `${next.width} × ${next.height}`;
+    preview.querySelector(".h3s-resolution-result span").textContent = `${next.actualMegapixels.toFixed(2)} MP actual · ${next.capped ? "conservative" : "direct"}`;
+    const tier = resolutionTier(value, state.generation.cap_native_resolution);
+    tierBadge.className = `h3s-resolution-tier is-${tier.key}`;
+    tierBadge.textContent = tier.label;
+    tierNote.textContent = tier.note;
+    megapixelSlider.dataset.tier = tier.key;
+    syncResolutionMode(state.generation.cap_native_resolution);
+    applyState(node, state);
+  };
+  const commitMp = (value) => {
+    update({
+      megapixels: value,
+      cap_native_resolution: capNativeForTarget(value, state.generation.cap_native_resolution),
+    });
+  };
   const megapixelSlider = rangeControl(
     generation.megapixels,
     { min: MIN_MEGAPIXELS, max: MAX_MEGAPIXELS, step: MEGAPIXEL_STEP },
     `Target megapixels, minimum ${formatMegapixels(MIN_MEGAPIXELS)}, maximum ${formatMegapixels(MAX_MEGAPIXELS)}`,
-    (value) => {
-      state.generation.megapixels = value;
-      state.generation.cap_native_resolution = capNativeForTarget(
-        value,
-        state.generation.cap_native_resolution,
-      );
-      const next = planResolution(
-        state.generation.aspect_ratio,
-        value,
-        state.generation.custom_width,
-        state.generation.custom_height,
-        state.generation.cap_native_resolution,
-      );
-      megapixelValue.textContent = formatMegapixels(value);
-      preview.querySelector(".h3s-resolution-result strong").textContent = `${next.width} × ${next.height}`;
-      preview.querySelector(".h3s-resolution-result span").textContent = `${next.actualMegapixels.toFixed(2)} MP actual · ${next.capped ? "conservative" : "direct"}`;
-      const tier = resolutionTier(value, state.generation.cap_native_resolution);
-      tierBadge.className = `h3s-resolution-tier is-${tier.key}`;
-      tierBadge.textContent = tier.label;
-      tierNote.textContent = tier.note;
-      megapixelSlider.dataset.tier = tier.key;
-      syncResolutionMode(state.generation.cap_native_resolution);
-      applyState(node, state);
-    },
+    commitMp,
+    previewMp,
   );
   megapixelSlider.dataset.tier = initialTier.key;
   const presets = [
@@ -781,7 +794,16 @@ function generationSection(node, state, refresh) {
   const validation = validationMessage
     ? element("p", { className: "h3s-validation-error", text: validationMessage, attrs: { role: "alert" } })
     : null;
-  return section("Generation", element("div", { className: "h3s-section-stack" }, [grid, resolutionModes, validation, modeDescription, sizeHelp, preview, help, decodeHelp].filter(Boolean)));
+  const generationDetails = element("details", { className: "h3s-prompt-studio" }, [
+    element("summary", { text: "Generation details & recipe notes" }),
+    element("div", { className: "h3s-section-stack" }, [
+      modeDescription,
+      sizeHelp,
+      help,
+      decodeHelp,
+    ]),
+  ]);
+  return section("Generation", element("div", { className: "h3s-section-stack" }, [grid, resolutionModes, preview, validation, generationDetails].filter(Boolean)));
 }
 
 function promptSection(node, state, refresh) {
@@ -1113,35 +1135,51 @@ function referencesSection(node, state, refresh) {
 }
 
 function advancedSection(node, state, refresh) {
-  const content = element("div", { className: "h3s-advanced-content h3s-section-stack" });
-  content.hidden = !state.ui.advanced_open;
+  const content = element("div", { className: "h3s-section-stack" });
   const update = (generationPatch = {}, promptPatch = {}) => {
     state.generation = { ...state.generation, ...generationPatch };
     state.prompt_options = { ...state.prompt_options, ...promptPatch };
     applyState(node, state);
-    refresh();
   };
   content.append(element("div", { className: "h3s-grid" }, [
     controlRow("Model route", selectControl(state.generation.route, [
       ["auto", "Auto · choose for me"], ["fl2va", "Force FL2VA"], ["ref2va", "Force REF2VA"],
     ], "Conditioning route", (value) => update({ route: value }))),
   ]));
-  content.append(element("p", { className: "h3s-context-help", text: "Resolution mode now lives beside the target-size control. Model route normally follows Mode; force a route only for controlled comparisons." }));
-  const toggle = element("button", {
-    className: "h3s-advanced-toggle", type: "button", attrs: { "aria-expanded": String(state.ui.advanced_open) },
-    on: { click: () => { state.ui.advanced_open = !state.ui.advanced_open; applyState(node, state); refresh(); } },
-  }, [element("span", { text: "Advanced controls" }), element("span", { text: state.ui.advanced_open ? "−" : "+" })]);
-  return element("section", { className: "h3s-section" }, [toggle, content]);
+  return section("Model Route", content);
 }
 
 function renderPanel(node) {
   const root = node.__h3studioPanel;
   if (!root) return;
-  const existingShelf = root.querySelector(".h3s-demos-shelf");
+  const prevLeftScroll = root.querySelector(".h3s-col-left")?.scrollTop ?? 0;
+  const prevRightScroll = root.querySelector(".h3s-col-right")?.scrollTop ?? 0;
+  const prevWorkspaceScroll = root.querySelector(".h3s-workspace")?.scrollTop ?? 0;
+  const prevRootScroll = root.scrollTop ?? 0;
+
+  const existingShelf = root.querySelector(".h3s-demos-shelf") || node.__h3studioShelf;
   const state = applyState(node, stateFromNode(node), false);
   root.replaceChildren();
   const refresh = () => renderPanel(node);
   const resolvedMode = state.references.length ? "Reference ready" : "T2I ready";
+
+  const leftCol = element("div", { className: "h3s-col h3s-col-left" }, [
+    promptSection(node, state, refresh),
+    generatedOutputSection(node, state),
+    resultsSection(node),
+    referencesSection(node, state, refresh),
+  ].filter(Boolean));
+  leftCol.addEventListener("wheel", (e) => { e.stopPropagation(); }, { capture: true, passive: true });
+
+  const rightCol = element("div", { className: "h3s-col h3s-col-right" }, [
+    generationSection(node, state, refresh),
+    createFaceRefineSection(node, state, () => applyState(node, state)),
+    advancedSection(node, state, refresh),
+  ].filter(Boolean));
+  rightCol.addEventListener("wheel", (e) => { e.stopPropagation(); }, { capture: true, passive: true });
+
+  const workspace = element("div", { className: "h3s-workspace" }, [leftCol, rightCol]);
+
   const children = [
     element("header", { className: "h3s-studio-header" }, [
       element("div", { className: "h3s-studio-brand" }, [element("span", { className: "h3s-studio-mark" }), element("span", { className: "h3s-studio-title", text: "MiniMax H3 Studio" })]),
@@ -1152,15 +1190,31 @@ function renderPanel(node) {
       className: "h3s-state-warning",
       text: `${node.__h3studioStateError} The original value was preserved for recovery.`,
     }) : null,
-    generationSection(node, state, refresh),
-    promptSection(node, state, refresh),
-    generatedOutputSection(node, state),
-    resultsSection(node),
-    referencesSection(node, state, refresh),
-    advancedSection(node, state, refresh),
+    workspace,
   ].filter(Boolean);
   root.append(...children);
   node.__h3studioLinkSignature = linkSignature(node);
+
+  if (prevLeftScroll > 0) {
+    leftCol.scrollTop = prevLeftScroll;
+    requestAnimationFrame(() => { leftCol.scrollTop = prevLeftScroll; });
+  }
+  if (prevRightScroll > 0) {
+    rightCol.scrollTop = prevRightScroll;
+    requestAnimationFrame(() => { rightCol.scrollTop = prevRightScroll; });
+  }
+  if (prevWorkspaceScroll > 0) {
+    workspace.scrollTop = prevWorkspaceScroll;
+    requestAnimationFrame(() => { workspace.scrollTop = prevWorkspaceScroll; });
+  }
+  if (prevRootScroll > 0) {
+    root.scrollTop = prevRootScroll;
+    requestAnimationFrame(() => { root.scrollTop = prevRootScroll; });
+  }
+
+  if (!existingShelf && typeof installDemosShelf === "function") {
+    installDemosShelf(node);
+  }
 }
 
 api.addEventListener("executed", ({ detail }) => {
@@ -1196,6 +1250,9 @@ function installPanel(node) {
   installTheme();
   enforceNativeWidgetVisibility(node);
   const root = element("div", { className: "h3s-studio-panel", attrs: { role: "group", "aria-label": "MiniMax H3 Studio controls" } });
+  root.addEventListener("wheel", (event) => {
+    event.stopPropagation();
+  }, { capture: true, passive: true });
   node.__h3studioPanel = root;
   const panelWidget = node.addDOMWidget("h3studio_controls", "h3studio_controls", root, {
     serialize: false,
@@ -1314,16 +1371,37 @@ function installPanel(node) {
       });
     }
   };
+  if (Array.isArray(node.inputs)) {
+    node.inputs = node.inputs.filter((inp) => {
+      if (!inp) return false;
+      if (/^media_\d+$/.test(inp.name) && inp.link == null) {
+        return false;
+      }
+      return true;
+    });
+  }
+
   // Reset any runaway height already serialized into an existing workflow,
   // while preserving a deliberately wider node.
   node.size = initialStudioNodeSize(node.size);
   renderPanel(node);
 }
 
+function pruneDirectorTransportInputs(nodeData) {
+  const optional = nodeData?.input?.optional;
+  if (!optional) return;
+  for (const name of Object.keys(optional)) {
+    if (/^media_\d+$/.test(name) || /^media_type_\d+$/.test(name) || /^media_filename_\d+$/.test(name) || /^role_\d+$/.test(name) || /^retention_\d+$/.test(name) || /^description_\d+$/.test(name)) {
+      delete optional[name];
+    }
+  }
+}
+
 app.registerExtension({
   name: "H3Studio.Controls",
   beforeRegisterNodeDef(nodeType, nodeData) {
     if (nodeData.name !== TARGET) return;
+    pruneDirectorTransportInputs(nodeData);
     const originalCreated = nodeType.prototype.onNodeCreated;
     nodeType.prototype.onNodeCreated = function h3studioCreated() {
       const result = originalCreated?.apply(this, arguments);

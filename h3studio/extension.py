@@ -7,6 +7,9 @@ from .analyzer_stack import install as install_analyzer_stack
 from .comfy_attention_compat import install as install_comfy_attention_compat
 from .comfy_compat import register_routes as register_comfy_compat_routes
 from .dependency_web import register_dependency_routes
+from .face_refine.integration import install as install_face_refine_integration
+from .face_refine.sampling_bridge import install as install_face_refine_sampling_bridge
+from .face_refine.setup import register_face_setup_routes
 from .llama_cpp_dependency import register_routes as register_llama_cpp_routes
 from .llama_existing_runtime import adopt_existing_runtime
 from .nodes.benchmark import NODE_CLASS_MAPPINGS as BENCHMARK_NODE_CLASS_MAPPINGS
@@ -43,6 +46,7 @@ from .runtime_contract_fixes import install as install_runtime_contract_fixes
 from .runtime_guards import install_runtime_guards
 from .runtime_policy_fixes import install as install_runtime_policy_fixes
 from .runtime_web import register_runtime_routes
+from .seed_safety import install as install_seed_safety
 from .smart_benchmark_restore import install as install_smart_benchmark_restore
 from .web_routes import register_routes
 
@@ -85,6 +89,9 @@ install_prompt_mode_guard()
 # New nodes default to the preferred production setup without rewriting values
 # already serialized in existing workflows.
 install_product_defaults()
+# Clamp every manual/API Director seed to ComfyUI's safe <2^50 range and return
+# the exact executed seed to the frontend/history UI.
+install_seed_safety()
 # The compiler's resolved generation mode is the final conditioning contract.
 # Install this after prompt-prep patches but before the runtime node subclasses
 # invoke H3StudioCondition.condition via super().
@@ -92,6 +99,15 @@ install_runtime_contract_fixes()
 # Repair PackedLayout probing across ComfyUI versions and make runtime preset
 # semantics truthful: Fast is speed-oriented, Low/Extreme are memory-oriented.
 install_runtime_policy_fixes()
+# Replace the provisional face sampler before the selected-still integration
+# captures it. The bridge injects the real source crop into H3's VIDEO latent,
+# keeps audio locked, and uses low-denoise sampling as genuine img2img.
+install_face_refine_sampling_bridge()
+# Face Refine captures the final patched H3 sampling objects, suppresses the
+# obsolete decode-stage packet pass, and rerenders only the still chosen by
+# H3StudioFrameSelector. It installs after runtime policy patches so it observes
+# the exact effective execution path rather than a pre-patched model.
+install_face_refine_integration()
 # Smart Benchmark is one unified scenario surface with the old fairness/sweep
 # controls applied globally; the short-lived Matrix/VAE tab split is gone.
 install_smart_benchmark_restore()
@@ -103,6 +119,9 @@ register_runtime_routes()
 register_dependency_routes()
 register_comfy_compat_routes()
 register_llama_cpp_routes()
+register_face_setup_routes()
+
+from .nodes.face_refine_node import H3StudioFaceRefine
 
 NODE_CLASS_MAPPINGS = {
     "H3StudioLoader": H3StudioLoader,
@@ -113,6 +132,7 @@ NODE_CLASS_MAPPINGS = {
     "H3StudioContextSamplingPreset": H3StudioRuntimeSamplingPreset,
     "H3StudioTAEH3Preview": H3StudioTAEH3Preview,
     "H3StudioModelSetup": H3StudioModelSetup,
+    "H3StudioFaceRefine": H3StudioFaceRefine,
     **BENCHMARK_NODE_CLASS_MAPPINGS,
     **SMART_BENCHMARK_NODE_CLASS_MAPPINGS,
     **PROMPT_BENCHMARK_NODE_CLASS_MAPPINGS,
@@ -131,6 +151,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "H3StudioContextSamplingPreset": "H3 Studio · Director Sampling Preset",
     "H3StudioTAEH3Preview": "H3 Studio · Live Preview (TAEH3)",
     "H3StudioModelSetup": "H3 Studio · Model Setup",
+    "H3StudioFaceRefine": "H3 Studio · Face Refine (Distant & Wide)",
     **BENCHMARK_NODE_DISPLAY_NAME_MAPPINGS,
     **SMART_BENCHMARK_NODE_DISPLAY_NAME_MAPPINGS,
     **PROMPT_BENCHMARK_NODE_DISPLAY_NAME_MAPPINGS,

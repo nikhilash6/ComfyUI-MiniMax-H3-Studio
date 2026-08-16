@@ -301,9 +301,11 @@ export function parseState(value) {
   }
 }
 
+export const MAX_SAFE_COMFY_SEED = 1125899906842623;
+
 function nextSeedValue(current, randomizer) {
-  let next = Math.max(0, Math.trunc(Number(randomizer?.()) || 0)) % Number.MAX_SAFE_INTEGER;
-  if (next === current) next = (current + 1) % Number.MAX_SAFE_INTEGER;
+  let next = Math.max(0, Math.trunc(Number(randomizer?.()) || 0)) % MAX_SAFE_COMFY_SEED;
+  if (next === current) next = (current + 1) % MAX_SAFE_COMFY_SEED;
   return next;
 }
 
