@@ -439,6 +439,3 @@ If H3 Studio makes H3 less painful to use, leave a star.
 Original H3 Studio code is available under the [MIT License](LICENSE).
 
 Adapted files retain their upstream notices and terms. External models and optional custom nodes retain their own licenses.
-
-```
-```
