@@ -1,5 +1,8 @@
 """Contracts for the standalone Face Refine node and production sampler bridge."""
 
+import sys
+from types import SimpleNamespace
+
 try:
     import pytest
 except ImportError:
@@ -48,13 +51,26 @@ def test_sampler_refuses_incomplete_h3_runtime_instead_of_fake_refining() -> Non
     assert sampler is None
 
 
-def test_profile_for_fl2va_prefers_fast_lightx_4step() -> None:
+def test_profile_for_fl2va_prefers_4step_when_present_and_preserves_8step_otherwise(monkeypatch) -> None:
+    from h3studio.acceleration import LIGHTX_PROFILES
     from h3studio.nodes.face_refine_node import _profile_for_fl2va
 
+    fake_folder_paths = SimpleNamespace(get_filename_list=lambda _kind: [])
+    monkeypatch.setitem(sys.modules, "folder_paths", fake_folder_paths)
+
+    # The dedicated 4-step artifact is optional. If it is absent, preserve the
+    # active compatible FL2VA 8-step profile rather than failing the refinement.
     profile, preserved = _profile_for_fl2va("lightx_v1_fl2v_8")
-    assert profile in ("lightx_v1_fl2v_4_pruned", "lightx_er_sde_4")
+    assert profile == "lightx_v1_fl2v_8"
     assert preserved is True
+
+    # When the dedicated 4-step artifact is actually installed it remains the
+    # preferred fast Face Refine path.
+    p4 = LIGHTX_PROFILES["lightx_v1_fl2v_4_pruned"]
+    fake_folder_paths.get_filename_list = lambda _kind: [p4.lora_filename]
+    fast_profile, fast_preserved = _profile_for_fl2va("lightx_v1_fl2v_8")
+    assert fast_profile == "lightx_v1_fl2v_4_pruned"
+    assert fast_preserved is True
 
     profile_base, _ = _profile_for_fl2va("base_quality_20")
     assert profile_base == "base_quality_20"
-
