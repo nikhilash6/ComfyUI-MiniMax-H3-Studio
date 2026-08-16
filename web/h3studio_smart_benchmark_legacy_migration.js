@@ -2,6 +2,7 @@ import { app } from "../../scripts/app.js";
 
 const SMART = "H3StudioSmartBenchmark";
 const LEGACY = "H3StudioABComparison";
+const MAX_SCENARIOS = 4;
 
 function widget(node, name) { return node?.widgets?.find((candidate) => candidate.name === name) || null; }
 function graphLink(id) {
@@ -47,6 +48,12 @@ function ensureOutputs(target, outputIndex, destinations) {
   }
 }
 
+function normalizeSmart(node) {
+  if (!node) return;
+  setWidget(node, "max_scenarios", MAX_SCENARIOS);
+  setWidget(node, "benchmark_mode", "Unified");
+}
+
 function migrate(oldNode, existingSmart = null) {
   const bundle = inputSource(oldNode, "h3_bundle");
   const context = inputSource(oldNode, "studio_context");
@@ -67,9 +74,10 @@ function migrate(oldNode, existingSmart = null) {
     node.properties.h3studio_migrated_from_legacy_benchmark = true;
     app.graph.add(node);
     setWidget(node, "scenarios_json", "[]");
-    setWidget(node, "max_scenarios", 12);
-    setWidget(node, "grid_cell_size", Math.max(320, Math.min(896, oldGrid || 576)));
+    normalizeSmart(node);
+    setWidget(node, "grid_cell_size", Math.max(320, Math.min(1024, oldGrid || 576)));
   } else {
+    normalizeSmart(node);
     console.info("[H3 Studio] Existing Smart Benchmark found; absorbing legacy Benchmark Lab instead of creating a duplicate.");
   }
 
@@ -83,14 +91,16 @@ function migrate(oldNode, existingSmart = null) {
 
 function migrateAll() {
   const legacy = [...(app.graph?._nodes || [])].filter((node) => node?.comfyClass === LEGACY);
+  const smartNodes = [...(app.graph?._nodes || [])].filter((node) => node?.comfyClass === SMART);
+  for (const node of smartNodes) normalizeSmart(node);
   if (!legacy.length) return;
-  let smart = (app.graph?._nodes || []).find((node) => node?.comfyClass === SMART) || null;
+  let smart = smartNodes[0] || null;
   for (const node of legacy) smart = migrate(node, smart) || smart;
   app.graph?.setDirtyCanvas?.(true, true);
   console.info(`[H3 Studio] Legacy benchmark migration complete · ${legacy.length} old node(s) removed · one Smart Benchmark retained.`);
 }
 
 app.registerExtension({
-  name: "H3Studio.SmartBenchmarkLegacyMigrationV4",
+  name: "H3Studio.SmartBenchmarkLegacyMigrationV5",
   afterConfigureGraph() { setTimeout(migrateAll, 80); },
 });
