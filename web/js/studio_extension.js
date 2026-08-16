@@ -1165,12 +1165,14 @@ function renderPanel(node) {
     resultsSection(node),
     referencesSection(node, state, refresh),
   ].filter(Boolean));
+  leftCol.addEventListener("wheel", (e) => { e.stopPropagation(); }, { capture: true, passive: true });
 
   const rightCol = element("div", { className: "h3s-col h3s-col-right" }, [
     generationSection(node, state, refresh),
     createFaceRefineSection(node, state, refresh),
     advancedSection(node, state, refresh),
   ].filter(Boolean));
+  rightCol.addEventListener("wheel", (e) => { e.stopPropagation(); }, { capture: true, passive: true });
 
   const workspace = element("div", { className: "h3s-workspace" }, [leftCol, rightCol]);
 

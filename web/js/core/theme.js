@@ -27,7 +27,22 @@ export function installTheme() {
     .h3s-studio-panel::-webkit-scrollbar-thumb:hover { background: #8896a1 !important; }
     .h3s-studio-panel *, .h3s-studio-panel *::before, .h3s-studio-panel *::after { box-sizing: border-box; }
     .h3s-workspace { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 8px; align-items: start; width: 100%; min-width: 0; min-height: 0; }
-    .h3s-col { display: flex; flex-direction: column; gap: 7px; min-width: 0; min-height: 0; }
+    .h3s-col {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      min-width: 0;
+      max-height: 480px;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      padding-right: 6px;
+      scrollbar-width: thin !important;
+      scrollbar-color: #58646d transparent !important;
+    }
+    .h3s-col::-webkit-scrollbar { width: 6px !important; display: block !important; }
+    .h3s-col::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.25) !important; border-radius: 4px; }
+    .h3s-col::-webkit-scrollbar-thumb { background: #58646d !important; border-radius: 4px; }
+    .h3s-col::-webkit-scrollbar-thumb:hover { background: #8896a1 !important; }
     .h3s-studio-header { position: sticky; top: -9px; z-index: 4; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 30px; padding: 3px 1px; background: color-mix(in srgb, var(--h3s-bg) 97%, black 3%); }
     .h3s-studio-brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
     .h3s-studio-mark { width: 4px; height: 16px; border-radius: 999px; background: var(--h3s-accent); }
