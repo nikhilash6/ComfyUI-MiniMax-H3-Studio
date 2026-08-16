@@ -79,11 +79,12 @@ async function loadManifest() {
 }
 
 function demoMetadataUrl(demo) {
-  return demo?.metadata_file ? `${EXT_PATH}/${demo.metadata_file}` : "";
+  const file = demo?.metadata_file || demo?.file || demo?.thumbnail;
+  return file ? `${EXT_PATH}/${file}` : "";
 }
 
 function demoThumbnailUrl(demo) {
-  const file = demo?.thumbnail || demo?.file;
+  const file = demo?.thumbnail || demo?.file || demo?.metadata_file;
   return file ? `${EXT_PATH}/${file}` : "";
 }
 
