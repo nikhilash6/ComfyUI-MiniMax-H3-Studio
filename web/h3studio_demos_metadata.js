@@ -101,10 +101,43 @@ async function loadDemoMetadata(demo, { retry = false } = {}) {
   return promise;
 }
 
+function cleanImageUrl(url) {
+  if (!url) return "";
+  try {
+    const parsed = new URL(url, "http://localhost");
+    parsed.searchParams.delete("rand");
+    return `${parsed.pathname}?${parsed.searchParams.toString()}`;
+  } catch {
+    return String(url).replace(/[?&]rand=\d+/, "");
+  }
+}
+
+function itemSignature(item) {
+  if (!item) return "";
+  const cleanUrl = cleanImageUrl(item.url || item.image || "");
+  const seed = item.state?.generation?.seed ?? "";
+  const prompt = String(item.state?.prompt ?? "").trim();
+  if (cleanUrl) return cleanUrl;
+  return `${seed}:${prompt}`;
+}
+
+function deduplicateHistory(items) {
+  const seen = new Set();
+  const result = [];
+  for (const item of items) {
+    if (!item) continue;
+    const sig = itemSignature(item);
+    if (!sig || seen.has(sig)) continue;
+    seen.add(sig);
+    result.push(item);
+  }
+  return result;
+}
+
 function history() {
   try {
     const value = JSON.parse(localStorage.getItem(STORAGE_HISTORY_KEY) || "[]");
-    return Array.isArray(value) ? value : [];
+    return Array.isArray(value) ? deduplicateHistory(value) : [];
   } catch {
     return [];
   }
@@ -112,14 +145,16 @@ function history() {
 
 function saveHistory(items) {
   try {
-    localStorage.setItem(STORAGE_HISTORY_KEY, JSON.stringify(items.slice(0, MAX_HISTORY)));
+    const deduplicated = deduplicateHistory(items);
+    localStorage.setItem(STORAGE_HISTORY_KEY, JSON.stringify(deduplicated.slice(0, MAX_HISTORY)));
   } catch (error) {
     console.warn("[H3 Studio] Could not persist generation history:", error);
   }
 }
 
 function addHistory(entry) {
-  const items = history().filter((item) => item.id !== entry.id && item.url !== entry.url);
+  const sig = itemSignature(entry);
+  const items = history().filter((item) => itemSignature(item) !== sig && item.id !== entry.id);
   saveHistory([entry, ...items].slice(0, MAX_HISTORY));
   updateActiveShelves();
 }
@@ -509,12 +544,24 @@ function findDirectorForOutput(executedNodeId) {
   return null;
 }
 
+const recordedPromptRuns = new Map();
+
 api.addEventListener("executed", ({ detail }) => {
   const imageItem = detail?.output?.images?.[0];
   const url = executedImageUrl(imageItem);
   if (!url) return;
   const director = findDirectorForOutput(detail?.node);
   if (!director) return;
+
+  const promptId = String(detail?.prompt_id || "");
+  const isOutput = String(imageItem?.type || "") === "output";
+
+  if (promptId) {
+    const prior = recordedPromptRuns.get(promptId);
+    if (prior && (prior.isOutput || !isOutput)) {
+      return;
+    }
+  }
 
   // The main Director output listener is registered earlier and records the
   // backend-reported execution seed. Prefer that exact value over the UI's next
@@ -524,6 +571,14 @@ api.addEventListener("executed", ({ detail }) => {
   const exactSeed = Number(director.__h3studioFinalImage?.seed);
   if (Number.isFinite(exactSeed) && exactSeed >= 0) saved.generation.seed = Math.trunc(exactSeed);
   saved.ui = { ...(saved.ui || {}), director_node_id: String(director.id) };
+
+  if (promptId) {
+    recordedPromptRuns.set(promptId, { timestamp: Date.now(), isOutput });
+    if (recordedPromptRuns.size > 50) {
+      const oldestKey = recordedPromptRuns.keys().next().value;
+      recordedPromptRuns.delete(oldestKey);
+    }
+  }
 
   addHistory({
     id: `gen_${Date.now()}_${String(detail?.node ?? "")}`,
