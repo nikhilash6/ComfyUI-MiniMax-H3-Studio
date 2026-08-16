@@ -44,11 +44,25 @@ function installStyles() {
     .h3s-fr-status.is-done .h3s-fr-status-dot{background:#6e9b80}
     .h3s-fr-status.is-error .h3s-fr-status-dot{background:#b86d65}
     .h3s-fr-warning{font-size:7.5px;line-height:1.35;color:#b89565;background:#1a150d;border:1px solid #362916;border-radius:4px;padding:4px 6px;margin-top:6px}
-    .h3s-fr-mp-control{grid-column:1 / -1;min-width:0;background:#0c0f11;border:1px solid #1a1e22;border-radius:5px;padding:5px 6px}
-    .h3s-fr-mp-presets{display:flex;gap:3px;margin-top:4px}
-    .h3s-fr-mp-preset{appearance:none;border:1px solid #22282d;border-radius:3px;background:#14181b;color:#7c8790;font-size:7.5px;padding:2px 4px;cursor:pointer;flex:1;text-align:center;transition:all .15s}
-    .h3s-fr-mp-preset:hover{color:#c5cdd2;background:#1c2125}
-    .h3s-fr-mp-preset.is-active{color:#e6ad55;border-color:#544122;background:#241d13;font-weight:600}
+    .h3s-fr-mp-control{grid-column:1 / -1;display:flex;flex-direction:column;gap:5px;min-width:0;padding:7px 8px;border:1px solid #262c31;border-radius:6px;background:#101316}
+    .h3s-fr-mp-top{display:flex;align-items:center;justify-content:space-between;gap:6px;color:#8b969e;font-size:8px;font-variant-numeric:tabular-nums}
+    .h3s-fr-mp-title{font-size:8.5px;font-weight:700;color:#eef1f3;display:flex;align-items:center;gap:5px}
+    .h3s-fr-mp-tier{padding:1px 5px;border-radius:999px;color:#06120f;background:#34d3b5;font-size:7.5px;font-weight:800;letter-spacing:.02em}
+    .h3s-fr-mp-tier.is-detail{background:#e6ad55;color:#1a150d}
+    .h3s-fr-mp-tier.is-high{background:#ef7d52;color:#1a0e08}
+    .h3s-fr-mp-tier.is-extreme{background:#ef5350;color:#ffffff}
+    .h3s-fr-mp-range-wrap{position:relative;width:100%;height:14px;display:flex;align-items:center}
+    .h3s-fr-mp-track{position:absolute;left:0;right:0;height:3px;border-radius:999px;background:linear-gradient(90deg,#38d6af 0%,#68d391 22%,#e6ad55 50%,#ef7d52 75%,#ef5350 100%);pointer-events:none}
+    .h3s-fr-mp-slider{position:relative;z-index:1;width:100%;height:14px;margin:0;appearance:none;background:transparent;cursor:pointer}
+    .h3s-fr-mp-slider::-webkit-slider-thumb{appearance:none;width:12px;height:12px;border:2px solid #1e2227;border-radius:999px;background:#34d3b5;box-shadow:0 1px 3px rgba(0,0,0,.35);cursor:pointer;transition:transform .1s ease,background .15s ease}
+    .h3s-fr-mp-slider::-webkit-slider-thumb:hover{transform:scale(1.15)}
+    .h3s-fr-mp-slider[data-tier="detail"]::-webkit-slider-thumb{background:#e6ad55}
+    .h3s-fr-mp-slider[data-tier="high"]::-webkit-slider-thumb{background:#ef7d52}
+    .h3s-fr-mp-slider[data-tier="extreme"]::-webkit-slider-thumb{background:#ef5350}
+    .h3s-fr-mp-presets{display:flex;flex-wrap:wrap;gap:3px;margin-top:2px}
+    .h3s-fr-mp-preset{appearance:none;min-height:20px;padding:2px 6px;border:1px solid #262c31;border-radius:5px;color:#8b969e;background:#14181b;cursor:pointer;font:620 7.5px/1.2 ui-sans-serif,system-ui;transition:all .15s ease}
+    .h3s-fr-mp-preset:hover{color:#eef1f3;border-color:color-mix(in srgb,#34d3b5 45%,#262c31)}
+    .h3s-fr-mp-preset.is-active{color:#eef1f3;border-color:color-mix(in srgb,#34d3b5 65%,#262c31);background:color-mix(in srgb,#34d3b5 12%,#14181b);font-weight:700}
     .h3s-fr-proof{margin-top:7px;border-radius:6px;overflow:hidden;border:1px solid #1e2327;background:#0d1113;padding:6px;display:flex;flex-direction:column;gap:5px}
     .h3s-fr-proof-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:8px}
     .h3s-fr-proof-title{font-weight:700;color:#dbe2e6}
@@ -235,48 +249,67 @@ function rangeControl(labelText, value, min, max, step, format, onInput, onCommi
 function mpSliderControl(labelText, value, onInput, onCommit) {
   const box = document.createElement("div");
   box.className = "h3s-fr-mp-control";
-  const label = document.createElement("div");
-  label.className = "h3s-fr-label";
-  const name = document.createElement("span");
-  name.textContent = labelText;
-  const display = document.createElement("span");
-  display.className = "h3s-fr-value";
 
-  const format = (size) => {
+  const getTierInfo = (size) => {
     const mp = (size * size) / (1024 * 1024);
-    let note = "Fast";
-    if (size >= 1536) note = "Extreme";
-    else if (size >= 1280) note = "High";
-    else if (size >= 1024) note = "Detail";
-    else if (size >= 768) note = "Recommended";
-    return `${mp.toFixed(2)} MP · ${size} px (${note})`;
+    let key = "fast";
+    let label = "Fast";
+    if (size >= 1536) { key = "extreme"; label = "Extreme"; }
+    else if (size >= 1280) { key = "high"; label = "High"; }
+    else if (size >= 1024) { key = "detail"; label = "Detail"; }
+    else if (size >= 768) { key = "recommended"; label = "Recommended"; }
+    return { key, label, mpText: `${mp.toFixed(2)} MP`, guideText: `${size} px guide` };
   };
 
-  display.textContent = format(value);
-  label.append(name, display);
+  const top = document.createElement("div");
+  top.className = "h3s-fr-mp-top";
+
+  const titleWrap = document.createElement("div");
+  titleWrap.className = "h3s-fr-mp-title";
+  const name = document.createElement("span");
+  name.textContent = labelText;
+  const tierBadge = document.createElement("span");
+  tierBadge.className = "h3s-fr-mp-tier";
+  titleWrap.append(name, tierBadge);
+
+  const valueDisplay = document.createElement("span");
+  valueDisplay.className = "h3s-fr-value";
+  top.append(titleWrap, valueDisplay);
+
+  const rangeWrap = document.createElement("div");
+  rangeWrap.className = "h3s-fr-mp-range-wrap";
+  const track = document.createElement("div");
+  track.className = "h3s-fr-mp-track";
 
   const input = document.createElement("input");
   input.type = "range";
-  input.className = "h3s-fr-range";
+  input.className = "h3s-fr-mp-slider";
   input.min = "512";
   input.max = "1536";
   input.step = "64";
   input.value = String(value);
 
+  rangeWrap.append(track, input);
+
   const presets = [
-    [512, "0.26 MP"],
-    [768, "0.59 MP"],
-    [1024, "1.05 MP"],
-    [1280, "1.64 MP"],
-    [1536, "2.36 MP"],
+    [512, "0.26 MP · 512"],
+    [768, "0.59 MP · 768"],
+    [1024, "1.05 MP · 1024"],
+    [1280, "1.64 MP · 1280"],
+    [1536, "2.36 MP · 1536"],
   ];
   const presetWrap = document.createElement("div");
   presetWrap.className = "h3s-fr-mp-presets";
   const presetButtons = [];
 
-  const updateActivePresets = (v) => {
+  const updateUI = (size) => {
+    const tier = getTierInfo(size);
+    tierBadge.className = `h3s-fr-mp-tier is-${tier.key}`;
+    tierBadge.textContent = tier.label;
+    valueDisplay.textContent = `${tier.mpText} (${tier.guideText})`;
+    input.dataset.tier = tier.key;
     for (const [btn, presetVal] of presetButtons) {
-      btn.classList.toggle("is-active", Math.abs(presetVal - v) < 32);
+      btn.classList.toggle("is-active", Math.abs(presetVal - size) < 32);
     }
   };
 
@@ -288,8 +321,7 @@ function mpSliderControl(labelText, value, onInput, onCommit) {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
       input.value = String(presetVal);
-      display.textContent = format(presetVal);
-      updateActivePresets(presetVal);
+      updateUI(presetVal);
       onInput(presetVal);
       onCommit(presetVal);
     });
@@ -297,10 +329,11 @@ function mpSliderControl(labelText, value, onInput, onCommit) {
     presetWrap.appendChild(btn);
   }
 
+  updateUI(value);
+
   input.addEventListener("input", () => {
     const next = Number(input.value);
-    display.textContent = format(next);
-    updateActivePresets(next);
+    updateUI(next);
     onInput(next);
   });
   input.addEventListener("change", () => {
@@ -312,7 +345,7 @@ function mpSliderControl(labelText, value, onInput, onCommit) {
     onCommit(next);
   });
 
-  box.append(label, input, presetWrap);
+  box.append(top, rangeWrap, presetWrap);
   return box;
 }
 
