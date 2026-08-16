@@ -1229,7 +1229,7 @@ function installPanel(node) {
   const root = element("div", { className: "h3s-studio-panel", attrs: { role: "group", "aria-label": "MiniMax H3 Studio controls" } });
   root.addEventListener("wheel", (event) => {
     event.stopPropagation();
-  }, { passive: true });
+  }, { capture: true, passive: true });
   node.__h3studioPanel = root;
   const panelWidget = node.addDOMWidget("h3studio_controls", "h3studio_controls", root, {
     serialize: false,
