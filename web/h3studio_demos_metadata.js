@@ -230,11 +230,6 @@ function cardShell({ id, kind, title, subtitle, imageUrl, category, selected }) 
   cat.textContent = category || (kind === "history" ? "HISTORY" : "DEMO");
   thumbBox.appendChild(cat);
 
-  const source = document.createElement("span");
-  source.className = "h3s-demo-source-tag";
-  source.textContent = kind === "history" ? "Saved state" : "Embedded PNG";
-  thumbBox.appendChild(source);
-
   const specs = document.createElement("span");
   specs.className = "h3s-demo-badge-specs";
   specs.textContent = kind === "history" ? "Saved run" : "Reading metadata…";
@@ -251,29 +246,25 @@ function cardShell({ id, kind, title, subtitle, imageUrl, category, selected }) 
   const action = document.createElement("div");
   action.className = "h3s-demo-card-action";
   const provenance = document.createElement("span");
-  provenance.textContent = kind === "history" ? "Restore exact saved run" : "Restore exact PNG state";
+  provenance.textContent = kind === "history" ? "Restore saved run" : "Restore generation settings";
   const apply = document.createElement("span");
   apply.className = "h3s-demo-apply-btn";
   apply.textContent = selected ? "Applied ✓" : (kind === "history" ? "Restore →" : "Apply →");
   action.append(provenance, apply);
   content.append(name, sub, action);
   card.append(thumbBox, content);
-  return { card, specs, source, sub, apply };
+  return { card, specs, sub, apply };
 }
 
 async function hydrateDemoCard(demo, parts) {
   try {
     const metadata = await loadDemoMetadata(demo);
     parts.specs.textContent = badgeText(generationBadge(metadata));
-    parts.source.textContent = "Embedded PNG ✓";
-    parts.source.classList.remove("is-missing");
     parts.card.dataset.metadataReady = "true";
   } catch (error) {
     parts.card.dataset.metadataReady = "false";
     parts.card.classList.add("is-unavailable");
-    parts.specs.textContent = "Metadata PNG missing";
-    parts.source.textContent = "Preview only";
-    parts.source.classList.add("is-missing");
+    parts.specs.textContent = "Metadata missing";
     parts.sub.title = String(error?.message || error);
   }
 }
