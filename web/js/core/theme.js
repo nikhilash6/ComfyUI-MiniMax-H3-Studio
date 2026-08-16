@@ -30,7 +30,7 @@ export function installTheme() {
       max-height: 385px;
       overflow-y: auto !important;
       overflow-x: hidden !important;
-      padding: 0 8px 36px 8px;
+      padding: 0 8px 140px 8px;
       scrollbar-width: thin !important;
       scrollbar-color: #58646d transparent !important;
     }
