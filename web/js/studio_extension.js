@@ -794,10 +794,16 @@ function generationSection(node, state, refresh) {
   const validation = validationMessage
     ? element("p", { className: "h3s-validation-error", text: validationMessage, attrs: { role: "alert" } })
     : null;
-  const faceRefineBlock = createFaceRefineSection(node, state, () => {
-    applyState(node, state);
-  });
-  return section("Generation", element("div", { className: "h3s-section-stack" }, [grid, faceRefineBlock, resolutionModes, validation, modeDescription, sizeHelp, preview, help, decodeHelp].filter(Boolean)));
+  const generationDetails = element("details", { className: "h3s-prompt-studio" }, [
+    element("summary", { text: "Generation details & recipe notes" }),
+    element("div", { className: "h3s-section-stack" }, [
+      modeDescription,
+      sizeHelp,
+      help,
+      decodeHelp,
+    ]),
+  ]);
+  return section("Generation", element("div", { className: "h3s-section-stack" }, [grid, resolutionModes, preview, validation, generationDetails].filter(Boolean)));
 }
 
 function promptSection(node, state, refresh) {
