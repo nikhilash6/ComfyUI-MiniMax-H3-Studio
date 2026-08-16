@@ -312,13 +312,13 @@ function installShareSection(node, replace = false) {
   }
 }
 
+export function createShareSection(node) {
+  installStyles();
+  return buildSection(node);
+}
+
 function watch(node) {
-  const wait = () => {
-    if (!node.graph) return;
-    if (node.__h3studioPanel?.isConnected) { installShareSection(node); return; }
-    setTimeout(wait, 70);
-  };
-  setTimeout(wait, 0);
+  installStyles();
 }
 
 app.registerExtension({

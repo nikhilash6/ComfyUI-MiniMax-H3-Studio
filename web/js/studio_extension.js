@@ -41,6 +41,9 @@ import {
   uploadImages,
 } from "./features/image_upload.js";
 import { createFaceRefineSection } from "../h3studio_face_refine.js";
+import { createLoraSection } from "../h3studio_loras.js";
+import { createRuntimeSection } from "../h3studio_runtime.js";
+import { createShareSection } from "../h3studio_share.js";
 import { installDemosShelf } from "../h3studio_demos_metadata.js";
 
 const TARGET = "H3StudioDirector";
@@ -78,7 +81,7 @@ function hideWidget(target) {
   target.__h3studioType = target.type;
   target.computeSize = () => [0, -4];
   target.hidden = true;
-  target.type = "h3studio_hidden";
+  target.type = "hidden";
 }
 
 function restoreWidgetHiddenByStudio(target) {
@@ -1158,6 +1161,9 @@ function renderPanel(node) {
   const rightCol = element("div", { className: "h3s-col h3s-col-right" }, [
     generationSection(node, state, refresh),
     createFaceRefineSection(node, state, refresh),
+    createRuntimeSection ? createRuntimeSection(node) : null,
+    createLoraSection ? createLoraSection(node) : null,
+    createShareSection ? createShareSection(node) : null,
   ].filter(Boolean));
   rightCol.addEventListener("wheel", (e) => { e.stopPropagation(); }, { capture: true, passive: true });
 

@@ -258,13 +258,13 @@ function installRuntimeSection(node, replace = false) {
   }
 }
 
+export function createRuntimeSection(node) {
+  installStyles();
+  return buildSection(node);
+}
+
 function watchDirector(node) {
-  const wait = () => {
-    if (!node.graph) return;
-    if (node.__h3studioPanel?.isConnected) { installRuntimeSection(node); return; }
-    setTimeout(wait, 50);
-  };
-  setTimeout(wait, 0);
+  installStyles();
 }
 
 api.addEventListener("h3studio-runtime-resolved", ({ detail }) => {

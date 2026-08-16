@@ -462,8 +462,13 @@ function installLoraSection(node, replace = false) {
   }
 }
 
+export function createLoraSection(node) {
+  installStyles();
+  return buildSection(node);
+}
+
 function watchDirector(node) {
-  if (node.__h3studioLoraObserver || node.__h3studioLoraWatchPending) return;
+  if (node.__h3studioLoraWatchPending) return;
   node.__h3studioLoraWatchPending = true;
   let attempts = 0;
   const wait = () => {
@@ -476,12 +481,7 @@ function watchDirector(node) {
     }
     node.__h3studioLoraWatchPending = false;
     installStyles();
-    installLoraSection(node);
-    const observer = new MutationObserver(() => {
-      if (!panel.querySelector(".h3s-custom-loras")) installLoraSection(node);
-    });
-    observer.observe(panel, { childList: true });
-    node.__h3studioLoraObserver = observer;
+    // MutationObserver on panel is superseded by canonical renderer mounting via createLoraSection
     loadCatalog().then(() => {
       node.__h3studioLoraCatalogError = "";
       installLoraSection(node, true);
