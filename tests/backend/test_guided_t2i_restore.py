@@ -32,21 +32,25 @@ def test_guided_t2i_multi_refs_are_simultaneous_frame_zero_anchors() -> None:
 
 
 def test_explicit_t2i_diagnostic_says_reference_is_guided_not_ignored() -> None:
-    _install_compiler_diagnostics_patch()
-    result = PromptCompiler().compile(
-        StudioState(
-            prompt="Create something new",
-            references=(_ref(),),
-            generation=GenerationOptions(mode=MODE_TEXT_TO_IMAGE),
+    original = PromptCompiler.compile
+    try:
+        _install_compiler_diagnostics_patch()
+        result = PromptCompiler().compile(
+            StudioState(
+                prompt="Create something new",
+                references=(_ref(),),
+                generation=GenerationOptions(mode=MODE_TEXT_TO_IMAGE),
+            )
         )
-    )
 
-    codes = {item.code for item in result.diagnostics}
-    assert "references_guided_in_t2i" in codes
-    assert "references_ignored_in_t2i" not in codes
-    message = next(item.message for item in result.diagnostics if item.code == "references_guided_in_t2i")
-    assert "real FL2VA visual guide" in message
-    assert "not ignored" in message
+        codes = {item.code for item in result.diagnostics}
+        assert "references_guided_in_t2i" in codes
+        assert "references_ignored_in_t2i" not in codes
+        message = next(item.message for item in result.diagnostics if item.code == "references_guided_in_t2i")
+        assert "real FL2VA visual guide" in message
+        assert "not ignored" in message
+    finally:
+        PromptCompiler.compile = original
 
 
 def test_mtmd_text_adapter_uses_information_free_placeholder(monkeypatch, tmp_path: Path) -> None:
