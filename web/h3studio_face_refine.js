@@ -45,12 +45,13 @@ function installStyles() {
     .h3s-fr-status.is-error .h3s-fr-status-dot{background:#b86d65}
     .h3s-fr-warning{font-size:7.5px;line-height:1.35;color:#b89565;background:#1a150d;border:1px solid #362916;border-radius:4px;padding:4px 6px;margin-top:6px}
     .h3s-fr-mp-control{grid-column:1 / -1;display:flex;flex-direction:column;gap:5px;min-width:0;padding:7px 8px;border:1px solid #262c31;border-radius:6px;background:#101316}
-    .h3s-fr-mp-top{display:flex;align-items:center;justify-content:space-between;gap:6px;color:#8b969e;font-size:8px;font-variant-numeric:tabular-nums}
-    .h3s-fr-mp-title{font-size:8.5px;font-weight:700;color:#eef1f3;display:flex;align-items:center;gap:5px}
-    .h3s-fr-mp-tier{padding:1px 5px;border-radius:999px;color:#06120f;background:#34d3b5;font-size:7.5px;font-weight:800;letter-spacing:.02em}
+    .h3s-fr-mp-top{display:flex;align-items:center;justify-content:space-between;gap:6px;color:#8b969e;font-size:8px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden}
+    .h3s-fr-mp-title{font-size:8px;font-weight:700;color:#eef1f3;display:flex;align-items:center;gap:5px;flex-shrink:0;white-space:nowrap}
+    .h3s-fr-mp-tier{min-width:68px;text-align:center;padding:1px 5px;border-radius:999px;color:#06120f;background:#34d3b5;font-size:7.2px;font-weight:800;letter-spacing:.02em;display:inline-block;flex-shrink:0}
     .h3s-fr-mp-tier.is-detail{background:#e6ad55;color:#1a150d}
     .h3s-fr-mp-tier.is-high{background:#ef7d52;color:#1a0e08}
     .h3s-fr-mp-tier.is-extreme{background:#ef5350;color:#ffffff}
+    .h3s-fr-value{color:#bcc4c9;font-variant-numeric:tabular-nums;white-space:nowrap;font-size:8px;text-align:right;flex-shrink:0}
     .h3s-fr-mp-range-wrap{position:relative;width:100%;height:14px;display:flex;align-items:center}
     .h3s-fr-mp-track{position:absolute;left:0;right:0;height:3px;border-radius:999px;background:linear-gradient(90deg,#38d6af 0%,#68d391 22%,#e6ad55 50%,#ef7d52 75%,#ef5350 100%);pointer-events:none}
     .h3s-fr-mp-slider{position:relative;z-index:1;width:100%;height:14px;margin:0;appearance:none;background:transparent;cursor:pointer}
@@ -258,7 +259,7 @@ function mpSliderControl(labelText, value, onInput, onCommit) {
     else if (size >= 1280) { key = "high"; label = "High"; }
     else if (size >= 1024) { key = "detail"; label = "Detail"; }
     else if (size >= 768) { key = "recommended"; label = "Recommended"; }
-    return { key, label, mpText: `${mp.toFixed(2)} MP`, guideText: `${size} px guide` };
+    return { key, label, mpText: `${mp.toFixed(2)} MP` };
   };
 
   const top = document.createElement("div");
@@ -306,7 +307,7 @@ function mpSliderControl(labelText, value, onInput, onCommit) {
     const tier = getTierInfo(size);
     tierBadge.className = `h3s-fr-mp-tier is-${tier.key}`;
     tierBadge.textContent = tier.label;
-    valueDisplay.textContent = `${tier.mpText} (${tier.guideText})`;
+    valueDisplay.textContent = `${tier.mpText} · ${size}px`;
     input.dataset.tier = tier.key;
     for (const [btn, presetVal] of presetButtons) {
       btn.classList.toggle("is-active", Math.abs(presetVal - size) < 32);
@@ -462,7 +463,7 @@ function createFaceRefineSection(node, state, applyCallback) {
   grid.className = "h3s-fr-grid";
 
   grid.append(
-    mpSliderControl("Refine target canvas", generation.face_refine_guide_size, (v) => { generation.face_refine_guide_size = v; }, (v) => { generation.face_refine_guide_size = v; commit(); }),
+    mpSliderControl("Refine canvas", generation.face_refine_guide_size, (v) => { generation.face_refine_guide_size = v; }, (v) => { generation.face_refine_guide_size = v; commit(); }),
     rangeControl("Crop context", generation.face_refine_crop_factor, 1.5, 4.0, 0.1, (v) => `${v.toFixed(1)}×`, (v) => { generation.face_refine_crop_factor = v; }, () => commit()),
     rangeControl("Base denoise", generation.face_refine_denoise, 0.10, 0.60, 0.01, (v) => v.toFixed(2), (v) => { generation.face_refine_denoise = v; }, () => commit()),
     rangeControl("Max faces", advanced.max_faces, 1, 12, 1, (v) => String(Math.round(v)), (v) => { advanced.max_faces = Math.round(v); }, () => commit()),
