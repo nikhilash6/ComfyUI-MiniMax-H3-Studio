@@ -6,26 +6,30 @@ It does **not** accept or store prompts, images, references, seeds, hardware det
 
 Telemetry is enabled by default and can be disabled at any time.
 
-### Temporary opt-out
-
-Set the environment variable before starting ComfyUI from the same terminal.
-
-PowerShell:
-
-```powershell
-$env:H3STUDIO_TELEMETRY="0"
-```
-
-Linux/macOS:
-
-```bash
-export H3STUDIO_TELEMETRY=0
-```
-
-This lasts only for that terminal session and processes started from it.
-
 ### Persistent opt-out
 
-Create an empty file named `.h3studio-telemetry-disabled` in the H3 Studio repository directory. No environment variable is then required.
+From the H3 Studio directory, run:
+
+```bash
+python -m h3studio.telemetry disable
+```
+
+This works on Windows, Linux and macOS. The command creates the per-install opt-out and prints `H3 telemetry: DISABLED` only after H3 Studio's own telemetry check confirms that reporting is disabled.
+
+Check the current effective state with:
+
+```bash
+python -m h3studio.telemetry status
+```
+
+Remove the per-install opt-out with:
+
+```bash
+python -m h3studio.telemetry enable
+```
+
+### Temporary environment override
+
+`H3STUDIO_TELEMETRY=0` can still be set before starting ComfyUI for launch scripts, containers and other advanced setups. An environment override that disables telemetry takes precedence even if the per-install opt-out file is removed.
 
 The client batches counts and sends them asynchronously so telemetry does not block image generation. Network failures are ignored.
