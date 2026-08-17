@@ -6,7 +6,7 @@ import json
 import os
 import threading
 import urllib.request
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from contextlib import suppress
 from pathlib import Path
 
@@ -99,3 +99,31 @@ def record_generation_success(count: int = 1) -> None:
     if os.getenv("PYTEST_CURRENT_TEST"):
         return
     _REPORTER.record(count)
+
+
+def _cli(argv: Sequence[str] | None = None) -> int:
+    """Manage the persistent per-install telemetry opt-out."""
+
+    import argparse
+
+    parser = argparse.ArgumentParser(prog="python -m h3studio.telemetry")
+    parser.add_argument("command", choices=("disable", "enable", "status"))
+    command = parser.parse_args(argv).command
+
+    if command == "disable":
+        OPT_OUT_FILE.touch(exist_ok=True)
+        if not telemetry_enabled():
+            print("H3 telemetry: DISABLED")
+            return 0
+        return 1
+
+    if command == "enable":
+        OPT_OUT_FILE.unlink(missing_ok=True)
+
+    enabled = telemetry_enabled()
+    print(f"H3 telemetry: {'ENABLED' if enabled else 'DISABLED'}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(_cli())
