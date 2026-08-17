@@ -43,8 +43,8 @@ def test_resolver_recovers_from_stale_lookup_and_case_mismatch(tmp_path: Path) -
 
 
 def test_resolver_checks_active_models_dir_when_registered_lookup_breaks(tmp_path: Path) -> None:
-    models_dir = tmp_path / "custom-model-root"
-    vae_root = models_dir / "vae_approx"
+    active_models_dir = tmp_path / "custom-model-root"
+    vae_root = active_models_dir / "vae_approx"
     vae_root.mkdir(parents=True)
     checkpoint = vae_root / "taeh3.safetensors"
     checkpoint.write_bytes(b"checkpoint")
@@ -57,9 +57,11 @@ def test_resolver_checks_active_models_dir_when_registered_lookup_breaks(tmp_pat
             raise KeyError("vae_approx cache unavailable")
 
         folder_names_and_paths = {}
-        models_dir = str(models_dir)
 
-    assert _resolve_tiny_vae(BrokenFolderPaths(), "taeh3.safetensors") == str(checkpoint)
+    folder_paths = BrokenFolderPaths()
+    folder_paths.models_dir = str(active_models_dir)
+
+    assert _resolve_tiny_vae(folder_paths, "taeh3.safetensors") == str(checkpoint)
 
 
 def test_vae_approx_roots_are_deduplicated(tmp_path: Path) -> None:
