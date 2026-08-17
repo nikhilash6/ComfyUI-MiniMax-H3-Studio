@@ -2,6 +2,26 @@
 
 All notable changes are recorded here. The format follows Keep a Changelog; versions use semantic versioning with prerelease identifiers while runtime validation is incomplete.
 
+## [0.1.0-alpha.19] - 2026-08-17
+
+### Added
+
+- Added a polished Custom LoRAs workflow in the Director with up to six compatible H3 adapters, searchable installed-LoRA selection, browser-local favorites, and per-LoRA remembered strengths.
+- Added repository-generated light and dark Star History charts so the README no longer depends on Star History's restricted public stargazer API.
+
+### Fixed
+
+- Fixed TAEH3 live-preview checkpoint discovery so taeh3.safetensors resolves correctly from ComfyUI's vae_approx model roots without arbitrary filesystem searches.
+- Fixed Custom LoRA controls being replaced by older Director surfaces after state changes, including strength sliders that could reset the visible UI instead of updating live.
+- Fixed Custom LoRA picker overflow and theme mismatch by keeping the popup viewport-contained, scrollable, searchable, and visually aligned with the Director.
+- Hardened the initial Director shelf/layout mount so the Studio reflows reliably when ComfyUI restores or resizes the node.
+
+### Changed
+
+- Changed normal Custom LoRA strength controls to a practical 0-3 range and remember the most recently used strength per LoRA; saved values are shown directly in the dropdown and restored when selected again.
+- Simplified Custom LoRA rows by removing explicit reorder controls while preserving the stack's add order internally.
+- Refined Manager/UAD onboarding and release automation while keeping the maintained workflow and runtime behavior compatible with existing saved workflows.
+
 ## [0.1.0-alpha.18] - 2026-08-16
 
 ### Added
