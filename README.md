@@ -424,17 +424,14 @@ The core image workflow is working, but H3 itself was not released as a dedicate
 
 If H3 Studio makes H3 less painful to use, leave a star.
 
-<!-- STAR_HISTORY_CHART_START -->
 <div align="center">
-  <a href="https://github.com/thaakeno/ComfyUI-MiniMax-H3-Studio/stargazers">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="docs/assets/star-history-dark.svg">
-      <source media="(prefers-color-scheme: light)" srcset="docs/assets/star-history-light.svg">
-      <img alt="MiniMax H3 Studio star history" src="docs/assets/star-history-light.svg" width="720">
-    </picture>
-  </a>
+<!-- star-history:start -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/star-history/star-history-dark.svg">
+  <img alt="Star history" src="docs/assets/star-history/star-history-light.svg">
+</picture>
+<!-- star-history:end -->
 </div>
-<!-- STAR_HISTORY_CHART_END -->
 
 > [!NOTE]
 > **What the GENERATED badge counts:** successful images saved through H3 Studio. It sends only a batched number — never prompts, images, references, seeds, hardware details, paths or identifiers. Set `H3STUDIO_TELEMETRY=0` to opt out; [implementation details](telemetry/README.md) are public.
