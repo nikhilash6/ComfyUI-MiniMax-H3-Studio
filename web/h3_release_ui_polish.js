@@ -9,7 +9,9 @@ const COMPARISON_CLASS = "H3StudioComparisonView";
 
 const DOWNLOAD_NOTE = `# Recommended model set
 
-> **Install manually:** place each file in the shown \`ComfyUI/models/\` folder. H3 Studio never downloads model weights automatically. Acceleration profiles load the exact matching LoRA by filename, so do **not** add these profile LoRAs again as custom LoRAs.
+> **Recommended:** if you want H3 Studio to handle the model setup for you instead of manually searching for everything, use **H3 Studio · Model Setup** in the left panel. For the built-in auto downloads you’ll also need my **Universal Asset Downloader (UAD)** custom node, which acts as the downloader backend. UAD is completely optional though - if you already have the models installed, or prefer downloading them manually, H3 Studio works without it. The links below are there for manual setup.
+
+> **Manual setup:** place each file in the shown \`ComfyUI/models/\` folder. Acceleration profiles load the exact matching LoRA by filename, so do **not** add these profile LoRAs again as custom LoRAs.
 
 ## Core models
 
@@ -214,6 +216,9 @@ app.registerExtension({
   name: "H3Studio.ReleaseUIPolish",
 
   beforeConfigureGraph(graphData) {
+    if (isMaintainedUnifiedWorkflow(graphData)) {
+      patchNote(graphData, 28, "Model downloads · RECOMMENDED core", DOWNLOAD_NOTE);
+    }
     patchWorkflowLayout(graphData);
   },
 
