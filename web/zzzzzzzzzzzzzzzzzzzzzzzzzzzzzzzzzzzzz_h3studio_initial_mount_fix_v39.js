@@ -86,7 +86,11 @@ function stabilizeDirectorMount(node) {
   requestAnimationFrame(() => {
     renderPanel(node);
     requestAnimationFrame(() => {
-      node.__h3studioPanel?.scrollTo?.({ top: 0, left: 0, behavior: "instant" });
+      const currentPanel = node.__h3studioPanel;
+      if (currentPanel) {
+        currentPanel.scrollTop = 0;
+        currentPanel.scrollLeft = 0;
+      }
       node.setDirtyCanvas?.(true, true);
       app.graph?.setDirtyCanvas?.(true, true);
     });

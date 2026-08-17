@@ -5,7 +5,7 @@ description = "A reference-aware MiniMax H3 still-image studio for ComfyUI"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
-authors = [{ name = "Alier" }]
+authors = [{ name = "thaakeno" }]
 keywords = ["comfyui", "minimax", "h3", "image-generation", "reference-image"]
 classifiers = [
   "Development Status :: 3 - Alpha",

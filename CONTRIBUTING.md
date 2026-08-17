@@ -15,7 +15,7 @@ ComfyUI itself is not installed as a package dependency. Pure logic tests run ou
 ## Rules
 
 - Do not add silent model downloads or filesystem mutation.
-- Do not merge H3 Hub, installation, cloud orchestration, video, or audio features into this image package.
+- Do not merge installation, cloud orchestration, video, or audio features into this image package.
 - Preserve state migration whenever a serialized field changes.
 - Keep `@Image N` friendly syntax distinct from the `<Picture N>` runtime syntax.
 - Do not encode the H3 prompt twice.

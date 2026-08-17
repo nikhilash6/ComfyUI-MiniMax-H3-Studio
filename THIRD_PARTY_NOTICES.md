@@ -92,12 +92,6 @@ Source: https://github.com/google-ai-edge/mediapipe
 
 H3 Studio's original Python wrapper around the cascade remains MIT-licensed; the bundled cascade itself remains under the license embedded in that file.
 
-## Earlier H3 Studio prototypes
-
-Earlier internal prototypes authored for this project by Alier informed the role-aware reference compiler, adherence controls, route selection, resolution controls, and visual workflow hierarchy. They are part of H3 Studio's own development history rather than a separately distributed third-party dependency.
-
-H3 Studio Hub is a separate project and is not included or advertised as compatible.
-
 ## Optional TAEH3 preview asset
 
 The optional `taeh3.safetensors` checkpoint is distributed by Kijai under Apache-2.0 and is not bundled in this repository:
