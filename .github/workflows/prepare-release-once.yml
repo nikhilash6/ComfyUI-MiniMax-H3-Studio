@@ -1,0 +1,36 @@
+name: Prepare release once
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - ".github/release-request.json"
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: dev
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.11"
+      - name: Prepare release metadata
+        shell: bash
+        run: uv run python tools/prepare_release.py .github/release-request.json
+      - name: Commit prepared release and remove this one-shot workflow
+        shell: bash
+        run: |
+          version="$(python -c 'import json; print(json.load(open(".github/release-request.json"))["version"])')"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/prepare-release-once.yml
+          git add .github/release-request.json pyproject.toml uv.lock package.json h3studio/constants.py CHANGELOG.md README.md
+          git commit -m "release: prepare v${version}"
+          git push origin HEAD:dev
