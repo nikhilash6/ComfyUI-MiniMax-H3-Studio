@@ -1,0 +1,45 @@
+name: Refresh star history
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+    paths-ignore:
+      - "docs/assets/star-history-*.svg"
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Render authenticated star history
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python tools/render_star_history.py
+
+      - name: Commit refreshed chart
+        run: |
+          if git diff --quiet -- README.md docs/assets/star-history-light.svg docs/assets/star-history-dark.svg; then
+            echo "Star history is already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md docs/assets/star-history-light.svg docs/assets/star-history-dark.svg
+          git commit -m "docs: refresh star history chart"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
