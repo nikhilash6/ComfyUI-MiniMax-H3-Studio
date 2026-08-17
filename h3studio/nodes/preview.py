@@ -18,6 +18,7 @@ import weakref
 from collections import OrderedDict
 from contextlib import suppress
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 LOGGER = logging.getLogger(__name__)
@@ -104,6 +105,79 @@ def _decoder(torch, state):
         block(22, 64, 64),
         _conv(torch, 64, 3),
     )
+
+
+def _vae_approx_roots(folder_paths) -> list[Path]:
+    """Return the model roots ComfyUI currently considers valid for ``vae_approx``."""
+
+    roots: list[Path] = []
+    try:
+        roots.extend(Path(path) for path in folder_paths.get_folder_paths("vae_approx"))
+    except Exception:
+        try:
+            paths, _extensions = folder_paths.folder_names_and_paths.get("vae_approx", ([], set()))
+            roots.extend(Path(path) for path in paths)
+        except Exception:
+            pass
+
+    models_dir = getattr(folder_paths, "models_dir", None)
+    if models_dir:
+        roots.append(Path(models_dir) / "vae_approx")
+
+    unique: list[Path] = []
+    seen: set[str] = set()
+    for root in roots:
+        key = str(root.expanduser().absolute()).casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(root)
+    return unique
+
+
+def _resolve_tiny_vae(folder_paths, tiny_vae: str) -> str | None:
+    """Resolve a tiny VAE even when ComfyUI's filename cache/path lookup is stale.
+
+    The normal ComfyUI resolver remains authoritative. If that lookup misses, scan only
+    registered ``vae_approx`` roots (plus the active ``models_dir`` fallback) for the
+    requested relative path or a case-insensitive filename match. This avoids searching
+    arbitrary user directories while recovering from stale caches, alternate model roots,
+    accidental subfolders, and Windows filename casing differences.
+    """
+
+    try:
+        direct = folder_paths.get_full_path("vae_approx", tiny_vae)
+    except Exception:
+        direct = None
+    if direct:
+        try:
+            if Path(direct).is_file():
+                return str(Path(direct))
+        except OSError:
+            pass
+
+    requested = Path(str(tiny_vae))
+    requested_name = requested.name.casefold()
+    roots = _vae_approx_roots(folder_paths)
+
+    for root in roots:
+        candidate = root / requested
+        try:
+            if candidate.is_file():
+                return str(candidate)
+        except OSError:
+            continue
+
+    for root in roots:
+        try:
+            if not root.is_dir():
+                continue
+            for candidate in root.rglob("*"):
+                if candidate.name.casefold() == requested_name and candidate.is_file():
+                    return str(candidate)
+        except OSError:
+            continue
+    return None
 
 
 def _vae_choices() -> list[str]:
@@ -460,7 +534,10 @@ class H3StudioTAEH3Preview:
     FUNCTION = "attach"
     RETURN_TYPES = ("MODEL",)
     RETURN_NAMES = ("model",)
-    DESCRIPTION = "CPU-only approximate previews on a stable sampler clone. Final output still uses the full H3 VAE."
+    DESCRIPTION = (
+        "CPU-only approximate previews on a stable sampler clone. Final output still uses the full H3 VAE. "
+        "If the optional TAEH3 checkpoint cannot be found, preview is skipped and generation continues."
+    )
     EXPERIMENTAL = True
 
     @classmethod
@@ -482,14 +559,33 @@ class H3StudioTAEH3Preview:
         if not enabled:
             return (model,)
 
-        import comfy.patcher_extension
         import folder_paths
 
-        checkpoint_path = folder_paths.get_full_path("vae_approx", tiny_vae)
+        checkpoint_path = _resolve_tiny_vae(folder_paths, tiny_vae)
         if not checkpoint_path:
-            raise FileNotFoundError(
-                f"TAEH3 preview file '{tiny_vae}' was not found. Put it in ComfyUI/models/vae_approx/."
+            roots = [str(path) for path in _vae_approx_roots(folder_paths)]
+            LOGGER.warning(
+                "[H3 Studio] TAEH3 preview disabled: '%s' was not found in vae_approx roots %s. "
+                "Generation will continue without live previews.",
+                tiny_vae,
+                roots or ["<none registered>"],
             )
+            try:
+                from ..runtime_trace import emit as trace
+
+                trace(
+                    "preview.skip",
+                    node=str(unique_id or ""),
+                    reason="checkpoint_missing",
+                    checkpoint=tiny_vae,
+                    roots=roots,
+                )
+            except Exception:
+                pass
+            return (model,)
+
+        import comfy.patcher_extension
+
         node_id = str(unique_id or "")
         cache_key = (id(model), node_id)
         settings = (checkpoint_path, int(max_resolution), int(jpeg_quality), max(1, int(preview_every_n_steps)))
@@ -537,10 +633,11 @@ class H3StudioTAEH3Preview:
             wrapper,
         )
         LOGGER.info(
-            "[H3 Studio] TAEH3 wrapper attached | node=%s | patcher=%s | decoder=%s@cpu | max=%d | every=%d",
+            "[H3 Studio] TAEH3 wrapper attached | node=%s | patcher=%s | decoder=%s@cpu | path=%s | max=%d | every=%d",
             node_id,
             identity,
             tiny_vae,
+            checkpoint_path,
             int(max_resolution),
             max(1, int(preview_every_n_steps)),
         )
@@ -554,5 +651,6 @@ class H3StudioTAEH3Preview:
             upstream_patcher_id=id(model),
             preview_patcher_id=id(patched),
             decoder="cpu",
+            checkpoint_path=checkpoint_path,
         )
         return (patched,)
