@@ -5,6 +5,8 @@ import pytest
 from h3studio.acceleration import PDDBackendError, _restore_stacked_bypass_injections
 from h3studio.lora_stack import (
     MAX_CUSTOM_LORAS,
+    MAX_LORA_STRENGTH,
+    MIN_LORA_STRENGTH,
     CustomLoraSpec,
     apply_custom_lora_stack,
     normalize_custom_loras,
@@ -30,13 +32,14 @@ def test_normalize_custom_loras_is_bounded_ordered_and_clamped() -> None:
     # The UI payload is capped before inactive rows are filtered, so hidden
     # rows cannot smuggle an unbounded stack into the runtime.
     assert len(source[:MAX_CUSTOM_LORAS]) == MAX_CUSTOM_LORAS
+    assert MIN_LORA_STRENGTH == 0.0
+    assert MAX_LORA_STRENGTH == 3.0
     assert [spec.name for spec in specs] == [
         "styles/a.safetensors",
-        "styles/b.safetensors",
         "c.safetensors",
         "d.safetensors",
     ]
-    assert [spec.strength for spec in specs] == [4.0, -4.0, 0.55, 1.25]
+    assert [spec.strength for spec in specs] == [3.0, 0.55, 1.25]
 
 
 def test_normalize_custom_loras_accepts_windows_paths_and_defaults_strength() -> None:
