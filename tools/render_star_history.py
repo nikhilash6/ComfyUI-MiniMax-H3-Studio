@@ -6,7 +6,6 @@ from __future__ import annotations
 import json
 import math
 import os
-import re
 import urllib.request
 from collections import Counter
 from datetime import UTC, datetime, timedelta
@@ -103,9 +102,13 @@ def timeline(stars: list[datetime]) -> tuple[datetime, datetime, list[tuple[date
     end_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
     while current <= end_day:
         running += by_day.get(current.date(), 0)
-        points.append((current + timedelta(hours=23, minutes=59), running))
+        day_end = min(current + timedelta(hours=23, minutes=59), now)
+        points.append((day_end, running))
         current += timedelta(days=1)
-    points.append((now, len(stars)))
+    if points[-1][0] < now:
+        points.append((now, len(stars)))
+    else:
+        points[-1] = (now, len(stars))
     return start, now, points
 
 
@@ -134,7 +137,6 @@ def render_svg(repository: str, stars: list[datetime], *, dark: bool) -> str:
 
     colors = {
         "bg": "#0d1117" if dark else "#ffffff",
-        "panel": "#0d1117" if dark else "#ffffff",
         "text": "#e6edf3" if dark else "#24292f",
         "muted": "#8b949e" if dark else "#57606a",
         "grid": "#30363d" if dark else "#d8dee4",
@@ -152,12 +154,18 @@ def render_svg(repository: str, stars: list[datetime], *, dark: bool) -> str:
             f'<text x="{MARGIN_LEFT - 10}" y="{yy + 4:.2f}" text-anchor="end" class="tick">{value}</text>'
         )
 
+    span = end - start
     x_lines: list[str] = []
     for index in range(5):
         fraction = index / 4
-        dt = start + (end - start) * fraction
+        dt = start + span * fraction
         xx = x(dt)
-        label = dt.strftime("%b %d") if (end - start).days < 180 else dt.strftime("%b %Y")
+        if span < timedelta(days=3):
+            label = dt.strftime("%b %d %H:%M")
+        elif span < timedelta(days=180):
+            label = dt.strftime("%b %d")
+        else:
+            label = dt.strftime("%b %Y")
         x_lines.append(
             f'<line x1="{xx:.2f}" y1="{MARGIN_TOP}" x2="{xx:.2f}" y2="{MARGIN_TOP + plot_h}" class="grid vertical"/>'
             f'<text x="{xx:.2f}" y="{HEIGHT - 18}" text-anchor="middle" class="tick">{escape(label)}</text>'
