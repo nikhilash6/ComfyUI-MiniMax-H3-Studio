@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 import threading
+from pathlib import Path
 
 from h3studio import telemetry
 from h3studio.telemetry import AggregateReporter
@@ -71,3 +74,33 @@ def test_network_payload_contains_no_generation_or_installation_data(monkeypatch
     assert captured["body"] == {"count": 7, "schema": 1}
     assert captured["timeout"] == 2.5
     assert "Authorization" not in captured["headers"]
+
+
+def test_cli_disable_creates_persistent_opt_out_and_verifies_state(monkeypatch, tmp_path, capsys) -> None:
+    opt_out = tmp_path / ".h3studio-telemetry-disabled"
+    monkeypatch.setattr(telemetry, "OPT_OUT_FILE", opt_out)
+    monkeypatch.delenv("H3STUDIO_TELEMETRY", raising=False)
+
+    assert telemetry._cli(["disable"]) == 0
+    assert opt_out.is_file()
+    assert telemetry.telemetry_enabled() is False
+    assert capsys.readouterr().out.strip() == "H3 telemetry: DISABLED"
+
+
+def test_module_disable_command_works_end_to_end() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    opt_out = repo_root / ".h3studio-telemetry-disabled"
+    opt_out.unlink(missing_ok=True)
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "h3studio.telemetry", "disable"],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode == 0
+        assert result.stdout.strip() == "H3 telemetry: DISABLED"
+        assert opt_out.is_file()
+    finally:
+        opt_out.unlink(missing_ok=True)
