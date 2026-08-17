@@ -18,8 +18,8 @@ from .acceleration import (
 
 LOGGER = logging.getLogger(__name__)
 MAX_CUSTOM_LORAS = 6
-MIN_LORA_STRENGTH = -4.0
-MAX_LORA_STRENGTH = 4.0
+MIN_LORA_STRENGTH = 0.0
+MAX_LORA_STRENGTH = 3.0
 
 
 @dataclass(frozen=True, slots=True)
