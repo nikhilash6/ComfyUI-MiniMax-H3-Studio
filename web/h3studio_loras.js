@@ -8,9 +8,10 @@ const MIN_STRENGTH = -4;
 const MAX_STRENGTH = 4;
 const STRENGTH_STEP = 0.05;
 const CATALOG_URL = "/h3studio/loras";
-const STYLE_ID = "h3studio-custom-loras-style";
+const STYLE_ID = "h3studio-custom-loras-style-v2";
 const PICKER_ID = "h3studio-lora-picker";
 const FAVORITES_KEY = "h3studio.customLoraFavorites.v1";
+const UI_VERSION = "native-v2";
 
 const ICONS = {
   search: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m15.5 15.5 4.5 4.5"></path></svg>',
@@ -43,6 +44,13 @@ function normalizeStack(value) {
   }));
 }
 
+function formatStrength(value) {
+  return clamp(value, MIN_STRENGTH, MAX_STRENGTH, 1)
+    .toFixed(2)
+    .replace(/\.00$/, "")
+    .replace(/(\.\d)0$/, "$1");
+}
+
 function formatSize(bytes) {
   const value = Number(bytes) || 0;
   if (value <= 0) return "";
@@ -60,7 +68,9 @@ function loadFavorites() {
   try {
     const raw = localStorage.getItem(FAVORITES_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
-    return new Set(Array.isArray(parsed) ? parsed.map((item) => String(item || "").replaceAll("\\", "/").trim()).filter(Boolean) : []);
+    return new Set(Array.isArray(parsed)
+      ? parsed.map((item) => String(item || "").replaceAll("\\", "/").trim()).filter(Boolean)
+      : []);
   } catch {
     return new Set();
   }
@@ -70,7 +80,7 @@ function saveFavorites() {
   try {
     localStorage.setItem(FAVORITES_KEY, JSON.stringify([...favorites].sort((a, b) => a.localeCompare(b))));
   } catch {
-    // UI preference only; never block LoRA usage if localStorage is unavailable.
+    // UI preference only. LoRA use must not depend on localStorage availability.
   }
 }
 
@@ -110,6 +120,8 @@ async function loadCatalog(force = false) {
 
 function installStyles() {
   if (document.getElementById(STYLE_ID)) return;
+  const old = document.getElementById("h3studio-custom-loras-style");
+  old?.remove();
   const style = document.createElement("style");
   style.id = STYLE_ID;
   style.textContent = `
@@ -121,75 +133,27 @@ function installStyles() {
     .h3s-lora-button{height:29px;max-width:100%;padding:5px 9px;border:1px solid var(--h3l-line);border-radius:7px;background:var(--h3l-control);color:var(--h3l-text);cursor:pointer;font:650 9px/1.1 Inter,ui-sans-serif,system-ui;display:inline-flex;align-items:center;justify-content:center;gap:6px}
     .h3s-lora-button svg,.h3s-lora-icon-button svg,.h3lp-search-icon svg,.h3lp-star svg,.h3lp-trigger-icon svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
     .h3s-lora-button:hover:not(:disabled){border-color:#626c75;background:var(--h3l-control-hover)}
-    .h3s-lora-button:focus-visible,.h3s-lora-icon-button:focus-visible,.h3lp-select:focus-visible,.h3lp-star:focus-visible{outline:2px solid rgba(140,153,166,.35);outline-offset:1px}
+    .h3s-lora-button:focus-visible,.h3s-lora-icon-button:focus-visible,.h3lp-select:focus-visible,.h3lp-star:focus-visible,.h3s-lora-picker-trigger:focus-visible{outline:2px solid rgba(140,153,166,.35);outline-offset:1px}
     .h3s-lora-button:disabled,.h3s-lora-icon-button:disabled{opacity:.34;cursor:default}
     .h3s-lora-row{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 30px;gap:8px;width:100%;max-width:100%;overflow:hidden;padding:9px;border:1px solid var(--h3l-line);border-radius:8px;background:transparent}
-    .h3s-lora-row.is-disabled{opacity:.58}
-    .h3s-lora-main{display:flex;flex-direction:column;gap:9px;min-width:0}
-    .h3s-lora-head{display:grid;grid-template-columns:24px minmax(0,1fr) 30px;gap:7px;align-items:center;min-width:0}
-    .h3s-lora-enable{display:grid;place-items:center;width:24px;height:30px;margin:0;cursor:pointer}
-    .h3s-lora-enable input{width:14px;height:14px;margin:0;accent-color:#98a5b1}
+    .h3s-lora-row.is-disabled{opacity:.58}.h3s-lora-main{display:flex;flex-direction:column;gap:9px;min-width:0}
+    .h3s-lora-head{display:grid;grid-template-columns:24px minmax(0,1fr) 34px;gap:7px;align-items:center;min-width:0}
+    .h3s-lora-enable{display:grid;place-items:center;width:24px;height:32px;margin:0;cursor:pointer}.h3s-lora-enable input{width:14px;height:14px;margin:0;accent-color:#98a5b1}
     .h3s-lora-picker-trigger{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;height:32px;padding:5px 8px;border:1px solid var(--h3l-line);border-radius:7px;background:var(--h3l-control);color:var(--h3l-text);cursor:pointer;text-align:left;font:620 9.3px/1.15 Inter,ui-sans-serif,system-ui;overflow:hidden}
-    .h3s-lora-picker-trigger:hover{border-color:#59636c;background:var(--h3l-control-hover)}
-    .h3s-lora-picker-copy{display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden}
-    .h3s-lora-file{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .h3lp-trigger-icon{display:grid;place-items:center;flex:none;color:#7f8992}
+    .h3s-lora-picker-trigger:hover{border-color:#59636c;background:var(--h3l-control-hover)}.h3s-lora-picker-copy{display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden}.h3s-lora-file{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.h3lp-trigger-icon{display:grid;place-items:center;flex:none;color:#7f8992}
     .h3s-lora-icon-button{display:grid;place-items:center;width:30px;height:30px;padding:0;border:1px solid transparent;border-radius:7px;background:transparent;color:#929ca4;cursor:pointer}
     .h3s-lora-icon-button:hover:not(:disabled){background:var(--h3l-control);color:#e8ebed;border-color:var(--h3l-line)}
-    .h3s-lora-favorite.is-favorite{color:#d8b65c}
+    .h3s-lora-favorite{width:34px;height:32px;border-color:var(--h3l-line);background:var(--h3l-control);color:#7f8992}.h3s-lora-favorite:hover:not(:disabled){color:#d8b65c;background:var(--h3l-control-hover)}.h3s-lora-favorite.is-favorite{color:#d8b65c;background:color-mix(in srgb,var(--h3l-control) 86%,#a78635 14%)}
     .h3s-lora-favorite.is-favorite svg,.h3lp-star.is-favorite svg{fill:currentColor;stroke:currentColor}
-    .h3s-lora-subrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:end;min-width:0}
-    .h3s-lora-field{display:flex;flex-direction:column;gap:5px;min-width:0}
-    .h3s-lora-field-label{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--h3l-muted);font:650 8.4px/1.1 Inter,ui-sans-serif,system-ui;letter-spacing:.015em}
-    .h3s-lora-field-hint{opacity:.62;font-weight:500;font-variant-numeric:tabular-nums}
-    .h3s-lora-strength-line{display:grid;grid-template-columns:minmax(90px,1fr) 58px;gap:8px;align-items:center;min-width:0}
-    .h3s-lora-strength{position:relative;height:22px;min-width:0}
-    .h3s-lora-strength-track{position:absolute;left:0;right:0;top:50%;height:3px;border-radius:999px;background:color-mix(in srgb,var(--h3l-line) 80%,black 14%);transform:translateY(-50%);overflow:hidden;pointer-events:none}
-    .h3s-lora-strength-track::before{content:'';display:block;width:var(--h3l-strength-progress,62.5%);height:100%;background:#8996a2}
-    .h3s-lora-strength input[type=range]{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
-    .h3s-lora-strength-thumb{position:absolute;left:var(--h3l-strength-progress,62.5%);top:50%;width:12px;height:12px;border:2px solid color-mix(in srgb,var(--h3s-bg,#15191d) 80%,black 20%);border-radius:50%;background:#a4afb9;box-shadow:0 1px 3px rgba(0,0,0,.35);transform:translate(-50%,-50%);pointer-events:none}
-    .h3s-lora-number{width:58px;height:29px;padding:3px 6px;border:1px solid var(--h3l-line);border-radius:6px;background:var(--h3l-control);color:var(--h3l-text);text-align:center;font:650 9px/1.1 ui-monospace,SFMono-Regular,Consolas,monospace;font-variant-numeric:tabular-nums}
-    .h3s-lora-order-field{width:70px}
-    .h3s-lora-order{display:grid;grid-template-columns:1fr 1fr;height:29px;border:1px solid var(--h3l-line);border-radius:7px;overflow:hidden;background:transparent}
-    .h3s-lora-order .h3s-lora-icon-button{width:auto;height:27px;border:0;border-radius:0}
-    .h3s-lora-order .h3s-lora-icon-button+ .h3s-lora-icon-button{border-left:1px solid var(--h3l-line)}
-    .h3s-lora-remove{align-self:start}
-    .h3s-lora-remove:hover{background:rgba(211,87,96,.10)!important;border-color:rgba(211,87,96,.18)!important;color:#ef9da4!important}
-    .h3s-lora-empty{padding:12px;border:1px dashed var(--h3l-line);border-radius:8px;color:var(--h3l-muted);font-size:9px;line-height:1.45;background:transparent}
-    .h3s-lora-status{overflow:hidden;color:var(--h3l-muted);font-size:8.5px;text-overflow:ellipsis;white-space:nowrap}
-    .h3s-lora-warning{margin:0;color:var(--h3l-muted);font-size:8.5px;line-height:1.45}
-    #${PICKER_ID}{position:fixed;z-index:100000;display:flex;flex-direction:column;width:min(420px,calc(100vw - 16px));max-width:calc(100vw - 16px);max-height:min(390px,calc(100vh - 16px));overflow:hidden;border:1px solid color-mix(in srgb,var(--border-color,#3e454b) 88%,white 5%);border-radius:10px;background:var(--comfy-menu-bg,#171b1f);color:var(--input-text,#eef0f2);box-shadow:0 18px 55px rgba(0,0,0,.46);font:10px/1.3 Inter,ui-sans-serif,system-ui;contain:layout paint}
-    .h3lp-head{display:flex;align-items:center;gap:7px;padding:8px;border-bottom:1px solid color-mix(in srgb,var(--border-color,#343a40) 74%,transparent);background:color-mix(in srgb,var(--comfy-menu-bg,#171b1f) 90%,white 3%)}
-    .h3lp-search-wrap{position:relative;display:flex;align-items:center;width:100%}
-    .h3lp-search-icon{position:absolute;left:9px;display:grid;place-items:center;color:#7f8992;pointer-events:none}
-    .h3lp-search{width:100%;height:32px;padding:6px 30px 6px 30px;border:1px solid color-mix(in srgb,var(--border-color,#343b41) 88%,white 4%);border-radius:7px;outline:none;background:var(--comfy-input-bg,#111519);color:var(--input-text,#f3f4f5);font:10px/1.2 Inter,ui-sans-serif,system-ui}
-    .h3lp-search:focus{border-color:#64717c;box-shadow:0 0 0 2px rgba(129,145,159,.1)}
-    .h3lp-search::-webkit-search-cancel-button{opacity:.62}
-    .h3lp-list{flex:1 1 auto;min-height:0;max-height:310px;overflow:auto;padding:6px;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#4b535a transparent}
-    .h3lp-list::-webkit-scrollbar{width:8px;height:8px}
-    .h3lp-list::-webkit-scrollbar-track{background:transparent}
-    .h3lp-list::-webkit-scrollbar-thumb{background:#454e55;border:2px solid var(--comfy-menu-bg,#171b1f);border-radius:999px}
-    .h3lp-list::-webkit-scrollbar-thumb:hover{background:#5a646c}
-    .h3lp-section+.h3lp-section{margin-top:7px;padding-top:7px;border-top:1px solid color-mix(in srgb,var(--border-color,#343a40) 62%,transparent)}
-    .h3lp-section-title{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 6px 5px;color:#8c969e;font:700 8px/1.1 Inter,ui-sans-serif,system-ui;text-transform:uppercase;letter-spacing:.08em}
-    .h3lp-entry{display:grid;grid-template-columns:minmax(0,1fr) 31px;align-items:stretch;width:100%;min-height:39px;border-radius:7px;background:transparent}
-    .h3lp-entry:hover{background:color-mix(in srgb,var(--comfy-input-bg,#20262b) 78%,white 5%)}
-    .h3lp-entry.is-current{background:color-mix(in srgb,var(--comfy-input-bg,#20262b) 82%,white 7%);box-shadow:inset 2px 0 0 #778591}
-    .h3lp-select{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;width:100%;min-height:39px;padding:7px 7px 7px 9px;border:0;border-radius:7px 0 0 7px;background:transparent;color:#dfe3e6;cursor:pointer;text-align:left;font:inherit}
-    .h3lp-select:hover,.h3lp-select:focus-visible{outline:0;color:#fff}
-    .h3lp-select:disabled{opacity:.42;cursor:not-allowed}
-    .h3lp-copy{display:flex;flex-direction:column;gap:2px;min-width:0}
-    .h3lp-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:9.5px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace}
-    .h3lp-meta{display:flex;gap:6px;align-items:center;min-width:0;color:#7f8992;font-size:7.8px}
-    .h3lp-meta span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .h3lp-badge{flex:none;padding:1px 4px;border:1px solid color-mix(in srgb,var(--border-color,#3e454b) 70%,transparent);border-radius:4px;color:#9099a1;font-size:7px}
-    .h3lp-size{align-self:center;flex:none;color:#7f8992;font-size:8px;white-space:nowrap}
-    .h3lp-star{display:grid;place-items:center;width:31px;min-height:39px;padding:0;border:0;border-left:1px solid transparent;border-radius:0 7px 7px 0;background:transparent;color:#68737c;cursor:pointer}
-    .h3lp-entry:hover .h3lp-star{border-left-color:color-mix(in srgb,var(--border-color,#343a40) 50%,transparent)}
-    .h3lp-star:hover{color:#d8b65c}
-    .h3lp-star.is-favorite{color:#d8b65c}
-    .h3lp-empty{padding:22px 12px;color:#7f8992;text-align:center;font-size:9px}
-    .h3lp-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 9px;border-top:1px solid color-mix(in srgb,var(--border-color,#343a40) 70%,transparent);color:#727d85;font-size:7.8px;background:color-mix(in srgb,var(--comfy-menu-bg,#171b1f) 92%,black 4%)}
+    .h3s-lora-subrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:end;min-width:0}.h3s-lora-field{display:flex;flex-direction:column;gap:5px;min-width:0}.h3s-lora-field-label{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--h3l-muted);font:650 8.4px/1.1 Inter,ui-sans-serif,system-ui;letter-spacing:.015em}.h3s-lora-field-hint{opacity:.62;font-weight:500;font-variant-numeric:tabular-nums}
+    .h3s-lora-strength-line{display:grid;grid-template-columns:minmax(90px,1fr) 58px;gap:8px;align-items:center;min-width:0}.h3s-lora-strength{position:relative;height:22px;min-width:0}.h3s-lora-strength-track{position:absolute;left:0;right:0;top:50%;height:3px;border-radius:999px;background:color-mix(in srgb,var(--h3l-line) 80%,black 14%);transform:translateY(-50%);overflow:hidden;pointer-events:none}.h3s-lora-strength-track::before{content:'';display:block;width:var(--h3l-strength-progress,62.5%);height:100%;background:#8996a2}.h3s-lora-strength input[type=range]{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}.h3s-lora-strength-thumb{position:absolute;left:var(--h3l-strength-progress,62.5%);top:50%;width:12px;height:12px;border:2px solid color-mix(in srgb,var(--h3s-bg,#15191d) 80%,black 20%);border-radius:50%;background:#a4afb9;box-shadow:0 1px 3px rgba(0,0,0,.35);transform:translate(-50%,-50%);pointer-events:none}.h3s-lora-number{width:58px;height:29px;padding:3px 6px;border:1px solid var(--h3l-line);border-radius:6px;background:var(--h3l-control);color:var(--h3l-text);text-align:center;font:650 9px/1.1 ui-monospace,SFMono-Regular,Consolas,monospace;font-variant-numeric:tabular-nums}.h3s-lora-number:focus{outline:none;border-color:#64717c;box-shadow:0 0 0 2px rgba(129,145,159,.1)}
+    .h3s-lora-order-field{width:70px}.h3s-lora-order{display:grid;grid-template-columns:1fr 1fr;height:29px;border:1px solid var(--h3l-line);border-radius:7px;overflow:hidden;background:transparent}.h3s-lora-order .h3s-lora-icon-button{width:auto;height:27px;border:0;border-radius:0}.h3s-lora-order .h3s-lora-icon-button+.h3s-lora-icon-button{border-left:1px solid var(--h3l-line)}.h3s-lora-remove{align-self:start}.h3s-lora-remove:hover{background:rgba(211,87,96,.10)!important;border-color:rgba(211,87,96,.18)!important;color:#ef9da4!important}
+    .h3s-lora-empty{padding:12px;border:1px dashed var(--h3l-line);border-radius:8px;color:var(--h3l-muted);font-size:9px;line-height:1.45;background:transparent}.h3s-lora-status{overflow:hidden;color:var(--h3l-muted);font-size:8.5px;text-overflow:ellipsis;white-space:nowrap}.h3s-lora-warning{margin:0;color:var(--h3l-muted);font-size:8.5px;line-height:1.45}
+    #${PICKER_ID}{position:fixed;z-index:1000000;display:flex;flex-direction:column;width:min(440px,calc(100vw - 16px));max-width:calc(100vw - 16px);max-height:min(410px,calc(100vh - 16px));overflow:hidden;border:1px solid color-mix(in srgb,var(--border-color,#3e454b) 88%,white 5%);border-radius:10px;background:var(--comfy-menu-bg,#171b1f);color:var(--input-text,#eef0f2);box-shadow:0 18px 55px rgba(0,0,0,.46);font:10px/1.3 Inter,ui-sans-serif,system-ui;contain:layout paint}
+    .h3lp-head{display:flex;align-items:center;gap:7px;padding:8px;border-bottom:1px solid color-mix(in srgb,var(--border-color,#343a40) 74%,transparent);background:color-mix(in srgb,var(--comfy-menu-bg,#171b1f) 90%,white 3%)}.h3lp-search-wrap{position:relative;display:flex;align-items:center;width:100%}.h3lp-search-icon{position:absolute;left:9px;display:grid;place-items:center;color:#7f8992;pointer-events:none}.h3lp-search{width:100%;height:32px;padding:6px 30px 6px 30px;border:1px solid color-mix(in srgb,var(--border-color,#343b41) 88%,white 4%);border-radius:7px;outline:none;background:var(--comfy-input-bg,#111519);color:var(--input-text,#f3f4f5);font:10px/1.2 Inter,ui-sans-serif,system-ui}.h3lp-search:focus{border-color:#64717c;box-shadow:0 0 0 2px rgba(129,145,159,.1)}.h3lp-search::-webkit-search-cancel-button{opacity:.62}
+    .h3lp-list{flex:1 1 auto;min-height:0;max-height:325px;overflow:auto;padding:6px;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#4b535a transparent}.h3lp-list::-webkit-scrollbar{width:8px;height:8px}.h3lp-list::-webkit-scrollbar-track{background:transparent}.h3lp-list::-webkit-scrollbar-thumb{background:#454e55;border:2px solid var(--comfy-menu-bg,#171b1f);border-radius:999px}.h3lp-list::-webkit-scrollbar-thumb:hover{background:#5a646c}.h3lp-section+.h3lp-section{margin-top:7px;padding-top:7px;border-top:1px solid color-mix(in srgb,var(--border-color,#343a40) 62%,transparent)}.h3lp-section-title{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 6px 5px;color:#8c969e;font:700 8px/1.1 Inter,ui-sans-serif,system-ui;text-transform:uppercase;letter-spacing:.08em}
+    .h3lp-entry{display:grid;grid-template-columns:minmax(0,1fr) 38px;align-items:stretch;width:100%;min-height:41px;border-radius:7px;background:transparent}.h3lp-entry:hover{background:color-mix(in srgb,var(--comfy-input-bg,#20262b) 78%,white 5%)}.h3lp-entry.is-current{background:color-mix(in srgb,var(--comfy-input-bg,#20262b) 82%,white 7%);box-shadow:inset 2px 0 0 #778591}.h3lp-select{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;width:100%;min-height:41px;padding:7px 7px 7px 9px;border:0;border-radius:7px 0 0 7px;background:transparent;color:#dfe3e6;cursor:pointer;text-align:left;font:inherit}.h3lp-select:hover,.h3lp-select:focus-visible{outline:0;color:#fff}.h3lp-select:disabled{opacity:.42;cursor:not-allowed}.h3lp-copy{display:flex;flex-direction:column;gap:2px;min-width:0}.h3lp-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:9.5px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace}.h3lp-meta{display:flex;gap:6px;align-items:center;min-width:0;color:#7f8992;font-size:7.8px}.h3lp-meta span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.h3lp-badge{flex:none;padding:1px 4px;border:1px solid color-mix(in srgb,var(--border-color,#3e454b) 70%,transparent);border-radius:4px;color:#9099a1;font-size:7px}.h3lp-size{align-self:center;flex:none;color:#7f8992;font-size:8px;white-space:nowrap}
+    .h3lp-star{display:grid;place-items:center;width:38px;min-height:41px;padding:0;border:0;border-left:1px solid color-mix(in srgb,var(--border-color,#343a40) 45%,transparent);border-radius:0 7px 7px 0;background:rgba(255,255,255,.012);color:#7d8891;cursor:pointer}.h3lp-star:hover{background:rgba(216,182,92,.07);color:#e2bf61}.h3lp-star.is-favorite{background:rgba(216,182,92,.08);color:#d8b65c}.h3lp-empty{padding:22px 12px;color:#7f8992;text-align:center;font-size:9px}.h3lp-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 9px;border-top:1px solid color-mix(in srgb,var(--border-color,#343a40) 70%,transparent);color:#727d85;font-size:7.8px;background:color-mix(in srgb,var(--comfy-menu-bg,#171b1f) 92%,black 4%)}
     @media(max-width:520px){.h3s-lora-subrow{grid-template-columns:1fr}.h3s-lora-order-field{width:100%}.h3s-lora-order{width:70px}.h3s-lora-field-label{justify-content:flex-start}.h3s-lora-field-hint{margin-left:auto}}
   `;
   document.head.append(style);
@@ -285,18 +249,17 @@ function openPicker(anchor, { selected = "", used = new Set(), onSelect }) {
     const viewHeight = viewport?.height || window.innerHeight;
     const margin = 8;
     const maxWidth = Math.max(240, viewWidth - margin * 2);
-    const width = Math.min(420, Math.max(300, rect.width + 80), maxWidth);
+    const width = Math.min(440, Math.max(310, rect.width + 90), maxWidth);
     panel.style.width = `${width}px`;
     panel.style.maxHeight = `${Math.max(180, viewHeight - margin * 2)}px`;
 
-    const measuredHeight = Math.min(panel.getBoundingClientRect().height || 360, viewHeight - margin * 2);
+    const measuredHeight = Math.min(panel.getBoundingClientRect().height || 380, viewHeight - margin * 2);
     const availableBelow = viewTop + viewHeight - rect.bottom - margin;
     const availableAbove = rect.top - viewTop - margin;
-    const preferBelow = availableBelow >= Math.min(260, measuredHeight) || availableBelow >= availableAbove;
+    const preferBelow = availableBelow >= Math.min(270, measuredHeight) || availableBelow >= availableAbove;
     const rawTop = preferBelow ? rect.bottom + 6 : rect.top - measuredHeight - 6;
     const top = Math.max(viewTop + margin, Math.min(viewTop + viewHeight - measuredHeight - margin, rawTop));
     const left = Math.max(viewLeft + margin, Math.min(viewLeft + viewWidth - width - margin, rect.left));
-
     panel.style.left = `${left}px`;
     panel.style.top = `${top}px`;
   };
@@ -320,7 +283,6 @@ function openPicker(anchor, { selected = "", used = new Set(), onSelect }) {
     name.textContent = shortName(entry.name);
     const meta = document.createElement("span");
     meta.className = "h3lp-meta";
-
     const normalized = String(entry.name).replaceAll("\\", "/");
     const slash = normalized.lastIndexOf("/");
     if (slash > 0) {
@@ -352,12 +314,14 @@ function openPicker(anchor, { selected = "", used = new Set(), onSelect }) {
       closePicker();
     });
 
+    const favoriteNow = isFavorite(entry.name);
     const star = document.createElement("button");
     star.type = "button";
-    star.className = `h3lp-star${isFavorite(entry.name) ? " is-favorite" : ""}`;
+    star.className = `h3lp-star${favoriteNow ? " is-favorite" : ""}`;
     star.innerHTML = ICONS.star;
-    star.title = isFavorite(entry.name) ? "Remove from favorites" : "Add to favorites";
+    star.title = favoriteNow ? "Remove from favorites" : "Add to favorites";
     star.setAttribute("aria-label", star.title);
+    star.setAttribute("aria-pressed", String(favoriteNow));
     star.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -388,7 +352,6 @@ function openPicker(anchor, { selected = "", used = new Set(), onSelect }) {
   const render = () => {
     const query = search.value.trim().toLowerCase();
     list.replaceChildren();
-
     const matches = catalog.filter((entry) => {
       if (!query) return true;
       const name = String(entry.name || "").toLowerCase();
@@ -407,8 +370,8 @@ function openPicker(anchor, { selected = "", used = new Set(), onSelect }) {
       addSection(favoriteEntries.length ? "All LoRAs" : "Installed LoRAs", otherEntries);
     }
 
-    const visibleFavorites = catalog.filter((entry) => isFavorite(entry.name)).length;
-    footer.innerHTML = `<span>${catalog.length} installed</span><span>${visibleFavorites} favorite${visibleFavorites === 1 ? "" : "s"}</span>`;
+    const favoriteCount = catalog.filter((entry) => isFavorite(entry.name)).length;
+    footer.innerHTML = `<span>${catalog.length} installed</span><span>${favoriteCount} favorite${favoriteCount === 1 ? "" : "s"}</span>`;
     place();
   };
 
@@ -479,7 +442,7 @@ function pickerTrigger(item, index, stack, onChange) {
   return trigger;
 }
 
-function strengthControl(item, onChange) {
+function strengthControl(item, onPreview, onCommit) {
   const wrap = document.createElement("div");
   wrap.className = "h3s-lora-strength";
   const track = document.createElement("span");
@@ -495,36 +458,35 @@ function strengthControl(item, onChange) {
   range.title = "LoRA strength";
   range.setAttribute("aria-label", "LoRA strength");
 
-  const sync = (raw) => {
+  const paint = (raw) => {
     const value = clamp(raw, MIN_STRENGTH, MAX_STRENGTH, 1);
     const progress = ((value - MIN_STRENGTH) / (MAX_STRENGTH - MIN_STRENGTH)) * 100;
+    range.value = String(value);
     wrap.style.setProperty("--h3l-strength-progress", `${progress}%`);
     return value;
   };
 
-  range.addEventListener("input", () => sync(range.value));
-  range.addEventListener("change", () => onChange({ strength: sync(range.value) }));
+  range.addEventListener("input", () => onPreview?.(paint(range.value)));
+  range.addEventListener("change", () => onCommit?.(paint(range.value)));
   wrap.append(track, thumb, range);
-  sync(item.strength);
-  return wrap;
+  paint(item.strength);
+  return { element: wrap, setValue: paint };
 }
 
 function row(node, state, stack, item, index, rerender) {
   const root = document.createElement("div");
   root.className = `h3s-lora-row${item.enabled ? "" : " is-disabled"}`;
-
   const main = document.createElement("div");
   main.className = "h3s-lora-main";
 
-  const patch = (value) => {
+  const patch = (value, shouldRerender = true) => {
     stack[index] = { ...stack[index], ...value };
     saveStack(node, state, stack);
-    rerender();
+    if (shouldRerender) rerender();
   };
 
   const head = document.createElement("div");
   head.className = "h3s-lora-head";
-
   const enabled = document.createElement("label");
   enabled.className = "h3s-lora-enable";
   enabled.title = "Enable this LoRA";
@@ -532,28 +494,23 @@ function row(node, state, stack, item, index, rerender) {
   checkbox.type = "checkbox";
   checkbox.checked = item.enabled;
   checkbox.setAttribute("aria-label", `Enable custom LoRA ${index + 1}`);
-  checkbox.addEventListener("change", () => {
-    stack[index] = { ...stack[index], enabled: checkbox.checked };
-    saveStack(node, state, stack);
-    rerender();
-  });
+  checkbox.addEventListener("change", () => patch({ enabled: checkbox.checked }));
   enabled.append(checkbox);
 
-  const favorite = iconButton(ICONS.star, isFavorite(item.name) ? "Remove from favorites" : "Add to favorites", () => {
+  const favoriteNow = isFavorite(item.name);
+  const favorite = iconButton(ICONS.star, favoriteNow ? "Remove from favorites" : "Add to favorites", () => {
     if (!item.name) return;
     toggleFavorite(item.name);
     rerender();
-  }, `h3s-lora-favorite${isFavorite(item.name) ? " is-favorite" : ""}`);
+  }, `h3s-lora-favorite${favoriteNow ? " is-favorite" : ""}`);
   favorite.disabled = !item.name;
-
-  head.append(enabled, pickerTrigger(item, index, stack, patch), favorite);
+  favorite.setAttribute("aria-pressed", String(favoriteNow));
+  head.append(enabled, pickerTrigger(item, index, stack, (value) => patch(value)), favorite);
 
   const subrow = document.createElement("div");
   subrow.className = "h3s-lora-subrow";
-
   const strengthField = document.createElement("div");
   strengthField.className = "h3s-lora-field";
-
   const strengthLabel = document.createElement("div");
   strengthLabel.className = "h3s-lora-field-label";
   const strengthText = document.createElement("span");
@@ -565,17 +522,37 @@ function row(node, state, stack, item, index, rerender) {
 
   const strengthLine = document.createElement("div");
   strengthLine.className = "h3s-lora-strength-line";
-  const strength = strengthControl(item, patch);
   const number = document.createElement("input");
   number.className = "h3s-lora-number";
   number.type = "number";
   number.min = String(MIN_STRENGTH);
   number.max = String(MAX_STRENGTH);
   number.step = String(STRENGTH_STEP);
-  number.value = String(item.strength);
+  number.value = formatStrength(item.strength);
   number.setAttribute("aria-label", `LoRA ${index + 1} strength`);
-  number.addEventListener("change", () => patch({ strength: clamp(number.value, MIN_STRENGTH, MAX_STRENGTH, 1) }));
-  strengthLine.append(strength, number);
+
+  let slider;
+  const previewStrength = (value) => {
+    stack[index] = { ...stack[index], strength: value };
+    number.value = formatStrength(value);
+  };
+  const commitStrength = (value) => {
+    number.value = formatStrength(value);
+    patch({ strength: value }, false);
+  };
+  slider = strengthControl(item, previewStrength, commitStrength);
+  number.addEventListener("input", () => {
+    const value = clamp(number.value, MIN_STRENGTH, MAX_STRENGTH, item.strength);
+    stack[index] = { ...stack[index], strength: value };
+    slider.setValue(value);
+  });
+  number.addEventListener("change", () => {
+    const value = clamp(number.value, MIN_STRENGTH, MAX_STRENGTH, item.strength);
+    number.value = formatStrength(value);
+    slider.setValue(value);
+    patch({ strength: value }, false);
+  });
+  strengthLine.append(slider.element, number);
   strengthField.append(strengthLabel, strengthLine);
 
   const orderField = document.createElement("div");
@@ -585,7 +562,6 @@ function row(node, state, stack, item, index, rerender) {
   const orderText = document.createElement("span");
   orderText.textContent = "Order";
   orderLabel.append(orderText);
-
   const order = document.createElement("div");
   order.className = "h3s-lora-order";
   const up = iconButton(ICONS.chevronUp, "Move LoRA earlier", () => {
@@ -604,7 +580,6 @@ function row(node, state, stack, item, index, rerender) {
   down.disabled = index === stack.length - 1;
   order.append(up, down);
   orderField.append(orderLabel, order);
-
   subrow.append(strengthField, orderField);
   main.append(head, subrow);
 
@@ -614,7 +589,6 @@ function row(node, state, stack, item, index, rerender) {
     saveStack(node, state, stack);
     rerender();
   }, "h3s-lora-remove");
-
   root.append(main, remove);
   return root;
 }
@@ -624,6 +598,7 @@ function buildSection(node) {
   const section = document.createElement("section");
   section.className = "h3s-section h3s-custom-loras";
   section.dataset.h3studioCustomLoras = "true";
+  section.dataset.h3studioLoraUi = UI_VERSION;
 
   const header = document.createElement("div");
   header.className = "h3s-section-header";
@@ -632,7 +607,7 @@ function buildSection(node) {
   title.textContent = "Custom LoRAs";
   const status = document.createElement("span");
   status.className = "h3s-status-pill";
-  status.textContent = `${stack.filter((item) => item.enabled && item.name).length}/${MAX_CUSTOM_LORAS} active`;
+  status.textContent = `${stack.filter((entry) => entry.enabled && entry.name).length}/${MAX_CUSTOM_LORAS} active`;
   header.append(title, status);
 
   const body = document.createElement("div");
@@ -644,14 +619,13 @@ function buildSection(node) {
   const stackRoot = document.createElement("div");
   stackRoot.className = "h3s-lora-stack";
   const rerender = () => installLoraSection(node, true);
-
   if (!stack.length) {
     const empty = document.createElement("div");
     empty.className = "h3s-lora-empty";
     empty.textContent = "No custom LoRAs. Add one when you want an extra style, character or detail adapter.";
     stackRoot.append(empty);
   } else {
-    stack.forEach((item, index) => stackRoot.append(row(node, state, stack, item, index, rerender)));
+    stack.forEach((entry, index) => stackRoot.append(row(node, state, stack, entry, index, rerender)));
   }
 
   const toolbar = document.createElement("div");
@@ -660,7 +634,6 @@ function buildSection(node) {
   catalogStatus.className = "h3s-lora-status";
   catalogStatus.textContent = node.__h3studioLoraCatalogError
     || (catalog.length ? `${catalog.length} installed LoRA${catalog.length === 1 ? "" : "s"}` : "Loading installed LoRAs…");
-
   const toolbarActions = document.createElement("div");
   toolbarActions.className = "h3s-lora-toolbar-actions";
 
@@ -681,7 +654,7 @@ function buildSection(node) {
 
   const add = button("Add LoRA", "Choose an installed custom LoRA", (event) => {
     if (stack.length >= MAX_CUSTOM_LORAS) return;
-    const used = new Set(stack.map((item) => item.name).filter(Boolean));
+    const used = new Set(stack.map((entry) => entry.name).filter(Boolean));
     openPicker(event.currentTarget, {
       used,
       onSelect: (name) => {
@@ -691,11 +664,9 @@ function buildSection(node) {
       },
     });
   }, { icon: ICONS.plus });
-
   add.disabled = stack.length >= MAX_CUSTOM_LORAS;
   toolbarActions.append(refresh, add);
   toolbar.append(catalogStatus, toolbarActions);
-
   body.append(warning, stackRoot, toolbar);
   section.append(header, body);
   return section;
@@ -705,18 +676,35 @@ function sectionHost(panel) {
   return panel?.querySelector?.(".h3s-v6-inspector, .h3s-v7-inspector, .h3s-inspector") || panel;
 }
 
+function authoritativeSection(panel) {
+  return panel?.querySelector?.(`.h3s-custom-loras[data-h3studio-lora-ui="${UI_VERSION}"]`) || null;
+}
+
 function installLoraSection(node, replace = false) {
   const panel = node?.__h3studioPanel;
   if (!panel?.isConnected) return;
-  const existing = panel.querySelector(".h3s-custom-loras");
-  if (existing && !replace) return;
+  installStyles();
+
+  const sections = [...panel.querySelectorAll(".h3s-custom-loras")];
+  const authoritative = authoritativeSection(panel);
+  if (authoritative && !replace) {
+    sections.filter((section) => section !== authoritative).forEach((section) => section.remove());
+    return;
+  }
+
   closePicker();
-  const section = buildSection(node);
-  if (existing) existing.replaceWith(section);
-  else {
+  const next = buildSection(node);
+  const existing = authoritative || sections[0] || null;
+  if (existing) {
+    existing.replaceWith(next);
+  } else {
     const host = sectionHost(panel);
     const advanced = [...host.children].find((child) => child.querySelector?.(".h3s-advanced-toggle"));
-    host.insertBefore(section, advanced || null);
+    host.insertBefore(next, advanced || null);
+  }
+
+  for (const duplicate of sections) {
+    if (duplicate !== existing && duplicate.isConnected) duplicate.remove();
   }
 }
 
@@ -736,12 +724,12 @@ function watchDirector(node) {
 
     node.__h3studioLoraWatchPending = false;
     installStyles();
-    installLoraSection(node);
+    installLoraSection(node, true);
 
     const observer = new MutationObserver(() => {
-      if (!panel.querySelector(".h3s-custom-loras")) installLoraSection(node);
+      if (!authoritativeSection(panel)) installLoraSection(node, true);
     });
-    observer.observe(panel, { childList: true });
+    observer.observe(panel, { childList: true, subtree: true });
     node.__h3studioLoraObserver = observer;
 
     loadCatalog().then(() => {

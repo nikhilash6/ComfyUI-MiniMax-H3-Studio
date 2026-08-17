@@ -19,6 +19,18 @@ test("custom LoRA extension discovers installed ComfyUI LoRAs and survives panel
   assert.match(source, /MutationObserver/);
   assert.match(source, /setTimeout\(wait/);
   assert.doesNotMatch(source, /queueMicrotask\(wait\)/);
+  assert.match(source, /const UI_VERSION = "native-v2"/);
+  assert.match(source, /authoritativeSection/);
+  assert.match(source, /data-h3studio-lora-ui/);
+  assert.match(source, /if \(!authoritativeSection\(panel\)\) installLoraSection\(node, true\)/);
+});
+
+test("strength updates live without replacing the LoRA section on slider release", () => {
+  assert.match(source, /range\.addEventListener\("input"/);
+  assert.match(source, /number\.addEventListener\("input"/);
+  assert.match(source, /number\.value = formatStrength\(value\)/);
+  assert.match(source, /patch\(\{ strength: value \}, false\)/);
+  assert.match(source, /slider\.setValue\(value\)/);
 });
 
 test("custom LoRA picker is searchable, contained, scrollable and supports local favorites", () => {
@@ -29,6 +41,8 @@ test("custom LoRA picker is searchable, contained, scrollable and supports local
   assert.match(source, /visualViewport/);
   assert.match(source, /h3lp-list::\-webkit-scrollbar/);
   assert.match(source, /overscroll-behavior:contain/);
+  assert.match(source, /aria-pressed/);
+  assert.match(source, /grid-template-columns:minmax\(0,1fr\) 38px/);
 });
 
 test("custom LoRA UI explains acceleration ownership and stack order", () => {
