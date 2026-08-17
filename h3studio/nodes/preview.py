@@ -150,11 +150,7 @@ def _resolve_tiny_vae(folder_paths, tiny_vae: str) -> str | None:
     except Exception:
         direct = None
     if direct:
-        try:
-            if Path(direct).is_file():
-                return str(Path(direct))
-        except OSError:
-            pass
+        return str(direct)
 
     requested = Path(str(tiny_vae))
     requested_name = requested.name.casefold()
