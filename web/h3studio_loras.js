@@ -4,14 +4,16 @@ import { applyState, stateFromNode } from "./js/studio_extension.js";
 
 const TARGET = "H3StudioDirector";
 const MAX_CUSTOM_LORAS = 6;
-const MIN_STRENGTH = -4;
-const MAX_STRENGTH = 4;
+const MIN_STRENGTH = 0;
+const MAX_STRENGTH = 3;
 const STRENGTH_STEP = 0.05;
 const CATALOG_URL = "/h3studio/loras";
-const STYLE_ID = "h3studio-custom-loras-style-v3";
+const STYLE_ID = "h3studio-custom-loras-style-v4";
 const PICKER_ID = "h3studio-lora-picker";
 const FAVORITES_KEY = "h3studio.customLoraFavorites.v1";
-const UI_VERSION = "native-v3";
+const STRENGTHS_KEY = "h3studio.customLoraStrengths.v1";
+const MAX_SAVED_STRENGTHS = 256;
+const UI_VERSION = "native-v4";
 
 const ICONS = {
   search: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m15.5 15.5 4.5 4.5"></path></svg>',
@@ -26,6 +28,8 @@ let catalog = [];
 let catalogPromise = null;
 let activePickerCleanup = null;
 let favorites = loadFavorites();
+let savedStrengths = loadSavedStrengths();
+let strengthSaveTimer = null;
 
 function clamp(value, min, max, fallback = 1) {
   const number = Number(value);
@@ -33,10 +37,14 @@ function clamp(value, min, max, fallback = 1) {
   return Math.max(min, Math.min(max, number));
 }
 
+function normalizeLoraName(value) {
+  return String(value || "").replaceAll("\\", "/").trim();
+}
+
 function normalizeStack(value) {
   if (!Array.isArray(value)) return [];
   return value.slice(0, MAX_CUSTOM_LORAS).map((item) => ({
-    name: String(item?.name || "").replaceAll("\\", "/").trim(),
+    name: normalizeLoraName(item?.name),
     strength: clamp(item?.strength, MIN_STRENGTH, MAX_STRENGTH, 1),
     enabled: item?.enabled !== false,
   }));
@@ -58,7 +66,7 @@ function formatSize(bytes) {
 }
 
 function shortName(name) {
-  const value = String(name || "").replaceAll("\\", "/");
+  const value = normalizeLoraName(name);
   return value.split("/").pop() || value || "Choose LoRA";
 }
 
@@ -67,7 +75,7 @@ function loadFavorites() {
     const raw = localStorage.getItem(FAVORITES_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
     return new Set(Array.isArray(parsed)
-      ? parsed.map((item) => String(item || "").replaceAll("\\", "/").trim()).filter(Boolean)
+      ? parsed.map((item) => normalizeLoraName(item)).filter(Boolean)
       : []);
   } catch {
     return new Set();
@@ -83,16 +91,102 @@ function saveFavorites() {
 }
 
 function isFavorite(name) {
-  return Boolean(name) && favorites.has(String(name).replaceAll("\\", "/"));
+  const normalized = normalizeLoraName(name);
+  return Boolean(normalized) && favorites.has(normalized);
 }
 
 function toggleFavorite(name) {
-  const normalized = String(name || "").replaceAll("\\", "/").trim();
+  const normalized = normalizeLoraName(name);
   if (!normalized) return false;
   if (favorites.has(normalized)) favorites.delete(normalized);
   else favorites.add(normalized);
   saveFavorites();
   return favorites.has(normalized);
+}
+
+function loadSavedStrengths() {
+  try {
+    const raw = localStorage.getItem(STRENGTHS_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    const source = Array.isArray(parsed?.items)
+      ? parsed.items
+      : parsed && typeof parsed === "object"
+        ? Object.entries(parsed).map(([name, strength]) => ({ name, strength }))
+        : [];
+    const entries = [];
+    for (const item of source) {
+      const name = normalizeLoraName(item?.name);
+      const number = Number(item?.strength);
+      if (!name || !Number.isFinite(number)) continue;
+      entries.push([
+        name,
+        {
+          strength: clamp(number, MIN_STRENGTH, MAX_STRENGTH, 1),
+          updatedAt: Math.max(0, Number(item?.updated_at || item?.updatedAt) || 0),
+        },
+      ]);
+    }
+    entries.sort((a, b) => b[1].updatedAt - a[1].updatedAt);
+    return new Map(entries.slice(0, MAX_SAVED_STRENGTHS));
+  } catch {
+    return new Map();
+  }
+}
+
+function saveSavedStrengthsNow() {
+  if (strengthSaveTimer) {
+    clearTimeout(strengthSaveTimer);
+    strengthSaveTimer = null;
+  }
+  try {
+    const items = [...savedStrengths.entries()]
+      .sort((a, b) => b[1].updatedAt - a[1].updatedAt)
+      .slice(0, MAX_SAVED_STRENGTHS)
+      .map(([name, value]) => ({
+        name,
+        strength: clamp(value.strength, MIN_STRENGTH, MAX_STRENGTH, 1),
+        updated_at: Math.max(0, Number(value.updatedAt) || 0),
+      }));
+    localStorage.setItem(STRENGTHS_KEY, JSON.stringify({ version: 1, items }));
+  } catch {
+    // Saved strengths are a browser-local convenience only.
+  }
+}
+
+function scheduleSavedStrengthsWrite() {
+  if (strengthSaveTimer) clearTimeout(strengthSaveTimer);
+  strengthSaveTimer = setTimeout(saveSavedStrengthsNow, 120);
+}
+
+function hasSavedStrength(name) {
+  return savedStrengths.has(normalizeLoraName(name));
+}
+
+function savedStrengthFor(name, fallback = 1) {
+  const entry = savedStrengths.get(normalizeLoraName(name));
+  return entry ? clamp(entry.strength, MIN_STRENGTH, MAX_STRENGTH, fallback) : clamp(fallback, MIN_STRENGTH, MAX_STRENGTH, 1);
+}
+
+function rememberStrength(name, value, flush = false) {
+  const normalized = normalizeLoraName(name);
+  if (!normalized) return clamp(value, MIN_STRENGTH, MAX_STRENGTH, 1);
+  const strength = clamp(value, MIN_STRENGTH, MAX_STRENGTH, 1);
+  savedStrengths.set(normalized, { strength, updatedAt: Date.now() });
+  if (savedStrengths.size > MAX_SAVED_STRENGTHS) {
+    const oldest = [...savedStrengths.entries()]
+      .sort((a, b) => a[1].updatedAt - b[1].updatedAt)
+      .slice(0, savedStrengths.size - MAX_SAVED_STRENGTHS);
+    oldest.forEach(([key]) => savedStrengths.delete(key));
+  }
+  if (flush) saveSavedStrengthsNow();
+  else scheduleSavedStrengthsWrite();
+  return strength;
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("pagehide", () => {
+    if (strengthSaveTimer) saveSavedStrengthsNow();
+  });
 }
 
 async function loadCatalog(force = false) {
@@ -119,6 +213,7 @@ function installStyles() {
   if (document.getElementById(STYLE_ID)) return;
   document.getElementById("h3studio-custom-loras-style")?.remove();
   document.getElementById("h3studio-custom-loras-style-v2")?.remove();
+  document.getElementById("h3studio-custom-loras-style-v3")?.remove();
 
   const style = document.createElement("style");
   style.id = STYLE_ID;
@@ -136,7 +231,7 @@ function installStyles() {
     .h3s-lora-picker-copy{display:flex;align-items:center;min-width:0;overflow:hidden}.h3s-lora-file{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.h3lp-trigger-icon{display:grid;place-items:center;flex:none;color:var(--h3l-muted)}
     .h3s-lora-icon-button{display:grid;place-items:center;width:26px;height:26px;padding:0;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--h3l-muted);cursor:pointer}.h3s-lora-icon-button:hover:not(:disabled){border-color:var(--h3l-border);background:var(--h3l-surface);color:var(--h3l-text)}.h3s-lora-icon-button:disabled{opacity:.35;cursor:default}.h3s-lora-remove{align-self:start}.h3s-lora-remove:hover{border-color:color-mix(in srgb,#ff6b6b 45%,var(--h3l-border))!important;background:color-mix(in srgb,#ff6b6b 9%,var(--h3l-bg))!important;color:#ff9a9a!important}
     .h3s-lora-field{display:flex;flex-direction:column;gap:4px;min-width:0}.h3s-lora-field-label{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--h3l-muted);font:600 9px/1.15 Inter,ui-sans-serif,system-ui}.h3s-lora-field-hint{opacity:.72;font-size:8px;font-weight:500;font-variant-numeric:tabular-nums}
-    .h3s-lora-strength-line{display:grid;grid-template-columns:minmax(0,1fr) 58px;gap:7px;align-items:center;width:100%;min-width:0}.h3s-lora-strength{position:relative;width:100%;height:20px;min-width:0;overflow:visible}.h3s-lora-strength-track{position:absolute;left:0;right:0;top:50%;height:3px;border-radius:999px;background:var(--h3l-border);transform:translateY(-50%);overflow:hidden;pointer-events:none}.h3s-lora-strength-track::before{content:'';display:block;width:var(--h3l-strength-progress,62.5%);height:100%;background:var(--h3l-accent)}.h3s-lora-strength input[type=range]{position:absolute;inset:0;z-index:1;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}.h3s-lora-strength-thumb{position:absolute;left:var(--h3l-strength-progress,62.5%);top:50%;width:12px;height:12px;border:2px solid var(--h3l-raised);border-radius:50%;background:var(--h3l-accent);box-shadow:0 1px 3px rgba(0,0,0,.35);transform:translate(-50%,-50%);pointer-events:none}
+    .h3s-lora-strength-line{display:grid;grid-template-columns:minmax(0,1fr) 58px;gap:7px;align-items:center;width:100%;min-width:0}.h3s-lora-strength{position:relative;width:100%;height:20px;min-width:0;overflow:visible}.h3s-lora-strength-track{position:absolute;left:0;right:0;top:50%;height:3px;border-radius:999px;background:var(--h3l-border);transform:translateY(-50%);overflow:hidden;pointer-events:none}.h3s-lora-strength-track::before{content:'';display:block;width:var(--h3l-strength-progress,33.333%);height:100%;background:var(--h3l-accent)}.h3s-lora-strength input[type=range]{position:absolute;inset:0;z-index:1;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}.h3s-lora-strength-thumb{position:absolute;left:var(--h3l-strength-progress,33.333%);top:50%;width:12px;height:12px;border:2px solid var(--h3l-raised);border-radius:50%;background:var(--h3l-accent);box-shadow:0 1px 3px rgba(0,0,0,.35);transform:translate(-50%,-50%);pointer-events:none}
     .h3s-lora-number{width:58px;height:27px;padding:3px 5px;border:1px solid var(--h3l-border);border-radius:5px;background:var(--h3l-surface);color:var(--h3l-text);text-align:center;font:650 9px/1 ui-monospace,SFMono-Regular,Consolas,monospace;font-variant-numeric:tabular-nums}.h3s-lora-number:focus{outline:none;border-color:color-mix(in srgb,var(--h3l-accent) 48%,var(--h3l-border));box-shadow:0 0 0 1px color-mix(in srgb,var(--h3l-accent) 22%,transparent)}
     .h3s-lora-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;flex-wrap:wrap;padding-top:1px}.h3s-lora-toolbar-actions{display:flex;gap:5px;flex:none}.h3s-lora-button{height:27px;max-width:100%;padding:4px 8px;border:1px solid var(--h3l-border);border-radius:5px;background:var(--h3l-bg);color:var(--h3l-text);cursor:pointer;font:650 9px/1.1 Inter,ui-sans-serif,system-ui;display:inline-flex;align-items:center;justify-content:center;gap:5px}.h3s-lora-button:hover:not(:disabled){border-color:color-mix(in srgb,var(--h3l-accent) 38%,var(--h3l-border));background:var(--h3l-surface)}.h3s-lora-button:disabled{opacity:.35;cursor:default}
     .h3s-lora-button svg,.h3s-lora-icon-button svg,.h3lp-search-icon svg,.h3lp-star svg,.h3lp-trigger-icon svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
@@ -146,10 +241,10 @@ function installStyles() {
     .h3lp-list{flex:1 1 auto;min-height:0;max-height:310px;overflow:auto;padding:5px;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--h3lp-muted) 52%,transparent) transparent}.h3lp-list::-webkit-scrollbar{width:7px;height:7px}.h3lp-list::-webkit-scrollbar-track{background:transparent}.h3lp-list::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--h3lp-muted) 52%,transparent);border:2px solid color-mix(in srgb,var(--h3lp-bg) 97%,black 3%);border-radius:999px}.h3lp-list::-webkit-scrollbar-thumb:hover{background:color-mix(in srgb,var(--h3lp-muted) 72%,transparent)}
     .h3lp-section+.h3lp-section{margin-top:6px;padding-top:6px;border-top:1px solid var(--h3lp-border)}.h3lp-section-title{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 6px 4px;color:var(--h3lp-muted);font:700 8px/1.1 Inter,ui-sans-serif,system-ui;text-transform:uppercase;letter-spacing:.08em}
     .h3lp-entry{display:grid;grid-template-columns:minmax(0,1fr) 40px;align-items:stretch;width:100%;min-height:39px;border-radius:6px;background:transparent;overflow:hidden}.h3lp-entry:hover{background:var(--h3lp-surface)}.h3lp-entry.is-current{background:var(--h3lp-surface);box-shadow:inset 2px 0 0 var(--h3lp-accent)}
-    .h3lp-select{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:9px;align-items:center;width:100%;min-height:39px;padding:6px 7px 6px 9px;border:0;background:transparent;color:var(--h3lp-text);cursor:pointer;text-align:left;font:inherit}.h3lp-select:hover,.h3lp-select:focus-visible{outline:0;color:var(--h3lp-text)}.h3lp-select:disabled{opacity:.42;cursor:not-allowed}.h3lp-copy{display:flex;flex-direction:column;gap:2px;min-width:0}.h3lp-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:9.4px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace}.h3lp-meta{display:flex;gap:5px;align-items:center;min-width:0;color:var(--h3lp-muted);font-size:7.8px}.h3lp-meta span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.h3lp-badge{flex:none;padding:1px 4px;border:1px solid var(--h3lp-border);border-radius:4px;color:var(--h3lp-muted);font-size:7px}.h3lp-size{align-self:center;flex:none;color:var(--h3lp-muted);font-size:8px;white-space:nowrap}
+    .h3lp-select{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:9px;align-items:center;width:100%;min-height:39px;padding:6px 7px 6px 9px;border:0;background:transparent;color:var(--h3lp-text);cursor:pointer;text-align:left;font:inherit}.h3lp-select:hover,.h3lp-select:focus-visible{outline:0;color:var(--h3lp-text)}.h3lp-select:disabled{opacity:.42;cursor:not-allowed}.h3lp-copy{display:flex;flex-direction:column;gap:2px;min-width:0}.h3lp-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:9.4px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace}.h3lp-meta{display:flex;gap:5px;align-items:center;min-width:0;color:var(--h3lp-muted);font-size:7.8px}.h3lp-meta span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.h3lp-badge{flex:none;padding:1px 4px;border:1px solid var(--h3lp-border);border-radius:4px;color:var(--h3lp-muted);font-size:7px}.h3lp-detail{display:flex;align-items:center;justify-content:flex-end;gap:5px;white-space:nowrap}.h3lp-saved-strength{padding:2px 5px;border:1px solid color-mix(in srgb,var(--h3lp-accent) 28%,var(--h3lp-border));border-radius:4px;background:color-mix(in srgb,var(--h3lp-accent) 7%,transparent);color:color-mix(in srgb,var(--h3lp-accent) 68%,var(--h3lp-text));font:700 7.8px/1 ui-monospace,SFMono-Regular,Consolas,monospace}.h3lp-size{align-self:center;flex:none;color:var(--h3lp-muted);font-size:8px;white-space:nowrap}
     .h3lp-star{display:grid;place-items:center;width:40px;min-height:39px;padding:0;border:0;border-left:1px solid var(--h3lp-border);background:transparent;color:var(--h3lp-muted);cursor:pointer}.h3lp-star:hover{background:color-mix(in srgb,#d8b65c 8%,var(--h3lp-surface));color:#e2bf61}.h3lp-star.is-favorite{background:color-mix(in srgb,#d8b65c 9%,var(--h3lp-bg));color:#d8b65c}.h3lp-star.is-favorite svg{fill:currentColor;stroke:currentColor}
     .h3lp-empty{padding:21px 12px;color:var(--h3lp-muted);text-align:center;font-size:9px}.h3lp-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 9px;border-top:1px solid var(--h3lp-border);color:var(--h3lp-muted);font-size:7.8px;background:var(--h3lp-surface)}
-    @media(max-width:420px){.h3s-lora-row{grid-template-columns:minmax(0,1fr) 24px}.h3s-lora-strength-line{grid-template-columns:minmax(0,1fr) 54px}.h3s-lora-number{width:54px}}
+    @media(max-width:420px){.h3s-lora-row{grid-template-columns:minmax(0,1fr) 24px}.h3s-lora-strength-line{grid-template-columns:minmax(0,1fr) 54px}.h3s-lora-number{width:54px}.h3lp-detail{gap:3px}.h3lp-size{display:none}}
   `;
   document.head.append(style);
 }
@@ -296,7 +391,7 @@ function openPicker(anchor, { selected = "", used = new Set(), onSelect }) {
     name.textContent = shortName(entry.name);
     const meta = document.createElement("span");
     meta.className = "h3lp-meta";
-    const normalized = String(entry.name).replaceAll("\\", "/");
+    const normalized = normalizeLoraName(entry.name);
     const slash = normalized.lastIndexOf("/");
     if (slash > 0) {
       const path = document.createElement("span");
@@ -312,13 +407,24 @@ function openPicker(anchor, { selected = "", used = new Set(), onSelect }) {
     copy.append(name);
     if (meta.childNodes.length) copy.append(meta);
 
+    const detail = document.createElement("span");
+    detail.className = "h3lp-detail";
+    if (hasSavedStrength(entry.name)) {
+      const saved = document.createElement("span");
+      const savedValue = savedStrengthFor(entry.name);
+      saved.className = "h3lp-saved-strength";
+      saved.textContent = `${formatStrength(savedValue)}×`;
+      saved.title = `Saved strength: ${formatStrength(savedValue)}`;
+      detail.append(saved);
+    }
     const size = document.createElement("span");
     size.className = "h3lp-size";
     size.textContent = formatSize(entry.size_bytes);
-    select.append(copy, size);
+    if (size.textContent) detail.append(size);
+    select.append(copy, detail);
     select.addEventListener("click", () => {
       if (select.disabled) return;
-      onSelect(entry.name);
+      onSelect(entry.name, savedStrengthFor(entry.name, 1));
       closePicker();
     });
 
@@ -379,7 +485,8 @@ function openPicker(anchor, { selected = "", used = new Set(), onSelect }) {
     }
 
     const favoriteCount = catalog.filter((entry) => isFavorite(entry.name)).length;
-    footer.innerHTML = `<span>${catalog.length} installed</span><span>${favoriteCount} favorite${favoriteCount === 1 ? "" : "s"}</span>`;
+    const savedCount = catalog.filter((entry) => hasSavedStrength(entry.name)).length;
+    footer.innerHTML = `<span>${catalog.length} installed</span><span>${favoriteCount} favorite${favoriteCount === 1 ? "" : "s"} · ${savedCount} saved strength${savedCount === 1 ? "" : "s"}</span>`;
     place();
   };
 
@@ -444,7 +551,7 @@ function pickerTrigger(item, index, stack, onChange) {
     openPicker(trigger, {
       selected: item.name,
       used: new Set(stack.filter((_, otherIndex) => otherIndex !== index).map((entry) => entry.name).filter(Boolean)),
-      onSelect: (name) => onChange({ name }),
+      onSelect: (name, strength) => onChange({ name, strength }),
     });
   });
   return trigger;
@@ -532,9 +639,11 @@ function row(node, state, stack, item, index, rerender) {
   const previewStrength = (value) => {
     stack[index] = { ...stack[index], strength: value };
     number.value = formatStrength(value);
+    rememberStrength(item.name, value, false);
   };
   const commitStrength = (value) => {
     number.value = formatStrength(value);
+    rememberStrength(item.name, value, true);
     patch({ strength: value }, false);
   };
   slider = strengthControl(item, previewStrength, commitStrength);
@@ -542,11 +651,13 @@ function row(node, state, stack, item, index, rerender) {
     const value = clamp(number.value, MIN_STRENGTH, MAX_STRENGTH, item.strength);
     stack[index] = { ...stack[index], strength: value };
     slider.setValue(value);
+    rememberStrength(item.name, value, false);
   });
   number.addEventListener("change", () => {
     const value = clamp(number.value, MIN_STRENGTH, MAX_STRENGTH, item.strength);
     number.value = formatStrength(value);
     slider.setValue(value);
+    rememberStrength(item.name, value, true);
     patch({ strength: value }, false);
   });
   strengthLine.append(slider.element, number);
@@ -613,6 +724,7 @@ function buildSection(node) {
     try {
       await loadCatalog(true);
       favorites = loadFavorites();
+      savedStrengths = loadSavedStrengths();
       node.__h3studioLoraCatalogError = "";
       rerender();
     } catch (error) {
@@ -627,8 +739,8 @@ function buildSection(node) {
     const used = new Set(stack.map((entry) => entry.name).filter(Boolean));
     openPicker(event.currentTarget, {
       used,
-      onSelect: (name) => {
-        stack.push({ name, strength: 1, enabled: true });
+      onSelect: (name, strength) => {
+        stack.push({ name, strength, enabled: true });
         saveStack(node, state, stack);
         rerender();
       },
