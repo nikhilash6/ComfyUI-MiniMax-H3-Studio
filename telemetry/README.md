@@ -1,13 +1,31 @@
-# H3 Studio aggregate counter backend
+# H3 Studio aggregate counter
 
-This Cloudflare Worker accepts only `{ "count": 1..100, "schema": 1 }`, atomically adds the count in one Durable Object, and exposes `/v1/count` plus `/badge.svg`. It has no request logging code, database rows, installation identifiers, or fields for prompts and generation metadata.
+H3 Studio includes an optional, privacy-minimal aggregate counter for successful generated images. The deployed Cloudflare Worker accepts only `{ "count": 1..100, "schema": 1 }`, adds that number to one global Durable Object total, and exposes `/v1/count` plus `/badge.svg`.
 
-Deploy from this directory with a Cloudflare account:
+It does **not** accept or store prompts, images, references, seeds, hardware details, file paths, installation identifiers, or other generation metadata. The Worker source in this directory is included for transparency; users do not need to deploy it themselves.
 
-```bash
-npx wrangler login
-npx wrangler deploy
-curl https://h3-studio-counter.h3-studio-counter.workers.dev/v1/count
+Telemetry is enabled by default and can be disabled at any time.
+
+### Temporary opt-out
+
+Set the environment variable before starting ComfyUI from the same terminal.
+
+PowerShell:
+
+```powershell
+$env:H3STUDIO_TELEMETRY="0"
 ```
 
-Set `H3STUDIO_TELEMETRY_ENDPOINT` if the deployed hostname differs from the project default. Configure Cloudflare rate limiting for `POST /v1/report`; the public endpoint deliberately contains no reusable client secret because shipping one in a custom node would not authenticate installations.
+Linux/macOS:
+
+```bash
+export H3STUDIO_TELEMETRY=0
+```
+
+This lasts only for that terminal session and processes started from it.
+
+### Persistent opt-out
+
+Create an empty file named `.h3studio-telemetry-disabled` in the H3 Studio repository directory. No environment variable is then required.
+
+The client batches counts and sends them asynchronously so telemetry does not block image generation. Network failures are ignored.
