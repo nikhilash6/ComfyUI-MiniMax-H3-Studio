@@ -6,13 +6,19 @@ on:
       - main
       - dev
     paths-ignore:
-      - "docs/assets/star-history-*.svg"
+      - "docs/assets/star-history/**"
+  watch:
+    types: [started]
   workflow_dispatch:
   schedule:
-    - cron: "17 3 * * *"
+    - cron: "17 */6 * * *"
 
 permissions:
   contents: write
+
+concurrency:
+  group: star-history-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   render:
@@ -22,24 +28,32 @@ jobs:
         with:
           ref: ${{ github.ref_name }}
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Render authenticated star history
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-        run: python tools/render_star_history.py
-
-      - name: Commit refreshed chart
+      - name: Normalize README embed markers
+        shell: bash
         run: |
-          if git diff --quiet -- README.md docs/assets/star-history-light.svg docs/assets/star-history-dark.svg; then
-            echo "Star history is already current."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add README.md docs/assets/star-history-light.svg docs/assets/star-history-dark.svg
-          git commit -m "docs: refresh star history chart"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("README.md")
+          text = path.read_text(encoding="utf-8")
+          prefix = "## Star history\n\nIf H3 Studio makes H3 less painful to use, leave a star.\n\n"
+          note = "\n\n> [!NOTE]"
+          if prefix not in text:
+              raise SystemExit("README star-history section changed; refusing a blind rewrite")
+          start = text.index(prefix) + len(prefix)
+          end = text.index(note, start)
+          block = """<div align=\"center\">\n<!-- star-history:start -->\n<!-- star-history:end -->\n</div>"""
+          path.write_text(text[:start] + block + text[end:], encoding="utf-8")
+          PY
+
+      - uses: narayann7/star-history-action@v1
+        with:
+          repos: ${{ github.repository }}
+          output-dir: docs/assets/star-history
+          type: Date
+          themes: light,dark
+          width: 720
+          update-readme: true
+          readme: README.md
+          readme-format: picture
+          commit-message: "docs: refresh star history chart [skip ci]"
