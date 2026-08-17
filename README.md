@@ -425,12 +425,8 @@ The core image workflow is working, but H3 itself was not released as a dedicate
 If H3 Studio makes H3 less painful to use, leave a star.
 
 <div align="center">
-  <a href="https://www.star-history.com/#thaakeno/ComfyUI-MiniMax-H3-Studio&Date">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=thaakeno/ComfyUI-MiniMax-H3-Studio&type=Date&theme=dark">
-      <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=thaakeno/ComfyUI-MiniMax-H3-Studio&type=Date">
-      <img alt="MiniMax H3 Studio star history" src="https://api.star-history.com/svg?repos=thaakeno/ComfyUI-MiniMax-H3-Studio&type=Date" width="720">
-    </picture>
+  <a href="https://star-history.com/#thaakeno/ComfyUI-MiniMax-H3-Studio&Date">
+    <img alt="MiniMax H3 Studio star history" src="https://api.star-history.com/svg?repos=thaakeno/ComfyUI-MiniMax-H3-Studio&type=Date" width="720" />
   </a>
 </div>
 
